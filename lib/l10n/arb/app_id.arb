@@ -1,0 +1,45 @@
+{
+  "@@locale": "id",
+
+  "appTitle": "KopiyanteaPOS",
+  "@appTitle": { "description": "Application title" },
+
+  "navHome": "Beranda",
+  "navPos": "Kasir",
+  "navProducts": "Menu",
+  "navInventory": "Stok",
+  "navTransactions": "Transaksi",
+  "navCustomers": "Pelanggan",
+  "navReports": "Laporan",
+  "navSettings": "Pengaturan",
+
+  "actionConfirm": "Konfirmasi",
+  "actionCancel": "Batal",
+  "actionSave": "Simpan",
+  "actionDelete": "Hapus",
+  "actionRetry": "Coba Lagi",
+  "actionAdd": "Tambah",
+
+  "statusLoading": "Memuat…",
+  "statusEmpty": "Belum ada data",
+  "statusOffline": "Mode Offline",
+  "statusSyncing": "Menyinkronkan…",
+  "statusSyncCompleted": "Tersinkron",
+  "statusError": "Terjadi kesalahan",
+
+  "posCart": "Keranjang",
+  "posCheckout": "Bayar",
+  "posSubtotal": "Subtotal",
+  "posDiscount": "Diskon",
+  "posTax": "Pajak ({label})",
+  "@posTax": { "placeholders": { "label": { "type": "String" } } },
+  "posTotal": "Total",
+  "posPaymentReceived": "Diterima",
+  "posPaymentChange": "Kembalian",
+
+  "receiptThankYou": "Terima kasih",
+
+  "errorNetwork": "Tidak ada koneksi",
+  "errorPermissionDenied": "Akses ditolak",
+  "errorUnknown": "Terjadi kesalahan tak terduga"
+}

@@ -1,0 +1,43 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "KopiyanteaPOS",
+
+  "navHome": "Home",
+  "navPos": "POS",
+  "navProducts": "Menu",
+  "navInventory": "Stock",
+  "navTransactions": "Transactions",
+  "navCustomers": "Customers",
+  "navReports": "Reports",
+  "navSettings": "Settings",
+
+  "actionConfirm": "Confirm",
+  "actionCancel": "Cancel",
+  "actionSave": "Save",
+  "actionDelete": "Delete",
+  "actionRetry": "Retry",
+  "actionAdd": "Add",
+
+  "statusLoading": "Loading…",
+  "statusEmpty": "No data yet",
+  "statusOffline": "Offline mode",
+  "statusSyncing": "Syncing…",
+  "statusSyncCompleted": "Synced",
+  "statusError": "An error occurred",
+
+  "posCart": "Cart",
+  "posCheckout": "Pay",
+  "posSubtotal": "Subtotal",
+  "posDiscount": "Discount",
+  "posTax": "Tax ({label})",
+  "posTotal": "Total",
+  "posPaymentReceived": "Received",
+  "posPaymentChange": "Change",
+
+  "receiptThankYou": "Thank you",
+
+  "errorNetwork": "No connection",
+  "errorPermissionDenied": "Permission denied",
+  "errorUnknown": "An unexpected error occurred"
+}

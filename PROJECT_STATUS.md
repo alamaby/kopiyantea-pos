@@ -41,18 +41,22 @@
 - [x] `lib/main.dart` wires theme + localization + router
 - [x] Inter font assets in `/assets/fonts/` (verified: Inter loaded on device)
 
-## Phase 2 — Data Layer & Hardware Interfaces — **TODO**
+## Phase 2 — Data Layer & Hardware Interfaces — **DONE QA**
 
-- [ ] Drift schema mirroring Section 7 DDL
-- [ ] DAOs with reactive `watch()`
-- [ ] Outbox table + queue worker scaffold
-- [ ] Pricing module (`effectiveUnitPrice` + `computeTotals`, pure functions)
-- [ ] Pricing unit tests (full coverage)
-- [ ] Abstract `PrinterService`
-- [ ] Abstract `ScannerService`
-- [ ] Abstract `DeviceIntegrityService`
-- [ ] Fake implementations for dev
-- [ ] Core Riverpod providers: `CartProvider`, `SettingsProvider`, `AuthProvider` (stubbed)
+- [x] Drift schema mirroring Section 7 DDL (13 tables, FK + enum converters)
+- [x] DAOs with reactive `watch()` (BranchDao, CatalogDao, InventoryDao, TransactionDao, CustomerDao, OutboxDao)
+- [x] Outbox table + OutboxDao (enqueue/markDone/markFailed/watchPendingCount)
+- [x] Pricing module: `effectiveUnitPrice` + `computeTotals` (pure functions)
+- [x] Pricing unit tests (13 cases, full coverage of ADR-0009/0011/0012)
+- [x] Abstract `PrinterService` + `ReceiptPayload` + `PrinterDevice`
+- [x] Abstract `ScannerService`
+- [x] Abstract `DeviceIntegrityService` + `IntegrityVerdict`
+- [x] Fake implementations for dev (FakePrinterService, FakeScannerService, FakeDeviceIntegrityService)
+- [x] `service_providers.dart` — Riverpod overrideable service bindings
+- [x] `CartNotifier` (addItem, updateQuantity, removeItem, discount, computed totals)
+- [x] `SettingsNotifier` (SharedPreferences-backed, async)
+- [x] `Auth` provider stub + derived currentUser/branchId/isAuthenticated
+- [x] `databaseProvider` override wired in `main.dart`
 
 ## Phase 3 — Responsive Navigation — **TODO**
 

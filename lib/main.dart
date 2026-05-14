@@ -2,25 +2,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/database/app_database.dart';
+import 'core/database/database_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'router.dart';
 
 /// Application entry point.
 ///
-/// Phase 1 wires only: env validation (stubbed until `.env` + codegen),
-/// theme, router, and localization. Supabase + Drift + secure storage
-/// initialization is added in Phase 2 / Phase 6.
+/// Phase 2: Drift database opened and injected via [databaseProvider] override.
+/// Phase 6 will add: Env.validate(), Supabase.initialize(), cert pinning, secure storage.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Phase 6 will enable:
   //   Env.validate();
   //   await SecureStorage.init();
-  //   await Supabase.initialize(...);
-  //   final db = await AppDatabase.open();
+  //   await Supabase.initialize(url: Env.supabaseUrl, ...);
 
-  runApp(const ProviderScope(child: KopiyanteaPosApp()));
+  final db = await AppDatabase.open();
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        databaseProvider.overrideWithValue(db),
+      ],
+      child: const KopiyanteaPosApp(),
+    ),
+  );
 }
 
 class KopiyanteaPosApp extends ConsumerWidget {

@@ -58,11 +58,14 @@
 - [x] `Auth` provider stub + derived currentUser/branchId/isAuthenticated
 - [x] `databaseProvider` override wired in `main.dart`
 
-## Phase 3 — Responsive Navigation — **TODO**
+## Phase 3 — Responsive Navigation — **DONE QA**
 
-- [ ] `LayoutBuilder` adaptive shell: BottomNavigationBar (mobile) ↔ NavigationRail (tablet)
-- [ ] Typed `go_router` shell routes wired
-- [ ] Visual regression across 3 screen sizes
+- [x] `LayoutBuilder` adaptive shell: BottomNavigationBar (< 600dp) ↔ NavigationRail (≥ 600dp) ↔ Extended Rail (≥ 840dp)
+- [x] Typed `go_router` shell routes wired via `StatefulShellRoute.indexedStack` (state-preserving)
+- [x] `MoreScreen` (Lainnya) hub for secondary destinations
+- [x] `AppBreakpoint` constants (tablet 600, railExtended 840)
+- [x] ARB updated with `navMore`
+- [x] Visual regression across 3 screen sizes (verified: compact BottomNav + expanded Extended Rail; medium tier shares codepath)
 
 ## Phase 4 — UI Construction — **TODO**
 

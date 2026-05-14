@@ -2,52 +2,90 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'features/home/home_screen.dart';
+import 'core/widgets/adaptive_shell.dart';
+import 'features/more/more_screen.dart';
 import 'features/placeholders/placeholder_screen.dart';
 
-/// Typed shell routes — placeholders for Phase 1.
-/// Real feature routes are wired in Phase 3 (responsive navigation).
+/// Typed shell routing via [StatefulShellRoute.indexedStack].
+///
+/// Each branch keeps its own navigator stack and scroll position — important
+/// for POS, where switching tabs must NOT lose cart state or scroll offset.
+///
+/// Routes outside the shell (e.g. `/more/customers`) push as full-screen
+/// detail pages without the bottom nav / rail.
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/',
+    initialLocation: '/pos',
     routes: [
-      GoRoute(
-        path: '/',
-        name: 'home',
-        builder: (context, state) => const HomeScreen(),
+      // Legacy `/` redirect — bookmarks survive.
+      GoRoute(path: '/', redirect: (_, __) => '/pos'),
+
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AdaptiveShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/pos',
+                name: 'pos',
+                builder: (_, __) => const PlaceholderScreen(title: 'Kasir'),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/products',
+                name: 'products',
+                builder: (_, __) => const PlaceholderScreen(title: 'Menu'),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/inventory',
+                name: 'inventory',
+                builder: (_, __) => const PlaceholderScreen(title: 'Stok'),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/transactions',
+                name: 'transactions',
+                builder: (_, __) =>
+                    const PlaceholderScreen(title: 'Transaksi'),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/more',
+                name: 'more',
+                builder: (_, __) => const MoreScreen(),
+              ),
+            ],
+          ),
+        ],
       ),
+
+      // Full-screen detail pages (no shell)
       GoRoute(
-        path: '/pos',
-        name: 'pos',
-        builder: (_, __) => const PlaceholderScreen(title: 'Kasir'),
-      ),
-      GoRoute(
-        path: '/products',
-        name: 'products',
-        builder: (_, __) => const PlaceholderScreen(title: 'Menu'),
-      ),
-      GoRoute(
-        path: '/inventory',
-        name: 'inventory',
-        builder: (_, __) => const PlaceholderScreen(title: 'Stok'),
-      ),
-      GoRoute(
-        path: '/transactions',
-        name: 'transactions',
-        builder: (_, __) => const PlaceholderScreen(title: 'Transaksi'),
-      ),
-      GoRoute(
-        path: '/customers',
+        path: '/more/customers',
         name: 'customers',
         builder: (_, __) => const PlaceholderScreen(title: 'Pelanggan'),
       ),
       GoRoute(
-        path: '/reports',
+        path: '/more/reports',
         name: 'reports',
         builder: (_, __) => const PlaceholderScreen(title: 'Laporan'),
       ),
       GoRoute(
-        path: '/settings',
+        path: '/more/settings',
         name: 'settings',
         builder: (_, __) => const PlaceholderScreen(title: 'Pengaturan'),
       ),

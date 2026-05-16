@@ -4,6 +4,7 @@ import '../../domain/enums.dart';
 import 'branch_tables.dart';
 import 'catalog_tables.dart';
 
+@DataClassName('InventoryItemRow')
 class InventoryItems extends Table {
   TextColumn get id => text()();
   TextColumn get branchId =>
@@ -24,6 +25,7 @@ class InventoryItems extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('InventoryMovementRow')
 class InventoryMovements extends Table {
   TextColumn get id => text()();
   TextColumn get inventoryItemId =>
@@ -43,6 +45,7 @@ class InventoryMovements extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('ProductRecipeRow')
 class ProductRecipes extends Table {
   TextColumn get id => text()();
   TextColumn get productId =>

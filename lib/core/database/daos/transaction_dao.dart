@@ -11,7 +11,7 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   TransactionDao(super.db);
 
   /// Reactive paginated stream of transactions for a branch.
-  Stream<List<Transaction>> watchTransactionsForBranch(
+  Stream<List<TransactionRow>> watchTransactionsForBranch(
     String branchId, {
     int limit = 50,
   }) =>
@@ -21,10 +21,10 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit))
           .watch();
 
-  Future<Transaction?> getTransactionById(String id) =>
+  Future<TransactionRow?> getTransactionById(String id) =>
       (select(transactions)..where((t) => t.id.equals(id))).getSingleOrNull();
 
-  Future<List<TransactionItem>> getItemsForTransaction(
+  Future<List<TransactionItemRow>> getItemsForTransaction(
     String transactionId,
   ) =>
       (select(transactionItems)

@@ -10,18 +10,18 @@ class CustomerDao extends DatabaseAccessor<AppDatabase>
     with _$CustomerDaoMixin {
   CustomerDao(super.db);
 
-  Stream<List<Customer>> watchAll() =>
+  Stream<List<CustomerRow>> watchAll() =>
       (select(customers)
             ..orderBy([(c) => OrderingTerm.asc(c.name)]))
           .watch();
 
-  Future<List<Customer>> searchByName(String query) =>
+  Future<List<CustomerRow>> searchByName(String query) =>
       (select(customers)
             ..where((c) => c.name.like('%$query%'))
             ..limit(20))
           .get();
 
-  Future<Customer?> getByPhone(String phone) =>
+  Future<CustomerRow?> getByPhone(String phone) =>
       (select(customers)..where((c) => c.phone.equals(phone)))
           .getSingleOrNull();
 

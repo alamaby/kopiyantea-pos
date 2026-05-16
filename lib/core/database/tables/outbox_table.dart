@@ -4,6 +4,7 @@ import '../../domain/enums.dart';
 
 /// Local-only outbox for the offline-sync pipeline (ADR-0004).
 /// Every pending push to Supabase starts life here.
+@DataClassName('OutboxItemRow')
 class OutboxItems extends Table {
   TextColumn get id => text()(); // UUID v7
   TextColumn get entityType => text().map(

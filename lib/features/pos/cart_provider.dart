@@ -1,10 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../core/domain/branch.dart';
-import '../../core/domain/cart.dart';
-import '../../core/domain/customer.dart';
-import '../../core/domain/product.dart';
+import '../../core/database/app_database.dart';
 import '../../core/pricing/pricing.dart';
+import 'cart_state.dart';
 
 part 'cart_provider.g.dart';
 
@@ -13,17 +11,18 @@ class CartNotifier extends _$CartNotifier {
   @override
   CartState build() => const CartState();
 
-  // ── Catalog ──────────────────────────────────────────────
+  // ── Branch / customer ───────────────────────────────────────────────────────
 
-  void setBranch(Branch branch) => state = state.copyWith(branch: branch);
-  void setCustomer(Customer? customer) =>
+  void setBranch(BranchRow branch) => state = state.copyWith(branch: branch);
+
+  void setCustomer(CustomerRow? customer) =>
       state = state.copyWith(customer: customer);
 
-  // ── Items ────────────────────────────────────────────────
+  // ── Items ───────────────────────────────────────────────────────────────────
 
   void addItem({
-    required Product product,
-    required BranchProduct branchProduct,
+    required ProductRow product,
+    required BranchProductRow branchProduct,
     String? notes,
   }) {
     final snapshot = effectiveUnitPrice(
@@ -42,34 +41,37 @@ class CartNotifier extends _$CartNotifier {
     );
 
     if (idx >= 0) {
-      final updated = state.items[idx]
-          .copyWith(quantity: state.items[idx].quantity + 1);
-      state = state.copyWith(
-        items: [...state.items..[idx] = updated],
-      );
+      _replaceAt(idx, state.items[idx].copyWith(quantity: state.items[idx].quantity + 1));
     } else {
-      state = state.copyWith(
-        items: [
-          ...state.items,
-          CartItem(
-            product: product,
-            branchProduct: branchProduct,
-            priceSnapshot: snapshot,
-            quantity: 1,
-            notes: notes,
-          ),
-        ],
-      );
+      state = state.copyWith(items: [
+        ...state.items,
+        CartItem(
+          product: product,
+          branchProduct: branchProduct,
+          priceSnapshot: snapshot,
+          quantity: 1,
+          notes: notes,
+        ),
+      ]);
     }
   }
 
-  void updateQuantity(int index, int quantity) {
-    if (quantity <= 0) {
+  void incrementQuantity(int index) {
+    final current = state.items[index];
+    _replaceAt(index, current.copyWith(quantity: current.quantity + 1));
+  }
+
+  void decrementQuantity(int index) {
+    final current = state.items[index];
+    if (current.quantity <= 1) {
       removeItem(index);
-      return;
+    } else {
+      _replaceAt(index, current.copyWith(quantity: current.quantity - 1));
     }
-    final updated = state.items[index].copyWith(quantity: quantity);
-    state = state.copyWith(items: [...state.items..[index] = updated]);
+  }
+
+  void updateNotes(int index, String? notes) {
+    _replaceAt(index, state.items[index].copyWith(notes: notes));
   }
 
   void removeItem(int index) {
@@ -77,17 +79,32 @@ class CartNotifier extends _$CartNotifier {
     state = state.copyWith(items: items);
   }
 
+  /// Re-inserts [item] at [index]. Used by the undo snackbar after a delete.
+  /// If [index] is beyond the current list, the item is appended.
+  void restoreItem(CartItem item, {required int index}) {
+    final items = [...state.items];
+    if (index >= items.length) {
+      items.add(item);
+    } else {
+      items.insert(index, item);
+    }
+    state = state.copyWith(items: items);
+  }
+
   void setManualDiscount(double amount) =>
       state = state.copyWith(manualDiscountAmount: amount);
 
-  void clear() => state = const CartState();
+  void clear() => state = CartState(branch: state.branch);
 
-  // ── Computed ─────────────────────────────────────────────
+  // ── Computed (read-only views) ──────────────────────────────────────────────
 
   double get subtotal => state.items.fold(
         0.0,
         (sum, item) => sum + item.priceSnapshot * item.quantity,
       );
+
+  int get itemCount =>
+      state.items.fold(0, (sum, item) => sum + item.quantity);
 
   /// Returns null when no branch is set on the cart.
   TotalsResult? get totals {
@@ -99,5 +116,13 @@ class CartNotifier extends _$CartNotifier {
       taxPercentage: branch.taxPercentage,
       taxInclusive: branch.taxInclusive,
     );
+  }
+
+  // ── Private ─────────────────────────────────────────────────────────────────
+
+  void _replaceAt(int idx, CartItem item) {
+    final newItems = [...state.items];
+    newItems[idx] = item;
+    state = state.copyWith(items: newItems);
   }
 }

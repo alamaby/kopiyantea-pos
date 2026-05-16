@@ -5,6 +5,7 @@ import 'branch_tables.dart';
 import 'catalog_tables.dart';
 import 'customer_tables.dart';
 
+@DataClassName('TransactionRow')
 class Transactions extends Table {
   // UUID v7 — also serves as idempotency key (ADR-0001)
   TextColumn get id => text()();
@@ -48,6 +49,7 @@ class Transactions extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('TransactionItemRow')
 class TransactionItems extends Table {
   TextColumn get id => text()();
   TextColumn get transactionId =>

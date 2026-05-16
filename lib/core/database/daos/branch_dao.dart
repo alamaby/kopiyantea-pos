@@ -9,25 +9,25 @@ part 'branch_dao.g.dart';
 class BranchDao extends DatabaseAccessor<AppDatabase> with _$BranchDaoMixin {
   BranchDao(super.db);
 
-  Stream<List<Branch>> watchAllBranches() =>
+  Stream<List<BranchRow>> watchAllBranches() =>
       (select(branches)..where((b) => b.isActive.equals(true))).watch();
 
-  Future<Branch?> getBranchById(String id) =>
+  Future<BranchRow?> getBranchById(String id) =>
       (select(branches)..where((b) => b.id.equals(id))).getSingleOrNull();
 
-  Stream<Branch?> watchBranchById(String id) =>
+  Stream<BranchRow?> watchBranchById(String id) =>
       (select(branches)..where((b) => b.id.equals(id))).watchSingleOrNull();
 
   Future<void> upsertBranch(BranchesCompanion companion) =>
       into(branches).insertOnConflictUpdate(companion);
 
-  Future<AppUser?> getUserById(String id) =>
+  Future<AppUserRow?> getUserById(String id) =>
       (select(appUsers)..where((u) => u.id.equals(id))).getSingleOrNull();
 
   Future<void> upsertUser(AppUsersCompanion companion) =>
       into(appUsers).insertOnConflictUpdate(companion);
 
-  Stream<List<UserBranchAccess>> watchAccessForUser(String userId) =>
+  Stream<List<UserBranchAccessRow>> watchAccessForUser(String userId) =>
       (select(userBranchAccesses)
             ..where((a) => a.userId.equals(userId)))
           .watch();

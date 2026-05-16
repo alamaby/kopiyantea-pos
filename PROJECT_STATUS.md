@@ -67,8 +67,37 @@
 - [x] ARB updated with `navMore`
 - [x] Visual regression across 3 screen sizes (verified: compact BottomNav + expanded Extended Rail; medium tier shares codepath)
 
-## Phase 4 — UI Construction — **TODO**
+## Phase 4 — UI Construction — **IN PROGRESS** (batch 4.1 DONE DEV)
 
+### 4.1 — Seed data + Settings — **DONE QA** (BUG-001 deferred to 4.5)
+- [x] `SeedService` populates 2 branches, 3 users, 8 products, branch_products with override+discount, 5 inventory items, recipes, 2 customers
+- [x] Idempotent: skips when `branches` is non-empty
+- [x] Auto-picks default branch on first run (writes to SharedPreferences)
+- [x] `dao_providers.dart` exposes all DAOs via Riverpod
+- [x] `allBranchesProvider` (reactive Stream) + `selectedBranchProvider` (Future)
+- [x] `SettingsScreen`: branch picker (radio), theme (SegmentedButton system/light/dark), print toggle, about
+- [x] `main.dart` reactive `themeMode` from settings (live theme switching)
+- [x] Routed at `/more/settings` (replaces placeholder)
+
+### 4.2 — POS / Kasir flow — **DONE QA** (FEAT-001 deferred to Phase 4.6/8)
+- [x] `formatRupiah` + date formatters (intl, id_ID locale)
+- [x] `cart_state.dart` moved to features/pos, uses Drift Row types
+- [x] `CartNotifier` refactored (add/incr/decr/notes/discount/clear + computed totals)
+- [x] `menu_provider.dart` → reactive `Stream<List<BranchProductWithProductRow>>`
+- [x] `CheckoutUseCase`: atomic write of Transaction + items + inventory movements + outbox (one db.transaction)
+- [x] UUID v7 idempotency key, recipe-driven inventory deduction, immutable tax snapshot
+- [x] `PosScreen` responsive (mobile floating cart pill, tablet side-by-side)
+- [x] `MenuGrid` with discount badge, price strikethrough, haptic feedback
+- [x] `CartPanel` with qty controls, manual discount editor, live totals
+- [x] `CheckoutSheet` with payment method picker, quick amounts, change calc, error states
+- [x] `ReceiptSummarySheet` with derived discount + payment summary
+- [x] Wired `/pos` route to real `PosScreen`
+- [x] `main.dart` initializes intl date symbols for id_ID
+### 4.3 — Catalog (Menu) management — **TODO**
+### 4.4 — Inventory + Transactions history — **TODO**
+### 4.5 — Customers + Reports + Color-blind QA — **TODO**
+
+**Phase 4 acceptance criteria (all batches):**
 - [ ] Feature screens built against fake services
 - [ ] Decompose monolithic screens per SRP
 - [ ] Every async flow via `AsyncValue.when`
@@ -105,6 +134,34 @@
 
 ---
 
+## Backlog (deferred features)
+
+### [FEAT-001] Product Modifier / Option System
+- **Requested:** Phase 4.2 QA (2026-05-15)
+- **Use case:** Customer minta "Latte less sugar, extra shot, less ice" — POS perlu cara terstruktur untuk record customization.
+- **MVP workaround:** Free-text "Catatan" field per cart item (sudah diimplementasi di 4.2). Cashier ketik manual, dicetak di struk dan tampil ke barista.
+- **Full solution requires:**
+  - DB: `option_groups` (Sugar Level / Ice Level / Shot), `options` (Normal/Less/None, +Rp 0), `product_option_groups` (mapping), `transaction_item_options` (selected snapshot)
+  - UI: option picker bottom sheet saat tap produk, multi-select vs single-select, required vs optional
+  - Pricing: option price deltas masuk ke `priceSnapshot`
+  - Receipt: bullet list options di bawah item name
+- **Resolution timing:** Dedicated **Phase 4.6 — Modifier System**, setelah 4.3–4.5 selesai. Atau bisa juga jadi Phase 8 jika MVP-first prioritas.
+
 ## Bug Log
 
-_None._
+### [BUG-001] Dark mode tidak rendered correctly di widget primitives
+- **Discovered:** Phase 4.1 QA (2026-05-14)
+- **Severity:** Medium (cosmetic — fungsional tetap jalan)
+- **Symptoms:** Di dark mode, `AppCard` tetap putih, teks tidak terbaca (hitam-on-putih atau putih-on-putih), SegmentedButton labels invisible
+- **Root cause:** `AppColors` (radius.dart, app_button.dart, app_card.dart, app_badge.dart, dll.) hardcode warna light-mode. `AppTypography` styles tidak punya warna default — saat dipakai dengan `.copyWith(color: AppColors.textPrimary)` warna hitam dipaksa.
+- **Fix direction:** Widget primitives harus konsumsi `Theme.of(context).colorScheme.surface/onSurface/outline` bukan `AppColors.*` langsung. Atau buat helper `AppColors.surfaceOf(context)` yang switch berdasarkan brightness.
+- **Affected files:**
+  - `lib/core/widgets/app_card.dart`
+  - `lib/core/widgets/app_button.dart`
+  - `lib/core/widgets/app_badge.dart`
+  - `lib/core/widgets/app_bottom_sheet.dart`
+  - `lib/core/widgets/app_empty_state.dart`
+  - `lib/core/widgets/app_loading_indicator.dart`
+  - `lib/core/widgets/app_numeric_keypad.dart`
+  - `lib/features/settings/settings_screen.dart` (hardcoded textPrimary/textSecondary di section headers, about rows)
+- **Resolution timing:** Defer ke akhir Phase 4 (sebelum color-blind QA di 4.5) — saat itu kita audit semua warna sekalian.

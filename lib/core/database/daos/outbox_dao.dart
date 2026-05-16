@@ -24,7 +24,7 @@ class OutboxDao extends DatabaseAccessor<AppDatabase> with _$OutboxDaoMixin {
         .watchSingle();
   }
 
-  Future<List<OutboxItem>> getPendingItems({int limit = 20}) =>
+  Future<List<OutboxItemRow>> getPendingItems({int limit = 20}) =>
       (select(outboxItems)
             ..where(
               (o) =>

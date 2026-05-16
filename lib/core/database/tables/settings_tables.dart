@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import 'branch_tables.dart';
 
+@DataClassName('ReceiptSettingRow')
 class ReceiptSettings extends Table {
   TextColumn get id => text()();
   TextColumn get branchId =>

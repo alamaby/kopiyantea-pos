@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../../domain/enums.dart';
 
+@DataClassName('BranchRow')
 class Branches extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
@@ -23,6 +24,7 @@ class Branches extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('AppUserRow')
 class AppUsers extends Table {
   TextColumn get id => text()();
   TextColumn get fullName => text()();
@@ -40,6 +42,7 @@ class AppUsers extends Table {
   Set<Column<Object>> get primaryKey => {id};
 }
 
+@DataClassName('UserBranchAccessRow')
 class UserBranchAccesses extends Table {
   TextColumn get userId =>
       text().references(AppUsers, #id, onDelete: KeyAction.cascade)();

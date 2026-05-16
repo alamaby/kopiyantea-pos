@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'core/widgets/adaptive_shell.dart';
 import 'features/more/more_screen.dart';
 import 'features/placeholders/placeholder_screen.dart';
+import 'features/pos/pos_screen.dart';
+import 'features/settings/settings_screen.dart';
 
 /// Typed shell routing via [StatefulShellRoute.indexedStack].
 ///
@@ -29,7 +31,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/pos',
                 name: 'pos',
-                builder: (_, __) => const PlaceholderScreen(title: 'Kasir'),
+                builder: (_, __) => const PosScreen(),
               ),
             ],
           ),
@@ -87,7 +89,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/more/settings',
         name: 'settings',
-        builder: (_, __) => const PlaceholderScreen(title: 'Pengaturan'),
+        builder: (_, __) => const SettingsScreen(),
       ),
     ],
     errorBuilder: (_, state) => Scaffold(

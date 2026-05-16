@@ -10,14 +10,14 @@ class InventoryDao extends DatabaseAccessor<AppDatabase>
     with _$InventoryDaoMixin {
   InventoryDao(super.db);
 
-  Stream<List<InventoryItem>> watchItemsForBranch(String branchId) =>
+  Stream<List<InventoryItemRow>> watchItemsForBranch(String branchId) =>
       (select(inventoryItems)
             ..where((i) => i.branchId.equals(branchId))
             ..orderBy([(i) => OrderingTerm.asc(i.name)]))
           .watch();
 
   /// Items at or below minimum stock — used for low-stock badge.
-  Stream<List<InventoryItem>> watchLowStockItems(String branchId) =>
+  Stream<List<InventoryItemRow>> watchLowStockItems(String branchId) =>
       (select(inventoryItems)
             ..where(
               (i) =>
@@ -34,7 +34,7 @@ class InventoryDao extends DatabaseAccessor<AppDatabase>
   Future<void> insertMovement(InventoryMovementsCompanion companion) =>
       into(inventoryMovements).insert(companion);
 
-  Future<List<InventoryMovement>> getMovementsForItem(
+  Future<List<InventoryMovementRow>> getMovementsForItem(
     String inventoryItemId, {
     int limit = 50,
   }) =>
@@ -44,7 +44,7 @@ class InventoryDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit))
           .get();
 
-  Future<List<ProductRecipe>> getRecipesForProduct(
+  Future<List<ProductRecipeRow>> getRecipesForProduct(
     String productId,
     String branchId,
   ) =>

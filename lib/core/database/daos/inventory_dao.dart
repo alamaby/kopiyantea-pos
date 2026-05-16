@@ -26,6 +26,10 @@ class InventoryDao extends DatabaseAccessor<AppDatabase>
             ))
           .watch();
 
+  Stream<InventoryItemRow?> watchItemById(String id) =>
+      (select(inventoryItems)..where((i) => i.id.equals(id)))
+          .watchSingleOrNull();
+
   Future<void> upsertItem(InventoryItemsCompanion companion) =>
       into(inventoryItems).insertOnConflictUpdate(companion);
 
@@ -43,6 +47,17 @@ class InventoryDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(m) => OrderingTerm.desc(m.createdAt)])
             ..limit(limit))
           .get();
+
+  /// Reactive variant — new sales/adjustments push new rows into the stream.
+  Stream<List<InventoryMovementRow>> watchMovementsForItem(
+    String inventoryItemId, {
+    int limit = 50,
+  }) =>
+      (select(inventoryMovements)
+            ..where((m) => m.inventoryItemId.equals(inventoryItemId))
+            ..orderBy([(m) => OrderingTerm.desc(m.createdAt)])
+            ..limit(limit))
+          .watch();
 
   Future<List<ProductRecipeRow>> getRecipesForProduct(
     String productId,

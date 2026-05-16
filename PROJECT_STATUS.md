@@ -94,7 +94,17 @@
 - [x] Wired `/pos` route to real `PosScreen`
 - [x] `main.dart` initializes intl date symbols for id_ID
 ### 4.3 — Catalog (Menu) management — **TODO**
-### 4.4 — Inventory + Transactions history — **TODO**
+### 4.4 — Inventory + Transactions history — **DONE QA**
+- [x] Local `cached_stock` reconciliation in CheckoutUseCase — client-side delta application in the same db.transaction. Converges with the Supabase trigger at sync time (Phase 6).
+- [x] `labels.dart` — paymentMethod/movementType/stockUnit/transactionStatus Indonesian mappers + `formatStock`
+- [x] `InventoryDao.watchItemById` + `watchMovementsForItem` (reaktif)
+- [x] Transactions: `branchTransactionsProvider` (Stream) + `transactionDetailProvider` (Future)
+- [x] `TransactionListScreen` dengan date grouping (Hari ini / Kemarin / tanggal absolute)
+- [x] `TransactionDetailScreen` dengan Header/Items/Totals/Payment cards + status badge + notes per item
+- [x] Inventory: `branchInventoryProvider`, `inventoryItemProvider`, `inventoryMovementsProvider` (semua reaktif)
+- [x] `InventoryListScreen` dengan stock status badge (Cukup/Menipis/Habis — semua color-blind safe dengan icon)
+- [x] `InventoryDetailScreen` dengan summary + reactive movement history + per-type icons (+/− tone)
+- [x] Router: `/transactions/:id`, `/inventory/:id` di luar shell (full-screen detail)
 ### 4.5 — Customers + Reports + Color-blind QA — **TODO**
 
 **Phase 4 acceptance criteria (all batches):**

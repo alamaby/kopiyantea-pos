@@ -115,6 +115,24 @@ class CheckoutUseCase {
           await db.into(db.inventoryMovements).insert(mov);
         }
 
+        // Local cached_stock reconciliation — keeps the offline UI accurate.
+        // Source of truth remains the movements table (ADR-0003); Supabase's
+        // server trigger does the same arithmetic at sync time, so client
+        // and server converge deterministically. `customUpdate` with
+        // `updates: {db.inventoryItems}` invalidates the watch streams so
+        // the inventory list/detail screens refresh live.
+        for (final entry in _aggregateDeltas(movements).entries) {
+          await db.customUpdate(
+            'UPDATE inventory_items SET cached_stock = cached_stock + ? '
+            'WHERE id = ?',
+            variables: [
+              Variable<double>(entry.value),
+              Variable<String>(entry.key),
+            ],
+            updates: {db.inventoryItems},
+          );
+        }
+
         await db.into(db.outboxItems).insert(
               _buildOutboxCompanion(txId: txId, branchId: branch.id, now: now),
             );
@@ -215,6 +233,20 @@ class CheckoutUseCase {
       }
     }
     return result;
+  }
+
+  /// Sums signed deltas per inventory item — one item may appear across
+  /// multiple cart lines and recipes (e.g. milk in both Latte and Cappuccino).
+  Map<String, double> _aggregateDeltas(
+    List<InventoryMovementsCompanion> movements,
+  ) {
+    final out = <String, double>{};
+    for (final mov in movements) {
+      final itemId = mov.inventoryItemId.value;
+      final delta = mov.deltaSigned.value;
+      out.update(itemId, (existing) => existing + delta, ifAbsent: () => delta);
+    }
+    return out;
   }
 
   OutboxItemsCompanion _buildOutboxCompanion({

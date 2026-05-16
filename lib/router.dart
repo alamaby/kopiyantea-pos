@@ -3,10 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/widgets/adaptive_shell.dart';
+import 'features/inventory/inventory_detail_screen.dart';
+import 'features/inventory/inventory_list_screen.dart';
 import 'features/more/more_screen.dart';
 import 'features/placeholders/placeholder_screen.dart';
 import 'features/pos/pos_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/transactions/transaction_detail_screen.dart';
+import 'features/transactions/transaction_list_screen.dart';
 
 /// Typed shell routing via [StatefulShellRoute.indexedStack].
 ///
@@ -49,7 +53,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/inventory',
                 name: 'inventory',
-                builder: (_, __) => const PlaceholderScreen(title: 'Stok'),
+                builder: (_, __) => const InventoryListScreen(),
               ),
             ],
           ),
@@ -58,8 +62,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/transactions',
                 name: 'transactions',
-                builder: (_, __) =>
-                    const PlaceholderScreen(title: 'Transaksi'),
+                builder: (_, __) => const TransactionListScreen(),
               ),
             ],
           ),
@@ -76,6 +79,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // Full-screen detail pages (no shell)
+      GoRoute(
+        path: '/transactions/:id',
+        name: 'transactionDetail',
+        builder: (_, state) => TransactionDetailScreen(
+          transactionId: state.pathParameters['id']!,
+        ),
+      ),
+      GoRoute(
+        path: '/inventory/:id',
+        name: 'inventoryDetail',
+        builder: (_, state) => InventoryDetailScreen(
+          itemId: state.pathParameters['id']!,
+        ),
+      ),
       GoRoute(
         path: '/more/customers',
         name: 'customers',

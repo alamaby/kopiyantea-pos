@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/widgets/adaptive_shell.dart';
+import 'features/catalog/catalog_screen.dart';
+import 'features/catalog/product_detail_screen.dart';
+import 'features/catalog/product_form_screen.dart';
 import 'features/customers/customer_form_screen.dart';
 import 'features/customers/customer_list_screen.dart';
 import 'features/inventory/inventory_detail_screen.dart';
@@ -47,7 +50,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/products',
                 name: 'products',
-                builder: (_, __) => const PlaceholderScreen(title: 'Menu'),
+                builder: (_, __) => const CatalogScreen(),
               ),
             ],
           ),
@@ -82,6 +85,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // Full-screen detail pages (no shell)
+      GoRoute(
+        path: '/products/new',
+        name: 'productNew',
+        builder: (_, __) => const ProductFormScreen(),
+      ),
+      GoRoute(
+        path: '/products/:id/master',
+        name: 'productMasterEdit',
+        builder: (_, state) => ProductFormScreen(
+          productId: state.pathParameters['id'],
+        ),
+      ),
+      GoRoute(
+        path: '/products/:id',
+        name: 'productDetail',
+        builder: (_, state) => ProductDetailScreen(
+          productId: state.pathParameters['id']!,
+        ),
+      ),
       GoRoute(
         path: '/transactions/:id',
         name: 'transactionDetail',

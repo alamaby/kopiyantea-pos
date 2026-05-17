@@ -59,6 +59,43 @@ class InventoryDao extends DatabaseAccessor<AppDatabase>
             ..limit(limit))
           .watch();
 
+  /// Reactive recipe list with inventory item info — used by the catalog
+  /// "Komposisi" section. Returned ordered by ingredient name.
+  Stream<List<RecipeWithItem>> watchRecipesWithItemsForProduct(
+    String productId,
+    String branchId,
+  ) {
+    final query = select(productRecipes).join([
+      innerJoin(inventoryItems,
+          inventoryItems.id.equalsExp(productRecipes.inventoryItemId)),
+    ])
+      ..where(productRecipes.productId.equals(productId) &
+          productRecipes.branchId.equals(branchId))
+      ..orderBy([OrderingTerm.asc(inventoryItems.name)]);
+    return query.watch().map(
+          (rows) => rows
+              .map((r) => RecipeWithItem(
+                    recipe: r.readTable(productRecipes),
+                    item: r.readTable(inventoryItems),
+                  ))
+              .toList(),
+        );
+  }
+
+  Future<void> insertRecipe(ProductRecipesCompanion companion) =>
+      into(productRecipes).insert(companion);
+
+  Future<int> updateRecipeQuantity({
+    required String recipeId,
+    required double quantityRequired,
+  }) =>
+      (update(productRecipes)..where((r) => r.id.equals(recipeId))).write(
+        ProductRecipesCompanion(quantityRequired: Value(quantityRequired)),
+      );
+
+  Future<int> deleteRecipe(String recipeId) =>
+      (delete(productRecipes)..where((r) => r.id.equals(recipeId))).go();
+
   Future<List<ProductRecipeRow>> getRecipesForProduct(
     String productId,
     String branchId,
@@ -70,4 +107,11 @@ class InventoryDao extends DatabaseAccessor<AppDatabase>
                   r.branchId.equals(branchId),
             ))
           .get();
+}
+
+/// Recipe row joined with its inventory item for UI display.
+class RecipeWithItem {
+  RecipeWithItem({required this.recipe, required this.item});
+  final ProductRecipeRow recipe;
+  final InventoryItemRow item;
 }

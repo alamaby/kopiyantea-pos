@@ -67,8 +67,18 @@
 - [x] ARB updated with `navMore`
 - [x] Visual regression across 3 screen sizes (verified: compact BottomNav + expanded Extended Rail; medium tier shares codepath)
 
-## Phase 4 — UI Construction — **DONE QA**
-**4.3 (Catalog management) intentionally deferred** — owner can manage products via Supabase dashboard in Phase 6; in-app CRUD can come post-MVP.
+## Phase 4 — UI Construction — **DONE QA** (semua sub-batch)
+
+### 4.3 — Catalog management — **DONE DEV** (awaiting build_runner + QA)
+- [x] `CatalogDao` ekstensi: `watchAllForBranch`, `watchProductById`, `getProductById`, `getBySku`, `watchBranchProductPair`, `setBranchProductAvailability`, `updateProduct`, `updateBranchProduct`
+- [x] `BranchDao.getActiveBranches` (snapshot read untuk propagasi)
+- [x] `catalog_providers.dart` — `branchMenuFullProvider`, `productByIdProvider`, `branchProductPairProvider`
+- [x] `CatalogScreen` — Menu tab dengan search, list semua produk (incl. unavailable/inactive grayed), inline availability switch, FAB tambah
+- [x] `ProductFormScreen` — master CRUD; saat new auto-propagate ke semua active branch via `branchDao.getActiveBranches` loop; validasi nama wajib, harga > 0, SKU unique
+- [x] `ProductDetailScreen` — 4 section: Master Card (read-only + Ubah button), Preview Card (efektif price di kasir), Branch Edit Card (inline form untuk availability + custom name + price override + diskon % + diskon valid until + date picker), **Recipe Card (komposisi bahan untuk inventory deduction)**
+- [x] `RecipeEditorSheet` — bottom sheet add/edit/delete recipe row dengan item picker (filter exclude existing), qty field dengan unit-aware suffix
+- [x] `InventoryDao` recipe CRUD: `watchRecipesWithItemsForProduct` (join query), `insertRecipe`, `updateRecipeQuantity`, `deleteRecipe`
+- [x] Router: `/products` (shell), `/products/new`, `/products/:id`, `/products/:id/master`
 
 ### 4.1 — Seed data + Settings — **DONE QA** (BUG-001 deferred to 4.5)
 - [x] `SeedService` populates 2 branches, 3 users, 8 products, branch_products with override+discount, 5 inventory items, recipes, 2 customers

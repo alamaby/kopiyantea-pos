@@ -12,6 +12,11 @@ class BranchDao extends DatabaseAccessor<AppDatabase> with _$BranchDaoMixin {
   Stream<List<BranchRow>> watchAllBranches() =>
       (select(branches)..where((b) => b.isActive.equals(true))).watch();
 
+  /// Snapshot read — used by use cases that need to propagate to all branches
+  /// (e.g. creating a master product auto-adds it to every active branch).
+  Future<List<BranchRow>> getActiveBranches() =>
+      (select(branches)..where((b) => b.isActive.equals(true))).get();
+
   Future<BranchRow?> getBranchById(String id) =>
       (select(branches)..where((b) => b.id.equals(id))).getSingleOrNull();
 

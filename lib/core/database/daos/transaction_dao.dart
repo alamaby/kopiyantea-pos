@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../domain/enums.dart';
 import '../app_database.dart';
 import '../tables/transaction_tables.dart';
 
@@ -23,6 +24,32 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
 
   Future<TransactionRow?> getTransactionById(String id) =>
       (select(transactions)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  /// All completed transactions in [start..end] for the branch — used by
+  /// the Reports aggregator. End is inclusive; pass end-of-day for daily reports.
+  Future<List<TransactionRow>> getCompletedInRange({
+    required String branchId,
+    required DateTime start,
+    required DateTime end,
+  }) =>
+      (select(transactions)
+            ..where((t) =>
+                t.branchId.equals(branchId) &
+                t.status.equalsValue(TransactionStatus.completed) &
+                t.clientCreatedAt.isBetweenValues(start, end))
+            ..orderBy([(t) => OrderingTerm.asc(t.clientCreatedAt)]))
+          .get();
+
+  /// Fetches items for a batch of transaction ids — used by the Reports
+  /// aggregator to compute top sellers without a join.
+  Future<List<TransactionItemRow>> getItemsForTransactionIds(
+    List<String> txIds,
+  ) {
+    if (txIds.isEmpty) return Future.value(const []);
+    return (select(transactionItems)
+          ..where((ti) => ti.transactionId.isIn(txIds)))
+        .get();
+  }
 
   Future<List<TransactionItemRow>> getItemsForTransaction(
     String transactionId,

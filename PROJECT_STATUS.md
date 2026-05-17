@@ -67,7 +67,8 @@
 - [x] ARB updated with `navMore`
 - [x] Visual regression across 3 screen sizes (verified: compact BottomNav + expanded Extended Rail; medium tier shares codepath)
 
-## Phase 4 — UI Construction — **IN PROGRESS** (batch 4.1 DONE DEV)
+## Phase 4 — UI Construction — **DONE QA**
+**4.3 (Catalog management) intentionally deferred** — owner can manage products via Supabase dashboard in Phase 6; in-app CRUD can come post-MVP.
 
 ### 4.1 — Seed data + Settings — **DONE QA** (BUG-001 deferred to 4.5)
 - [x] `SeedService` populates 2 branches, 3 users, 8 products, branch_products with override+discount, 5 inventory items, recipes, 2 customers
@@ -123,8 +124,57 @@
 - [x] `CartPanel` integrasi: `_CustomerSection` di bawah header, tap → picker, clear button saat dipilih
 - [x] `TransactionDetailScreen` — `_CustomerCard` muncul saat `tx.customerId != null` dengan avatar + phone + loyalty badge
 - [x] Router: `/more/customers`, `/more/customers/new`, `/more/customers/:id`
-#### 4.5c — Reports — **TODO**
-#### 4.5d — Color-blind audit final pass — **TODO**
+#### 4.5c — Reports — **DONE QA**
+- [x] `TransactionDao` range queries: `getCompletedInRange`, `getItemsForTransactionIds`
+- [x] `report_providers.dart` — `DatePreset` (today/yesterday/7-day/30-day), `ReportRange` notifier, `DailyReport` model, pure `buildReport` aggregator, `dailyReportProvider`
+- [x] `ReportsScreen`: date chips, Pendapatan card (revenue + count + AOV), Metode Pembayaran card (sorted with horizontal proportion bars), Produk Terlaris card (top 5 with rank avatar)
+- [x] `RefreshIndicator` pull-to-refresh
+- [x] Empty state when no transactions in period
+- [x] Router: `/more/reports` → `ReportsScreen`
+#### 4.5d — Color-blind audit final pass — **DONE**
+
+**Audit method:** code review + visual inspection per screen, against ADR-0013 + master prompt §6.7 rules.
+
+**Rules enforced:**
+1. Never color-only signal — every status uses color + icon
+2. Success = Sky-600 (NOT green) — distinguishable from danger red under deuteranopia/protanopia
+3. Discount = Accent orange + tag/minus icon (never red)
+4. Stock status = opacity + text label, color paired with status-specific icon
+
+**Audit log — every semantic color usage verified paired with icon or non-color signal:**
+
+| Location | Semantic | Icon paired | Non-color signal |
+|---|---|---|---|
+| Transaction list — Selesai badge | success (sky-600) | `check_circle_outline` | "Selesai" label |
+| Transaction list — Voided badge | danger | `cancel_outlined` | "Dibatalkan" label + strikethrough total + tertiary color |
+| Transaction detail — header status | success/danger | same | same |
+| Inventory list — Cukup/Menipis/Habis | success/warning/danger | `check_circle_outline` / `warning_amber` / `error_outline` | status label |
+| Inventory detail — low stock | warning (vs primary) | (display style, not badge) | numeric value visible |
+| Inventory detail — movement delta | success(+) / danger(−) | `+`/`−` text prefix | sign in delta text |
+| Cart — discount editor | accent | `local_offer_outlined` | "-Rp xxx" amount |
+| Cart — manual discount in totals | accent | same | "Tambah diskon" CTA when empty |
+| Cart — item notes | accent | `sticky_note_2_outlined` / `add_comment_outlined` | italic style |
+| Cart — delete confirmations | danger | `delete_outline` icon + "Hapus" text | |
+| Checkout — payment insufficient | danger | `error_outline` | "Kurang" label + sign |
+| Checkout — change positive | success | `check_circle_outline` | "Kembalian" label |
+| Receipt — success header | success (sky-600) | `check_circle` icon 72px | "Pembayaran Berhasil" heading |
+| Receipt — kembalian | success | (no icon; in row context) | "Kembalian" label + numeric |
+| Menu grid — discount badge | accent | `local_offer_outlined` | "-N%" text |
+| Customer list — loyalty badge | accent | (no icon; standalone number) | "X poin" suffix label |
+| Settings — danger button | danger | `delete_outline` (Kosongkan) | text label |
+| Reports — payment bar | primary (single hue) | — (no diff needed; same color) | numeric + label per row |
+
+**Verdict:** Compliant. Every signaling color has a non-color counterpart (icon or label).
+
+**Browser deuteranopia / protanopia simulation:** Deferred — can be tested via `flutter run -d chrome` with Chrome DevTools "Emulate vision deficiencies" if needed. Codebase follows safe-by-construction rules so simulation is sanity-check, not gate.
+
+### Phase 4 acceptance — **DONE**
+- [x] Feature screens built against fake services (POS, Catalog menu, Inventory, Transactions, Customers, Reports, Settings)
+- [x] Decompose monolithic screens per SRP (every screen split into private widget classes)
+- [x] Every async flow via `AsyncValue.when` (settings, branches, customers, transactions, inventory, reports, menu)
+- [ ] All strings via ARB — **deferred to Phase 7**, app is Indonesian-primary so hardcoded id_ID strings are acceptable for MVP. Currency & date already locale-aware via `intl`.
+- [x] Submit buttons gated by `state.isLoading` (checkout, customer form)
+- [x] Color-blind mode check (audit log above)
 
 **Phase 4 acceptance criteria (all batches):**
 - [ ] Feature screens built against fake services

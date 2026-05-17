@@ -10,6 +10,7 @@ import 'features/inventory/inventory_list_screen.dart';
 import 'features/more/more_screen.dart';
 import 'features/placeholders/placeholder_screen.dart';
 import 'features/pos/pos_screen.dart';
+import 'features/reports/reports_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/transactions/transaction_detail_screen.dart';
 import 'features/transactions/transaction_list_screen.dart';
@@ -114,7 +115,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/more/reports',
         name: 'reports',
-        builder: (_, __) => const PlaceholderScreen(title: 'Laporan'),
+        builder: (_, __) => const ReportsScreen(),
       ),
       GoRoute(
         path: '/more/settings',

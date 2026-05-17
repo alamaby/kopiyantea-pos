@@ -12,6 +12,7 @@ import '../../core/utils/labels.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../customers/customer_providers.dart';
 import 'transaction_providers.dart';
 
 class TransactionDetailScreen extends ConsumerWidget {
@@ -48,28 +49,109 @@ class TransactionDetailScreen extends ConsumerWidget {
 
 // ── Body ──────────────────────────────────────────────────────────────────────
 
-class _DetailBody extends StatelessWidget {
+class _DetailBody extends ConsumerWidget {
   const _DetailBody({required this.data});
 
   final TransactionDetailData data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tx = data.transaction;
     final voided = tx.status == TransactionStatus.voided;
     final shortId = tx.id.substring(0, 8).toUpperCase();
+    final customerAsync = tx.customerId == null
+        ? null
+        : ref.watch(customerByIdProvider(tx.customerId!));
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         _HeaderCard(tx: tx, shortId: shortId, voided: voided),
         const SizedBox(height: AppSpacing.lg),
+        if (customerAsync != null)
+          customerAsync.maybeWhen(
+            data: (c) => c == null
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                    child: _CustomerCard(customer: c),
+                  ),
+            orElse: () => const SizedBox.shrink(),
+          ),
         _ItemsCard(items: data.items),
         const SizedBox(height: AppSpacing.lg),
         _TotalsCard(tx: tx),
         const SizedBox(height: AppSpacing.lg),
         _PaymentCard(tx: tx),
       ],
+    );
+  }
+}
+
+class _CustomerCard extends StatelessWidget {
+  const _CustomerCard({required this.customer});
+
+  final CustomerRow customer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: AppRadius.radiusLg,
+        border: Border.all(color: context.colors.border),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: AppColors.primarySurface,
+            child: Text(
+              customer.name.isEmpty ? '?' : customer.name[0].toUpperCase(),
+              style:
+                  AppTypography.titleMd.copyWith(color: AppColors.primaryDark),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('PELANGGAN',
+                    style: AppTypography.labelSm.copyWith(
+                      color: context.colors.textSecondary,
+                      letterSpacing: 0.8,
+                    )),
+                const SizedBox(height: AppSpacing.xs),
+                Text(customer.name, style: AppTypography.titleMd),
+                if (customer.phone != null)
+                  Text(
+                    customer.phone!,
+                    style: AppTypography.bodySm.copyWith(
+                      color: context.colors.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (customer.loyaltyPoints > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.accentSurface,
+                borderRadius: AppRadius.radiusSm,
+              ),
+              child: Text(
+                '${customer.loyaltyPoints} poin',
+                style:
+                    AppTypography.labelSm.copyWith(color: AppColors.accent),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

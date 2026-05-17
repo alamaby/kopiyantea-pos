@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/database/app_database.dart';
 import '../../../core/pricing/pricing.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
@@ -9,6 +10,7 @@ import '../../../core/theme/typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../customers/customer_picker_sheet.dart';
 import '../cart_provider.dart';
 import '../cart_state.dart';
 import 'checkout_sheet.dart';
@@ -36,6 +38,17 @@ class CartPanel extends ConsumerWidget {
         _Header(
           itemCount: notifier.itemCount,
           onClear: () => _confirmClear(context, notifier),
+        ),
+        const Divider(height: 1),
+        _CustomerSection(
+          customer: cartState.customer,
+          onPick: () async {
+            final result = await CustomerPickerSheet.show(context);
+            if (result != null) {
+              notifier.setCustomer(result.customer);
+            }
+          },
+          onClear: () => notifier.setCustomer(null),
         ),
         const Divider(height: 1),
         Expanded(
@@ -192,6 +205,86 @@ class _Header extends StatelessWidget {
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Customer section ──────────────────────────────────────────────────────────
+
+class _CustomerSection extends StatelessWidget {
+  const _CustomerSection({
+    required this.customer,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  final CustomerRow? customer;
+  final VoidCallback onPick;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasCustomer = customer != null;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPick,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                hasCustomer ? Icons.person : Icons.person_outline,
+                size: 20,
+                color: hasCustomer
+                    ? AppColors.primary
+                    : context.colors.textTertiary,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: hasCustomer
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(customer!.name, style: AppTypography.titleMd),
+                          if (customer!.phone != null)
+                            Text(
+                              customer!.phone!,
+                              style: AppTypography.labelSm.copyWith(
+                                color: context.colors.textSecondary,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
+                        ],
+                      )
+                    : Text(
+                        'Tambah pelanggan',
+                        style: AppTypography.bodyMd
+                            .copyWith(color: context.colors.textSecondary),
+                      ),
+              ),
+              if (hasCustomer)
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  tooltip: 'Lepas pelanggan',
+                  onPressed: onClear,
+                  visualDensity: VisualDensity.compact,
+                )
+              else
+                Icon(
+                  Icons.chevron_right,
+                  size: 18,
+                  color: context.colors.textTertiary,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

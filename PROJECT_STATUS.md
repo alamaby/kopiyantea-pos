@@ -114,7 +114,15 @@
 - [x] 11 feature screens swept (static `AppColors.surface/border/textPrimary/etc.` → `context.colors.*`)
 - [x] No const-constructor regressions
 
-#### 4.5b — Customers — **TODO**
+#### 4.5b — Customers — **DONE QA**
+- [x] `CustomerDao` extras: `getById`, `watchById`, `updateById`
+- [x] `customer_providers.dart` — `allCustomersProvider` (Stream) + `customerByIdProvider` (Stream)
+- [x] `CustomerListScreen` — reactive list + search (name/phone) + FAB tambah + avatar initial + loyalty points badge
+- [x] `CustomerFormScreen` — add/edit form, validasi nama wajib + email regex + phone uniqueness, partial-update via `updateById` (preserves createdAt + loyaltyPoints)
+- [x] `CustomerPickerSheet` — bottom sheet dengan search, "Tanpa pelanggan" tile, "+" affordance ke form, picks return via `CustomerPick` wrapper
+- [x] `CartPanel` integrasi: `_CustomerSection` di bawah header, tap → picker, clear button saat dipilih
+- [x] `TransactionDetailScreen` — `_CustomerCard` muncul saat `tx.customerId != null` dengan avatar + phone + loyalty badge
+- [x] Router: `/more/customers`, `/more/customers/new`, `/more/customers/:id`
 #### 4.5c — Reports — **TODO**
 #### 4.5d — Color-blind audit final pass — **TODO**
 

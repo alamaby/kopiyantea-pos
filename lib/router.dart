@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/widgets/adaptive_shell.dart';
+import 'features/customers/customer_form_screen.dart';
+import 'features/customers/customer_list_screen.dart';
 import 'features/inventory/inventory_detail_screen.dart';
 import 'features/inventory/inventory_list_screen.dart';
 import 'features/more/more_screen.dart';
@@ -96,7 +98,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/more/customers',
         name: 'customers',
-        builder: (_, __) => const PlaceholderScreen(title: 'Pelanggan'),
+        builder: (_, __) => const CustomerListScreen(),
+      ),
+      GoRoute(
+        path: '/more/customers/new',
+        name: 'customerNew',
+        builder: (_, __) => const CustomerFormScreen(),
+      ),
+      GoRoute(
+        path: '/more/customers/:id',
+        name: 'customerEdit',
+        builder: (_, state) =>
+            CustomerFormScreen(customerId: state.pathParameters['id']),
       ),
       GoRoute(
         path: '/more/reports',

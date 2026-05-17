@@ -25,6 +25,16 @@ class CustomerDao extends DatabaseAccessor<AppDatabase>
       (select(customers)..where((c) => c.phone.equals(phone)))
           .getSingleOrNull();
 
+  Future<CustomerRow?> getById(String id) =>
+      (select(customers)..where((c) => c.id.equals(id))).getSingleOrNull();
+
+  Stream<CustomerRow?> watchById(String id) =>
+      (select(customers)..where((c) => c.id.equals(id))).watchSingleOrNull();
+
   Future<void> upsertCustomer(CustomersCompanion companion) =>
       into(customers).insertOnConflictUpdate(companion);
+
+  /// Partial update — only touches the fields present in [patch].
+  Future<int> updateById(String id, CustomersCompanion patch) =>
+      (update(customers)..where((c) => c.id.equals(id))).write(patch);
 }

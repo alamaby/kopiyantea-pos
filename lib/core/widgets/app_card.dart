@@ -23,10 +23,11 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = context.colors;
     final decoration = BoxDecoration(
-      color: AppColors.surface,
+      color: pal.surface,
       borderRadius: AppRadius.radiusLg,
-      border: Border.all(color: AppColors.border),
+      border: Border.all(color: pal.border),
       boxShadow: variant == AppCardVariant.raised
           ? const [
               BoxShadow(

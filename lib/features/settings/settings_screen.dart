@@ -77,7 +77,7 @@ class _BranchSection extends ConsumerWidget {
                 return Text(
                   'Tidak ada cabang tersedia',
                   style: AppTypography.bodyMd
-                      .copyWith(color: AppColors.textSecondary),
+                      .copyWith(color: context.colors.textSecondary),
                 );
               }
               return Column(
@@ -98,7 +98,7 @@ class _BranchSection extends ConsumerWidget {
                           ? Text(
                               b.address!,
                               style: AppTypography.bodySm.copyWith(
-                                color: AppColors.textSecondary,
+                                color: context.colors.textSecondary,
                               ),
                             )
                           : null,
@@ -196,7 +196,7 @@ class _DeviceSection extends ConsumerWidget {
             subtitle: Text(
               'Kirim struk ke printer Bluetooth setelah pembayaran',
               style: AppTypography.bodySm
-                  .copyWith(color: AppColors.textSecondary),
+                  .copyWith(color: context.colors.textSecondary),
             ),
             contentPadding: EdgeInsets.zero,
             activeColor: AppColors.primary,
@@ -207,14 +207,14 @@ class _DeviceSection extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Row(
                 children: [
-                  const Icon(Icons.print_outlined,
-                      color: AppColors.textSecondary, size: 18),
+                  Icon(Icons.print_outlined,
+                      color: context.colors.textSecondary, size: 18),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       'Printer terakhir: ${settings.lastPrinterAddress}',
                       style: AppTypography.bodySm.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.colors.textSecondary,
                       ),
                     ),
                   ),
@@ -266,7 +266,7 @@ class _AboutRow extends StatelessWidget {
             child: Text(
               label,
               style:
-                  AppTypography.bodyMd.copyWith(color: AppColors.textSecondary),
+                  AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
             ),
           ),
           Text(value, style: AppTypography.bodyMd),
@@ -290,7 +290,7 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: AppTypography.labelSm.copyWith(
-          color: AppColors.textSecondary,
+          color: context.colors.textSecondary,
           letterSpacing: 0.8,
         ),
       ),

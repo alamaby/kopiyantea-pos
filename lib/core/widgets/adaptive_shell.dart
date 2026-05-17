@@ -159,7 +159,7 @@ class _RailScaffold extends StatelessWidget {
                 ),
             ],
           ),
-          const VerticalDivider(width: 1, color: AppColors.border),
+          VerticalDivider(width: 1, color: context.colors.border),
           Expanded(child: shell),
         ],
       ),

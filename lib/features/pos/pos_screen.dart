@@ -49,7 +49,7 @@ class PosScreen extends ConsumerWidget {
                 Text(
                   b.name,
                   style: AppTypography.labelSm
-                      .copyWith(color: AppColors.textSecondary),
+                      .copyWith(color: context.colors.textSecondary),
                 ),
             ],
           ),
@@ -111,7 +111,7 @@ class _TabletLayout extends StatelessWidget {
     return Row(
       children: [
         Expanded(flex: 3, child: MenuGrid(branchId: branchId)),
-        const VerticalDivider(width: 1, color: AppColors.border),
+        VerticalDivider(width: 1, color: context.colors.border),
         const Expanded(flex: 2, child: CartPanel()),
       ],
     );
@@ -156,7 +156,7 @@ class _MobileLayout extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius:
             BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),

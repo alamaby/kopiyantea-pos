@@ -69,7 +69,7 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: context.colors.border,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
               ),
@@ -228,7 +228,7 @@ class _TotalDisplay extends StatelessWidget {
       children: [
         Text(
           'Total',
-          style: AppTypography.bodyMd.copyWith(color: AppColors.textSecondary),
+          style: AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
         ),
         Text(
           formatRupiah(total),
@@ -248,7 +248,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       label.toUpperCase(),
       style: AppTypography.labelSm.copyWith(
-        color: AppColors.textSecondary,
+        color: context.colors.textSecondary,
         letterSpacing: 0.8,
       ),
     );

@@ -53,7 +53,8 @@ class AppTextField extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
           child: Text(
             label,
-            style: AppTypography.labelSm.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.labelSm
+                .copyWith(color: context.colors.textSecondary),
           ),
         ),
         TextField(

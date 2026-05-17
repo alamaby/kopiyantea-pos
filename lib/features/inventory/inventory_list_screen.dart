@@ -33,7 +33,7 @@ class InventoryListScreen extends ConsumerWidget {
                 Text(
                   b.name,
                   style: AppTypography.labelSm
-                      .copyWith(color: AppColors.textSecondary),
+                      .copyWith(color: context.colors.textSecondary),
                 ),
             ],
           ),
@@ -107,7 +107,7 @@ class _InventoryTile extends StatelessWidget {
     final status = _stockStatus(item.cachedStock, item.minStock);
 
     return Material(
-      color: AppColors.surface,
+      color: context.colors.surface,
       borderRadius: AppRadius.radiusLg,
       child: InkWell(
         onTap: () => context.push('/inventory/${item.id}'),
@@ -115,7 +115,7 @@ class _InventoryTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colors.border),
             borderRadius: AppRadius.radiusLg,
           ),
           child: Row(
@@ -144,16 +144,16 @@ class _InventoryTile extends StatelessWidget {
                     Text(
                       '${formatStock(item.cachedStock, item.unit)}  ·  min ${formatStock(item.minStock, item.unit)}',
                       style: AppTypography.bodySm
-                          .copyWith(color: AppColors.textSecondary),
+                          .copyWith(color: context.colors.textSecondary),
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
                 size: 18,
-                color: AppColors.textTertiary,
+                color: context.colors.textTertiary,
               ),
             ],
           ),

@@ -60,6 +60,7 @@ class _ShimmerBlockState extends State<_ShimmerBlock>
 
   @override
   Widget build(BuildContext context) {
+    final pal = context.colors;
     return AnimatedBuilder(
       animation: _ctrl,
       builder: (_, __) {
@@ -71,10 +72,10 @@ class _ShimmerBlockState extends State<_ShimmerBlock>
             gradient: LinearGradient(
               begin: Alignment(-1 + 2 * t, 0),
               end: Alignment(1 + 2 * t, 0),
-              colors: const [
-                AppColors.surfaceAlt,
-                AppColors.border,
-                AppColors.surfaceAlt,
+              colors: [
+                pal.surfaceAlt,
+                pal.border,
+                pal.surfaceAlt,
               ],
             ),
           ),

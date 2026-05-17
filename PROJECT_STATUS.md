@@ -105,7 +105,18 @@
 - [x] `InventoryListScreen` dengan stock status badge (Cukup/Menipis/Habis — semua color-blind safe dengan icon)
 - [x] `InventoryDetailScreen` dengan summary + reactive movement history + per-type icons (+/− tone)
 - [x] Router: `/transactions/:id`, `/inventory/:id` di luar shell (full-screen detail)
-### 4.5 — Customers + Reports + Color-blind QA — **TODO**
+### 4.5 — Customers + Reports + Color-blind QA + BUG-001 — **IN PROGRESS**
+
+#### 4.5a — Dark mode fix (BUG-001) — **DONE QA**
+- [x] `AppPalette` + `BuildContext.colors` extension in `colors.dart`
+- [x] 8 widget primitives refactored to context-aware colors
+- [x] AppBadge dark-mode tone variants
+- [x] 11 feature screens swept (static `AppColors.surface/border/textPrimary/etc.` → `context.colors.*`)
+- [x] No const-constructor regressions
+
+#### 4.5b — Customers — **TODO**
+#### 4.5c — Reports — **TODO**
+#### 4.5d — Color-blind audit final pass — **TODO**
 
 **Phase 4 acceptance criteria (all batches):**
 - [ ] Feature screens built against fake services
@@ -159,7 +170,19 @@
 
 ## Bug Log
 
-### [BUG-001] Dark mode tidak rendered correctly di widget primitives
+### [BUG-001] Dark mode tidak rendered correctly di widget primitives — **FIXED in Phase 4.5a**
+
+**Fix landed 2026-05-15:**
+- Introduced `AppPalette` interface + `_LightPalette` / `_DarkPalette` implementations in `lib/core/theme/colors.dart`
+- Added `BuildContext.colors` extension returning the right palette based on `Theme.of(this).brightness`
+- Refactored all 8 widget primitives (`app_card`, `app_button`, `app_badge`, `app_bottom_sheet`, `app_empty_state`, `app_loading_indicator`, `app_numeric_keypad`, `app_text_field`) + `adaptive_shell` to use `context.colors.*` for theme-adaptive surfaces/text
+- AppBadge tones now have dark-mode variants (translucent overlays of brand hue + lighter foreground)
+- Swept 11 feature screens (settings, transactions, inventory, POS widgets, pos_screen, more_screen) — replaced static `AppColors.surface/border/textPrimary/etc.` with `context.colors.*`
+- Brand colors (primary, accent, success, warning, danger, info) remain static — they have proper contrast in both modes by design
+
+---
+
+### [BUG-001 — Original entry, archived]
 - **Discovered:** Phase 4.1 QA (2026-05-14)
 - **Severity:** Medium (cosmetic — fungsional tetap jalan)
 - **Symptoms:** Di dark mode, `AppCard` tetap putih, teks tidak terbaca (hitam-on-putih atau putih-on-putih), SegmentedButton labels invisible

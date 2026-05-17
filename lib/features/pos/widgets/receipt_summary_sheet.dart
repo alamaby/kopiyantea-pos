@@ -41,7 +41,7 @@ class ReceiptSummarySheet extends StatelessWidget {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.border,
+                  color: context.colors.border,
                   borderRadius: BorderRadius.circular(AppRadius.sm),
                 ),
               ),
@@ -64,7 +64,7 @@ class ReceiptSummarySheet extends StatelessWidget {
             Text(
               '#${result.transactionId.substring(0, 8).toUpperCase()}',
               style: AppTypography.bodySm.copyWith(
-                color: AppColors.textSecondary,
+                color: context.colors.textSecondary,
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
               textAlign: TextAlign.center,
@@ -73,7 +73,7 @@ class ReceiptSummarySheet extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
-                color: AppColors.surfaceAlt,
+                color: context.colors.surfaceAlt,
                 borderRadius: AppRadius.radiusLg,
               ),
               child: Column(
@@ -183,7 +183,7 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final labelStyle = highlight
         ? AppTypography.headlineMd
-        : AppTypography.bodyMd.copyWith(color: AppColors.textSecondary);
+        : AppTypography.bodyMd.copyWith(color: context.colors.textSecondary);
     final valueStyle = highlight
         ? AppTypography.headlineMd.copyWith(color: AppColors.primary)
         : AppTypography.bodyMd.copyWith(color: tone);

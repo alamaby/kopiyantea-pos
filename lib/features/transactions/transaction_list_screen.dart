@@ -35,7 +35,7 @@ class TransactionListScreen extends ConsumerWidget {
                 Text(
                   b.name,
                   style: AppTypography.labelSm
-                      .copyWith(color: AppColors.textSecondary),
+                      .copyWith(color: context.colors.textSecondary),
                 ),
             ],
           ),
@@ -123,7 +123,7 @@ class _TxTile extends StatelessWidget {
     final voided = tx.status == TransactionStatus.voided;
 
     return Material(
-      color: AppColors.surface,
+      color: context.colors.surface,
       borderRadius: AppRadius.radiusLg,
       child: InkWell(
         onTap: () => context.push('/transactions/${tx.id}'),
@@ -131,7 +131,7 @@ class _TxTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colors.border),
             borderRadius: AppRadius.radiusLg,
           ),
           child: Row(
@@ -169,7 +169,7 @@ class _TxTile extends StatelessWidget {
                     Text(
                       '${formatTime(tx.clientCreatedAt)}  ·  ${paymentMethodLabel(tx.paymentMethod)}',
                       style: AppTypography.bodySm
-                          .copyWith(color: AppColors.textSecondary),
+                          .copyWith(color: context.colors.textSecondary),
                     ),
                   ],
                 ),
@@ -181,16 +181,16 @@ class _TxTile extends StatelessWidget {
                     formatRupiah(tx.total),
                     style: AppTypography.titleMd.copyWith(
                       color: voided
-                          ? AppColors.textTertiary
-                          : AppColors.textPrimary,
+                          ? context.colors.textTertiary
+                          : context.colors.textPrimary,
                       decoration: voided ? TextDecoration.lineThrough : null,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  const Icon(
+                  Icon(
                     Icons.chevron_right,
                     size: 18,
-                    color: AppColors.textTertiary,
+                    color: context.colors.textTertiary,
                   ),
                 ],
               ),
@@ -219,7 +219,7 @@ class _DateHeader extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: AppTypography.labelSm.copyWith(
-          color: AppColors.textSecondary,
+          color: context.colors.textSecondary,
           letterSpacing: 0.8,
         ),
       ),

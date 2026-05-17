@@ -182,7 +182,7 @@ class _Header extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Text(
             '($itemCount)',
-            style: AppTypography.bodyMd.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
           ),
           const Spacer(),
           TextButton.icon(
@@ -218,7 +218,7 @@ class _CartItemTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
         borderRadius: AppRadius.radiusLg,
       ),
       child: Column(
@@ -239,7 +239,7 @@ class _CartItemTile extends StatelessWidget {
                     Text(
                       '${formatRupiah(item.priceSnapshot)} × ${item.quantity}',
                       style: AppTypography.bodySm
-                          .copyWith(color: AppColors.textSecondary),
+                          .copyWith(color: context.colors.textSecondary),
                     ),
                   ],
                 ),
@@ -366,7 +366,7 @@ class _NotesField extends StatelessWidget {
             Icon(
               hasNotes ? Icons.sticky_note_2_outlined : Icons.add_comment_outlined,
               size: 14,
-              color: hasNotes ? AppColors.accent : AppColors.textTertiary,
+              color: hasNotes ? AppColors.accent : context.colors.textTertiary,
             ),
             const SizedBox(width: AppSpacing.xs),
             Expanded(
@@ -374,8 +374,8 @@ class _NotesField extends StatelessWidget {
                 hasNotes ? notes! : 'Tambah catatan',
                 style: AppTypography.labelSm.copyWith(
                   color: hasNotes
-                      ? AppColors.textPrimary
-                      : AppColors.textTertiary,
+                      ? context.colors.textPrimary
+                      : context.colors.textTertiary,
                   fontStyle: hasNotes ? FontStyle.italic : null,
                 ),
                 maxLines: 2,
@@ -401,12 +401,12 @@ class _QtyButton extends StatelessWidget {
       width: 36,
       height: 36,
       child: Material(
-        color: AppColors.surfaceAlt,
+        color: context.colors.surfaceAlt,
         borderRadius: AppRadius.radiusMd,
         child: InkWell(
           onTap: onTap,
           borderRadius: AppRadius.radiusMd,
-          child: Icon(icon, size: 18, color: AppColors.textPrimary),
+          child: Icon(icon, size: 18, color: context.colors.textPrimary),
         ),
       ),
     );
@@ -476,13 +476,13 @@ class _CartTotalsView extends StatelessWidget {
                       size: 16,
                       color: discountAmount > 0
                           ? AppColors.accent
-                          : AppColors.textSecondary,
+                          : context.colors.textSecondary,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
                       'Diskon',
                       style: AppTypography.bodyMd
-                          .copyWith(color: AppColors.textSecondary),
+                          .copyWith(color: context.colors.textSecondary),
                     ),
                     const Spacer(),
                     Text(
@@ -498,10 +498,10 @@ class _CartTotalsView extends StatelessWidget {
                             : FontWeight.w400,
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right,
                       size: 18,
-                      color: AppColors.textTertiary,
+                      color: context.colors.textTertiary,
                     ),
                   ],
                 ),
@@ -539,7 +539,7 @@ class _TotalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final labelStyle = highlight
         ? AppTypography.headlineMd.copyWith(color: AppColors.primary)
-        : AppTypography.bodyMd.copyWith(color: AppColors.textSecondary);
+        : AppTypography.bodyMd.copyWith(color: context.colors.textSecondary);
     final valueStyle = highlight
         ? AppTypography.headlineMd.copyWith(color: AppColors.primary)
         : AppTypography.bodyMd;

@@ -52,7 +52,7 @@ class _MoreTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: context.colors.surface,
       borderRadius: AppRadius.radiusLg,
       child: InkWell(
         onTap: () => context.push(item.route),
@@ -60,7 +60,7 @@ class _MoreTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colors.border),
             borderRadius: AppRadius.radiusLg,
           ),
           child: Row(
@@ -70,9 +70,9 @@ class _MoreTile extends StatelessWidget {
               Expanded(
                 child: Text(item.label, style: AppTypography.titleMd),
               ),
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: AppColors.textTertiary,
+                color: context.colors.textTertiary,
               ),
             ],
           ),

@@ -120,14 +120,14 @@ class _HeaderCard extends StatelessWidget {
           Text(
             formatDateTime(tx.clientCreatedAt),
             style:
-                AppTypography.bodyMd.copyWith(color: AppColors.textSecondary),
+                AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
           ),
           if (voided && tx.voidReason != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Alasan pembatalan: ${tx.voidReason}',
               style:
-                  AppTypography.bodySm.copyWith(color: AppColors.textSecondary),
+                  AppTypography.bodySm.copyWith(color: context.colors.textSecondary),
             ),
           ],
         ],
@@ -187,7 +187,7 @@ class _ItemRow extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         Text(
           '${formatRupiah(item.priceSnapshot)} per item',
-          style: AppTypography.bodySm.copyWith(color: AppColors.textSecondary),
+          style: AppTypography.bodySm.copyWith(color: context.colors.textSecondary),
         ),
         if (item.notes != null && item.notes!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xs),
@@ -203,7 +203,7 @@ class _ItemRow extends StatelessWidget {
                 child: Text(
                   item.notes!,
                   style: AppTypography.labelSm.copyWith(
-                    color: AppColors.textPrimary,
+                    color: context.colors.textPrimary,
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -293,9 +293,9 @@ class _Card extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: AppRadius.radiusLg,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: child,
     );
@@ -312,7 +312,7 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label.toUpperCase(),
       style: AppTypography.labelSm.copyWith(
-        color: AppColors.textSecondary,
+        color: context.colors.textSecondary,
         letterSpacing: 0.8,
       ),
     );
@@ -336,7 +336,7 @@ class _KV extends StatelessWidget {
   Widget build(BuildContext context) {
     final labelStyle = highlight
         ? AppTypography.headlineMd
-        : AppTypography.bodyMd.copyWith(color: AppColors.textSecondary);
+        : AppTypography.bodyMd.copyWith(color: context.colors.textSecondary);
     final valueStyle = highlight
         ? AppTypography.headlineMd.copyWith(color: AppColors.primary)
         : AppTypography.bodyMd.copyWith(color: valueColor);

@@ -35,8 +35,9 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = context.colors;
     final disabled = onPressed == null || isLoading;
-    final colors = _colorsFor(variant);
+    final colors = _colorsFor(variant, pal);
     final height = switch (size) {
       AppButtonSize.compact => AppTouchTarget.minimum,
       AppButtonSize.standard => AppTouchTarget.standard,
@@ -68,7 +69,7 @@ class AppButton extends StatelessWidget {
           );
 
     final button = Material(
-      color: disabled ? AppColors.disabled : colors.background,
+      color: disabled ? pal.disabled : colors.background,
       borderRadius: AppRadius.radiusMd,
       child: InkWell(
         onTap: disabled ? null : onPressed,
@@ -80,7 +81,7 @@ class AppButton extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: AppRadius.radiusMd,
             border: variant == AppButtonVariant.ghost
-                ? Border.all(color: AppColors.border)
+                ? Border.all(color: pal.border)
                 : null,
           ),
           child: child,
@@ -91,7 +92,7 @@ class AppButton extends StatelessWidget {
     return fullWidth ? SizedBox(width: double.infinity, child: button) : button;
   }
 
-  _ButtonColors _colorsFor(AppButtonVariant v) {
+  _ButtonColors _colorsFor(AppButtonVariant v, AppPalette pal) {
     return switch (v) {
       AppButtonVariant.primary =>
         const _ButtonColors(background: AppColors.primary, foreground: Colors.white),
@@ -100,7 +101,7 @@ class AppButton extends StatelessWidget {
       AppButtonVariant.danger =>
         const _ButtonColors(background: AppColors.danger, foreground: Colors.white),
       AppButtonVariant.ghost =>
-        const _ButtonColors(background: Colors.transparent, foreground: AppColors.textPrimary),
+        _ButtonColors(background: Colors.transparent, foreground: pal.textPrimary),
     };
   }
 }

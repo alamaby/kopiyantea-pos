@@ -21,7 +21,7 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Phase 1 — fondasi aplikasi siap. Fitur dibangun pada Phase 2–4.',
-            style: AppTypography.bodyMd.copyWith(color: AppColors.textSecondary),
+            style: AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.xl),
           AppCard(

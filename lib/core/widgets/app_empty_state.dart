@@ -21,24 +21,25 @@ class AppEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: AppColors.textTertiary),
+            Icon(icon, size: 48, color: pal.textTertiary),
             const SizedBox(height: AppSpacing.lg),
             Text(
               title,
-              style: AppTypography.headlineMd.copyWith(color: AppColors.textPrimary),
+              style: AppTypography.headlineMd.copyWith(color: pal.textPrimary),
               textAlign: TextAlign.center,
             ),
             if (message != null) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
                 message!,
-                style: AppTypography.bodyMd.copyWith(color: AppColors.textSecondary),
+                style: AppTypography.bodyMd.copyWith(color: pal.textSecondary),
                 textAlign: TextAlign.center,
               ),
             ],

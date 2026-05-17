@@ -100,13 +100,14 @@ class _KeyButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pal = context.colors;
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xs),
         child: SizedBox(
           height: AppTouchTarget.numericKeypad,
           child: Material(
-            color: AppColors.surface,
+            color: pal.surface,
             borderRadius: AppRadius.radiusMd,
             child: InkWell(
               borderRadius: AppRadius.radiusMd,
@@ -117,11 +118,11 @@ class _KeyButton extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: AppRadius.radiusMd,
-                  border: Border.all(color: AppColors.border),
+                  border: Border.all(color: pal.border),
                 ),
                 alignment: Alignment.center,
                 child: icon != null
-                    ? Icon(icon, color: AppColors.textPrimary)
+                    ? Icon(icon, color: pal.textPrimary)
                     : Text(label!, style: AppTypography.headlineLg),
               ),
             ),

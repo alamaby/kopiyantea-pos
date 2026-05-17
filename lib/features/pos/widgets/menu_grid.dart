@@ -81,7 +81,7 @@ class _MenuTile extends ConsumerWidget {
     final hasReducedPrice = effectivePrice < originalPrice;
 
     return Material(
-      color: AppColors.surface,
+      color: context.colors.surface,
       borderRadius: AppRadius.radiusLg,
       child: InkWell(
         onTap: () {
@@ -95,7 +95,7 @@ class _MenuTile extends ConsumerWidget {
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.colors.border),
             borderRadius: AppRadius.radiusLg,
           ),
           child: Column(
@@ -121,7 +121,7 @@ class _MenuTile extends ConsumerWidget {
                 Text(
                   product.category!,
                   style: AppTypography.labelXs.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.colors.textSecondary,
                   ),
                 ),
               ],
@@ -135,7 +135,7 @@ class _MenuTile extends ConsumerWidget {
                 Text(
                   formatRupiah(originalPrice),
                   style: AppTypography.labelSm.copyWith(
-                    color: AppColors.textTertiary,
+                    color: context.colors.textTertiary,
                     decoration: TextDecoration.lineThrough,
                   ),
                 ),

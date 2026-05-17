@@ -69,7 +69,7 @@ class _DetailBody extends ConsumerWidget {
           child: Text(
             'RIWAYAT PERGERAKAN',
             style: AppTypography.labelSm.copyWith(
-              color: AppColors.textSecondary,
+              color: context.colors.textSecondary,
               letterSpacing: 0.8,
             ),
           ),
@@ -114,9 +114,9 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: AppRadius.radiusLg,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,7 +124,7 @@ class _SummaryCard extends StatelessWidget {
           Text(
             'STOK SAAT INI',
             style: AppTypography.labelSm.copyWith(
-              color: AppColors.textSecondary,
+              color: context.colors.textSecondary,
               letterSpacing: 0.8,
             ),
           ),
@@ -164,22 +164,22 @@ class _MovementTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: context.colors.surface,
         borderRadius: AppRadius.radiusLg,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: context.colors.border),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
+              color: context.colors.surfaceAlt,
               borderRadius: AppRadius.radiusMd,
             ),
             child: Icon(
               _iconFor(movement.movementType),
               size: 18,
-              color: AppColors.textSecondary,
+              color: context.colors.textSecondary,
             ),
           ),
           const SizedBox(width: AppSpacing.md),
@@ -195,13 +195,13 @@ class _MovementTile extends StatelessWidget {
                 Text(
                   formatDateTime(movement.createdAt),
                   style: AppTypography.bodySm
-                      .copyWith(color: AppColors.textSecondary),
+                      .copyWith(color: context.colors.textSecondary),
                 ),
                 if (movement.notes != null && movement.notes!.isNotEmpty)
                   Text(
                     movement.notes!,
                     style: AppTypography.bodySm
-                        .copyWith(color: AppColors.textSecondary),
+                        .copyWith(color: context.colors.textSecondary),
                   ),
               ],
             ),
@@ -230,14 +230,14 @@ class _EmptyMovements extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: context.colors.surfaceAlt,
         borderRadius: AppRadius.radiusLg,
       ),
       child: Center(
         child: Text(
           'Belum ada pergerakan stok',
           style:
-              AppTypography.bodySm.copyWith(color: AppColors.textSecondary),
+              AppTypography.bodySm.copyWith(color: context.colors.textSecondary),
         ),
       ),
     );
@@ -259,7 +259,7 @@ class _Row extends StatelessWidget {
           Text(
             label,
             style:
-                AppTypography.bodyMd.copyWith(color: AppColors.textSecondary),
+                AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
           ),
           const Spacer(),
           Text(value, style: AppTypography.bodyMd),

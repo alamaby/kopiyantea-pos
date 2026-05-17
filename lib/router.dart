@@ -14,6 +14,7 @@ import 'features/more/more_screen.dart';
 import 'features/placeholders/placeholder_screen.dart';
 import 'features/pos/pos_screen.dart';
 import 'features/reports/reports_screen.dart';
+import 'features/settings/printer_settings_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/transactions/transaction_detail_screen.dart';
 import 'features/transactions/transaction_list_screen.dart';
@@ -143,6 +144,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/settings',
         name: 'settings',
         builder: (_, __) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/more/settings/printer',
+        name: 'printerSettings',
+        builder: (_, __) => const PrinterSettingsScreen(),
       ),
     ],
     errorBuilder: (_, state) => Scaffold(

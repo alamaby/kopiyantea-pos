@@ -40,6 +40,8 @@ dependencies:
   # Hardware
   mobile_scanner: ^5.1.1
   print_bluetooth_thermal: ^1.1.0
+  esc_pos_utils_plus: ^2.0.4
+  permission_handler: ^11.3.1
 
   # Background — workmanager added in Phase 6 (deferred; 0.5.2 is broken on
   # modern Flutter embedding, awaiting 0.6.x or upstream fix).

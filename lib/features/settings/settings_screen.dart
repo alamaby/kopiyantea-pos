@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/theme/colors.dart';
@@ -201,27 +202,37 @@ class _DeviceSection extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
             activeColor: AppColors.primary,
           ),
-          if (settings.lastPrinterAddress != null) ...[
-            const Divider(),
-            Padding(
+          const Divider(),
+          InkWell(
+            onTap: () => GoRouter.of(context).push('/more/settings/printer'),
+            child: Padding(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
               child: Row(
                 children: [
                   Icon(Icons.print_outlined,
-                      color: context.colors.textSecondary, size: 18),
-                  const SizedBox(width: AppSpacing.sm),
+                      color: context.colors.textSecondary, size: 20),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: Text(
-                      'Printer terakhir: ${settings.lastPrinterAddress}',
-                      style: AppTypography.bodySm.copyWith(
-                        color: context.colors.textSecondary,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Printer Struk', style: AppTypography.titleMd),
+                        Text(
+                          settings.lastPrinterAddress ??
+                              'Belum ada printer terhubung',
+                          style: AppTypography.bodySm.copyWith(
+                            color: context.colors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  Icon(Icons.chevron_right,
+                      color: context.colors.textTertiary, size: 18),
                 ],
               ),
             ),
-          ],
+          ),
         ],
       ),
     );

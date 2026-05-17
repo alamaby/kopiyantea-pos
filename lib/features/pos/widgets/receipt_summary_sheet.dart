@@ -1,20 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/domain/enums.dart';
+import '../../../core/services/printer_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/result.dart';
 import '../../../core/widgets/app_button.dart';
 import '../checkout_use_case.dart';
+import '../print_receipt_use_case.dart';
 
 /// Post-checkout receipt summary. The cart has already been cleared by the
 /// caller (checkout_sheet) — this is a read-only confirmation surface.
-class ReceiptSummarySheet extends StatelessWidget {
+class ReceiptSummarySheet extends ConsumerStatefulWidget {
   const ReceiptSummarySheet({required this.result, super.key});
 
   final CheckoutResult result;
+
+  @override
+  ConsumerState<ReceiptSummarySheet> createState() =>
+      _ReceiptSummarySheetState();
+}
+
+class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
+  bool _isPrinting = false;
+
+  CheckoutResult get result => widget.result;
 
   static const _methodLabels = {
     PaymentMethod.cash: 'Tunai',
@@ -122,7 +136,8 @@ class ReceiptSummarySheet extends StatelessWidget {
                     label: 'Cetak Struk',
                     variant: AppButtonVariant.secondary,
                     icon: Icons.print_outlined,
-                    onPressed: () => _onPrint(context),
+                    onPressed: _isPrinting ? null : _onPrint,
+                    isLoading: _isPrinting,
                     fullWidth: true,
                   ),
                 ),
@@ -156,14 +171,35 @@ class ReceiptSummarySheet extends StatelessWidget {
     return implied > 0.01 ? implied : 0;
   }
 
-  void _onPrint(BuildContext context) {
-    // Phase 5 wires the real Bluetooth thermal printer.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Cetak struk akan tersedia di Phase 5'),
-      ),
-    );
+  Future<void> _onPrint() async {
+    setState(() => _isPrinting = true);
+    final useCase = ref.read(printReceiptUseCaseProvider);
+    final r = await useCase.print(result.transactionId);
+    if (!mounted) return;
+    setState(() => _isPrinting = false);
+
+    final messenger = ScaffoldMessenger.of(context);
+    switch (r) {
+      case Ok():
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Struk dikirim ke printer')),
+        );
+      case Err(:final error):
+        messenger.showSnackBar(
+          SnackBar(content: Text(_errorLabel(error))),
+        );
+    }
   }
+
+  String _errorLabel(PrinterError e) => switch (e) {
+        PrinterError.notConnected =>
+          'Printer belum terhubung — buka Pengaturan > Printer',
+        PrinterError.deviceNotFound => 'Printer tidak ditemukan',
+        PrinterError.permissionDenied =>
+          'Izin Bluetooth ditolak — buka Pengaturan aplikasi',
+        PrinterError.bluetoothOff => 'Bluetooth tidak aktif',
+        PrinterError.printFailed => 'Gagal mencetak struk',
+      };
 }
 
 class _Row extends StatelessWidget {

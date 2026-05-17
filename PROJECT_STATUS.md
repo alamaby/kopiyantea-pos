@@ -194,13 +194,24 @@
 - [ ] Submit buttons gated by `state.isLoading`
 - [ ] Color-blind mode check (deuteranopia + protanopia)
 
-## Phase 5 — Hardware Integration — **TODO**
+## Phase 5 — Hardware Integration — **IN PROGRESS**
 
-- [ ] `AndroidManifest.xml` / `Info.plist` permissions
-- [ ] Concrete `BluetoothThermalPrinterService` with PDF/share fallback
-- [ ] Concrete `MobileScannerService` with permission flow
-- [ ] Concrete `PlayIntegrityService` / `AppAttestService`
-- [ ] Real-device testing
+### 5a — Bluetooth Printer — **DONE DEV** (awaiting build_runner + QA on real printer)
+- [x] `pubspec.yaml` — added `esc_pos_utils_plus`, `permission_handler`
+- [x] Refactored `ReceiptPayload` jadi struktur lengkap (`ReceiptItem`, branch info, totals, payment, footer, paperWidth)
+- [x] `EscPosReceiptBuilder` — pure builder, paperSize-aware (58/80mm)
+- [x] `BluetoothPrinterService` — real impl pakai `print_bluetooth_thermal`, permission handling Android 12+
+- [x] `FakePrinterService` adapted to new payload (logs as text)
+- [x] `service_providers.dart` — platform-aware (real on Android/iOS, fake elsewhere)
+- [x] `PrintReceiptUseCase` — fetch tx+items+branch+customer dari DB, build payload, kirim ke printer
+- [x] Wire "Cetak Struk" button di `ReceiptSummarySheet` → async print + snackbar feedback + typed errors
+- [x] `PrinterSettingsScreen` — scan paired devices, connect/disconnect, test print, status card dengan badge
+- [x] Settings screen entry: tappable "Printer Struk" row dengan ChevronRight ke `/more/settings/printer`
+- [x] Router: `/more/settings/printer`
+- [x] `AndroidManifest.xml` — BLUETOOTH_SCAN, BLUETOOTH_CONNECT (Android 12+) + legacy BLUETOOTH/BLUETOOTH_ADMIN
+
+### 5b — Mobile Scanner — **TODO** (deferred — barcode not critical untuk coffee menu)
+### 5c — Device Integrity (Play Integrity / App Attest) — **TODO** (deferred — security hardening, can be Phase 8)
 
 ## Phase 6 — Supabase Sync & Security — **TODO**
 

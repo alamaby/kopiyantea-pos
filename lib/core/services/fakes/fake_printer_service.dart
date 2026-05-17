@@ -1,9 +1,11 @@
 import 'package:logger/logger.dart';
 
-import '../printer_service.dart';
+import '../../utils/formatters.dart';
 import '../../utils/result.dart';
+import '../printer_service.dart';
 
-/// Dev/test fake — logs receipt lines instead of sending to hardware.
+/// Dev/test fake — logs the rendered receipt as plain text instead of writing
+/// to a real printer. Useful on desktop / web / CI where no Bluetooth exists.
 class FakePrinterService implements PrinterService {
   final _log = Logger();
   bool _connected = false;
@@ -11,6 +13,9 @@ class FakePrinterService implements PrinterService {
 
   @override
   bool get isConnected => _connected;
+
+  @override
+  String? get connectedAddress => _connectedAddress;
 
   @override
   Future<List<PrinterDevice>> scanDevices() async {
@@ -39,13 +44,33 @@ class FakePrinterService implements PrinterService {
   }
 
   @override
-  Future<Result<Unit, PrinterError>> printReceipt(ReceiptPayload payload) async {
+  Future<Result<Unit, PrinterError>> printReceipt(
+    ReceiptPayload payload,
+  ) async {
     if (!_connected) return const Err(PrinterError.notConnected);
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    _log.i('[FakePrinter] Printing receipt ${payload.transactionId}');
-    for (final line in payload.lines) {
-      _log.d('  $line');
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    _log.i('═══ FAKE RECEIPT ═══');
+    _log.i(payload.branchName);
+    if (payload.branchAddress != null) _log.i(payload.branchAddress);
+    _log.i('#${payload.transactionId.substring(0, 8).toUpperCase()}');
+    _log.i(formatDateTime(payload.timestamp));
+    for (final item in payload.items) {
+      _log.i('  ${item.name} × ${item.quantity}  ${formatRupiah(item.subtotal)}');
+      if (item.notes != null && item.notes!.isNotEmpty) {
+        _log.i('    note: ${item.notes}');
+      }
     }
+    _log.i('  Subtotal:  ${formatRupiah(payload.subtotal)}');
+    if (payload.discountAmount > 0) {
+      _log.i('  Diskon:    -${formatRupiah(payload.discountAmount)}');
+    }
+    _log.i('  Pajak (${payload.taxLabel}): ${formatRupiah(payload.taxAmount)}');
+    _log.i('  TOTAL:     ${formatRupiah(payload.total)}');
+    _log.i('  Bayar:     ${payload.paymentMethodLabel}');
+    if (payload.paymentChange != null && payload.paymentChange! > 0) {
+      _log.i('  Kembalian: ${formatRupiah(payload.paymentChange!)}');
+    }
+    _log.i('═══════════════════════');
     return Ok(Unit.instance);
   }
 }

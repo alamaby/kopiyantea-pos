@@ -1,4 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Bluetooth thermal printer (Phase 5a) -->
+    <!-- Legacy permissions for Android < 12 (API < 31) -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!-- Runtime permissions for Android 12+ (API 31+) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Camera scanner (Phase 5b — deferred) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
     <application
         android:label="kopiyantea_pos"
         android:name="${applicationName}"

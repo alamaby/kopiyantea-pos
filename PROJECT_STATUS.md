@@ -213,14 +213,32 @@
 ### 5b — Mobile Scanner — **TODO** (deferred — barcode not critical untuk coffee menu)
 ### 5c — Device Integrity (Play Integrity / App Attest) — **TODO** (deferred — security hardening, can be Phase 8)
 
-## Phase 6 — Supabase Sync & Security — **TODO**
+## Phase 6 — Supabase Sync & Security — **IN PROGRESS**
 
-- [ ] Migrations in `/supabase/migrations/` (Section 7 DDL split logically)
-- [ ] RLS policies (Section 8)
-- [ ] Cert pinning in HTTP client
-- [ ] Auth flow with offline-cached session + lockout logic
-- [ ] `SyncRepository`: pull master + push outbox
-- [ ] `workmanager` background sync
+### 6a — SQL migrations — **DONE DEV** (awaiting apply on Supabase project)
+- [x] 10 migration files in `/supabase/migrations/` with timestamped names
+- [x] `001_branches_users` (branches + app_users + user_branch_access)
+- [x] `002_catalog` (products + branch_products) with discount/override constraints
+- [x] `003_inventory` (inventory_items + inventory_movements + product_recipes) with UNIQUE constraints
+- [x] `004_customers` (phone UNIQUE when set)
+- [x] `005_transactions` (append-only schema + tax snapshot columns + server_received_at trigger)
+- [x] `006_settings` (receipt_settings)
+- [x] `007_indexes` (9 indexes including partial indexes for active discounts + locked users)
+- [x] `008_inventory_trigger` (cached_stock reconciliation server-side — matches client-side ADR-0003)
+- [x] `009_rls_helpers` (`user_has_branch_access`, `user_global_role` STABLE SECURITY DEFINER)
+- [x] `010_rls_policies` — full matrix from ADR-0007: append-only transactions (no UPDATE/DELETE), owner-only products write, branch-scoped reads
+- [x] `seed.sql` mirrors `SeedService` for staging parity
+
+### 6b — Code foundation (env, secure storage, Supabase init) — **DONE DEV**
+- [x] `lib/core/storage/secure_storage.dart` — Keychain/encrypted-SharedPreferences wrapper dengan key constants
+- [x] `lib/core/network/supabase_providers.dart` — `supabaseClientProvider` + `secureStorageProvider`
+- [x] `main.dart` boot reorganized:
+  1. `Env.validate()` — fail-fast dengan dedicated `_EnvErrorApp` fallback (no black screen)
+  2. Local-first: intl + Drift + seed (must succeed)
+  3. `Supabase.initialize()` — graceful failure dengan logger warn (offline-first per ADR + master prompt §14 risk #4)
+### 6c — Auth flow (Supabase login + lockout) — **TODO**
+### 6d — Cert pinning HTTP client — **TODO**
+### 6e — Sync (pull master + push outbox + workmanager) — **TODO**
 
 ## Phase 7 — Optimization & Release — **TODO**
 

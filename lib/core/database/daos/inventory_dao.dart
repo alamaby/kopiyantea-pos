@@ -85,6 +85,10 @@ class InventoryDao extends DatabaseAccessor<AppDatabase>
   Future<void> insertRecipe(ProductRecipesCompanion companion) =>
       into(productRecipes).insert(companion);
 
+  /// Used by sync pull — server-side recipes overwrite local on id conflict.
+  Future<void> upsertRecipe(ProductRecipesCompanion companion) =>
+      into(productRecipes).insertOnConflictUpdate(companion);
+
   Future<int> updateRecipeQuantity({
     required String recipeId,
     required double quantityRequired,

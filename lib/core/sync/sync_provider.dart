@@ -7,7 +7,7 @@ import 'sync_repository.dart';
 part 'sync_provider.freezed.dart';
 part 'sync_provider.g.dart';
 
-/// UI-visible sync state: spinner gate, last success timestamp, last error.
+/// UI-visible sync state: spinner gate, last success timestamp, counters.
 @freezed
 class SyncState with _$SyncState {
   const factory SyncState({
@@ -16,6 +16,7 @@ class SyncState with _$SyncState {
     String? lastError,
     @Default(0) int lastPushed,
     @Default(0) int lastFailed,
+    @Default(0) int lastPulled,
   }) = _SyncState;
 }
 
@@ -24,19 +25,22 @@ class Sync extends _$Sync {
   @override
   SyncState build() => const SyncState();
 
-  /// Manual sync trigger — push outbox + (Phase 6e2) pull master. Returns
-  /// the new state for the caller to inspect.
-  Future<SyncState> syncNow() async {
+  /// Manual sync: push outbox + pull master data for the active branch.
+  Future<SyncState> syncNow({List<String>? branchIds}) async {
     if (state.isSyncing) return state;
     state = state.copyWith(isSyncing: true, lastError: null);
     try {
       final repo = ref.read(syncRepositoryProvider);
-      final result = await repo.pushOutbox();
+      final push = await repo.pushOutbox();
+      final pull = branchIds == null || branchIds.isEmpty
+          ? (upserted: 0, errors: 0)
+          : await repo.pullMasterData(branchIds);
       state = state.copyWith(
         isSyncing: false,
         lastSyncAt: DateTime.now(),
-        lastPushed: result.pushed,
-        lastFailed: result.failed,
+        lastPushed: push.pushed,
+        lastFailed: push.failed,
+        lastPulled: pull.upserted,
       );
     } catch (e) {
       state = state.copyWith(isSyncing: false, lastError: e.toString());

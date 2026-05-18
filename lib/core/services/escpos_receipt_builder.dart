@@ -22,7 +22,9 @@ class EscPosReceiptBuilder {
     final paperSize =
         p.paperWidthMm == 80 ? PaperSize.mm80 : PaperSize.mm58;
     final g = Generator(paperSize, _profile);
-    final bytes = <int>[];
+    // `var` because `bytes += ...` desugars to `bytes = bytes + ...` —
+    // List `+` returns a new list, requiring reassignment.
+    var bytes = <int>[];
 
     // ── Header ──
     bytes += g.text(

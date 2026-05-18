@@ -107,6 +107,124 @@ class SyncRepository {
     }
   }
 
+  /// Pulls master/operational data for the given branches:
+  /// - products (chain-wide; RLS filters)
+  /// - branch_products (scoped to branchIds)
+  /// - inventory_items + product_recipes (scoped)
+  /// - receipt_settings (scoped)
+  /// - customers (chain-wide)
+  ///
+  /// Conflict resolution: master data uses LWW (server `updated_at` wins) via
+  /// `insertOnConflictUpdate`. Inventory cached_stock comes from server
+  /// (authoritative — reconciled by trigger 008).
+  Future<({int upserted, int errors})> pullMasterData(
+    List<String> branchIds,
+  ) async {
+    final sb = _sb;
+    if (sb == null) {
+      _log.w('[Sync] no supabase — skip pullMasterData');
+      return (upserted: 0, errors: 0);
+    }
+    if (branchIds.isEmpty) return (upserted: 0, errors: 0);
+
+    var upserted = 0;
+    var errors = 0;
+
+    // ── products (chain-wide) ──
+    try {
+      final rows = await sb.from('products').select();
+      final catalogDao = _ref.read(catalogDaoProvider);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await catalogDao.upsertProduct(productFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull products failed', error: e);
+      errors++;
+    }
+
+    // ── branch_products (scoped) ──
+    try {
+      final rows = await sb
+          .from('branch_products')
+          .select()
+          .inFilter('branch_id', branchIds);
+      final catalogDao = _ref.read(catalogDaoProvider);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await catalogDao.upsertBranchProduct(branchProductFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull branch_products failed', error: e);
+      errors++;
+    }
+
+    // ── inventory_items (scoped) ──
+    try {
+      final rows = await sb
+          .from('inventory_items')
+          .select()
+          .inFilter('branch_id', branchIds);
+      final invDao = _ref.read(inventoryDaoProvider);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await invDao.upsertItem(inventoryItemFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull inventory_items failed', error: e);
+      errors++;
+    }
+
+    // ── product_recipes (scoped) ──
+    try {
+      final rows = await sb
+          .from('product_recipes')
+          .select()
+          .inFilter('branch_id', branchIds);
+      final invDao = _ref.read(inventoryDaoProvider);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await invDao.upsertRecipe(productRecipeFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull product_recipes failed', error: e);
+      errors++;
+    }
+
+    // ── receipt_settings (scoped) ──
+    try {
+      final rows = await sb
+          .from('receipt_settings')
+          .select()
+          .inFilter('branch_id', branchIds);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await _db
+            .into(_db.receiptSettings)
+            .insertOnConflictUpdate(receiptSettingFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull receipt_settings failed', error: e);
+      errors++;
+    }
+
+    // ── customers (chain-wide) ──
+    try {
+      final rows = await sb.from('customers').select();
+      final custDao = _ref.read(customerDaoProvider);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await custDao.upsertCustomer(customerFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull customers failed', error: e);
+      errors++;
+    }
+
+    _log.i('[Sync] master pull — $upserted upserted, $errors errors');
+    return (upserted: upserted, errors: errors);
+  }
+
   // ── PUSH ────────────────────────────────────────────────────────────────────
 
   /// Drains the outbox in FIFO. Each item is routed by `entityType`:

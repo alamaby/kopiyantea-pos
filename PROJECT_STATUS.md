@@ -261,7 +261,9 @@
 - [x] `SyncState` Freezed + `Sync` notifier with `syncNow()` manual trigger
 - [x] `pendingOutboxCountProvider` (Stream from outbox DAO)
 - [x] Settings `_SyncSection` — badge (Tersinkron / N menunggu), last sync timestamp, last result counters, error banner, Sinkron Sekarang button
-- [ ] Master data pull (products, branch_products, inventory, recipes, customers, receipt_settings) — deferred
+- [x] Master data pull — `pullMasterData(branchIds)` covers products (chain-wide), branch_products + inventory_items + product_recipes + receipt_settings (branch-scoped), customers (chain-wide). LWW via `insertOnConflictUpdate`. Settings sync button wires through `allBranchesProvider`.
+- [x] `InventoryDao.upsertRecipe` for pull idempotency
+- [x] `SyncState` carries `lastPulled` counter; Settings card shows `kirim · terima · gagal` breakdown
 - [ ] Background sync via workmanager — deferred (0.5.2 broken; need 0.6.x or alternative)
 
 ## Phase 7 — Optimization & Release — **DONE DEV** (awaiting actual release runthrough)
@@ -277,6 +279,15 @@
 - [ ] CI test diffing DDL ⇄ Freezed models — **deferred** (master prompt §14 risk #10)
 
 ---
+
+## Tech Debt
+
+### [TD-001] Codegen ecosystem upgrade — analyzer 6.x → 13.x
+- **Discovered:** 2026-05-18 (FEAT-001 batch A)
+- **Symptom:** drift_dev 2.21+ crashes with `Null is not InterfaceElement` on analyzer 6.4.x
+- **Workaround:** Pinned `drift` and `drift_dev` to `>=2.20.0 <2.21.0`
+- **Root cause:** `freezed ^2.5.2` + `riverpod_generator ^2.4.0` transitively constrain analyzer to 6.x. Upgrading to analyzer 13.x requires major version bumps of all codegen tools (freezed 2→3 has breaking changes, riverpod 2→3 has new APIs).
+- **Resolution path:** Do a coordinated upgrade — bump `freezed`, `freezed_annotation`, `riverpod`, `riverpod_annotation`, `riverpod_generator`, `json_serializable`, `analyzer`, `drift`, `drift_dev` together. Schedule for a dedicated maintenance phase.
 
 ## Backlog (deferred features)
 

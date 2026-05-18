@@ -226,13 +226,21 @@ packages:
     source: hosted
     version: "3.1.2"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
+  csslib:
+    dependency: transitive
+    description:
+      name: csslib
+      sha256: "09bad715f418841f976c77db72d5398dc1253c21fb9c0c7f0b0b985860b2d58e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.2"
   custom_lint_core:
     dependency: transitive
     description:
@@ -277,18 +285,18 @@ packages:
     dependency: "direct main"
     description:
       name: drift
-      sha256: df027d168a2985a2e9da900adeba2ab0136f0d84436592cf3cd5135f82c8579c
+      sha256: d6ff1ec6a0f3fa097dda6b776cf601f1f3d88b53b287288e09c1306f394fb1b3
       url: "https://pub.dev"
     source: hosted
-    version: "2.21.0"
+    version: "2.20.3"
   drift_dev:
     dependency: "direct dev"
     description:
       name: drift_dev
-      sha256: "623649abe932fc17bd32e578e7e05f7ac5e7dd0b33e6c8669a0634105d1389bf"
+      sha256: "3ee987578ca2281b5ff91eadd757cd6dd36001458d6e33784f990d67ff38f756"
       url: "https://pub.dev"
     source: hosted
-    version: "2.21.2"
+    version: "2.20.3"
   envied:
     dependency: "direct main"
     description:
@@ -313,6 +321,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.8"
+  esc_pos_utils_plus:
+    dependency: "direct main"
+    description:
+      name: esc_pos_utils_plus
+      sha256: "2a22d281cb6f04600ba3ebd607ad8df03a4b2446d814007d22525bab4d50c2ff"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.4"
   fake_async:
     dependency: transitive
     description:
@@ -519,6 +535,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.3"
+  html:
+    dependency: transitive
+    description:
+      name: html
+      sha256: "6d1264f2dffa1b1101c25a91dff0dc2daee4c18e87cd8538729773c073dbf602"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.15.6"
   http:
     dependency: transitive
     description:
@@ -680,10 +704,10 @@ packages:
     dependency: "direct main"
     description:
       name: lucide_icons_flutter
-      sha256: "2d30a7bdd308b853f04e4eefc755e00df34d645c6c08b5591271cf38127e75f1"
+      sha256: f9fd5d49b93bf14b89e0ff4818658a74ab16899bdaf7aa745358ee1a34f54eed
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.13"
+    version: "3.1.14+1"
   matcher:
     dependency: transitive
     description:
@@ -812,6 +836,54 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.3.0"
+  permission_handler:
+    dependency: "direct main"
+    description:
+      name: permission_handler
+      sha256: "59adad729136f01ea9e35a48f5d1395e25cba6cea552249ddbe9cf950f5d7849"
+      url: "https://pub.dev"
+    source: hosted
+    version: "11.4.0"
+  permission_handler_android:
+    dependency: transitive
+    description:
+      name: permission_handler_android
+      sha256: d3971dcdd76182a0c198c096b5db2f0884b0d4196723d21a866fc4cdea057ebc
+      url: "https://pub.dev"
+    source: hosted
+    version: "12.1.0"
+  permission_handler_apple:
+    dependency: transitive
+    description:
+      name: permission_handler_apple
+      sha256: f000131e755c54cf4d84a5d8bd6e4149e262cc31c5a8b1d698de1ac85fa41023
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.4.7"
+  permission_handler_html:
+    dependency: transitive
+    description:
+      name: permission_handler_html
+      sha256: "38f000e83355abb3392140f6bc3030660cfaef189e1f87824facb76300b4ff24"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.3+5"
+  permission_handler_platform_interface:
+    dependency: transitive
+    description:
+      name: permission_handler_platform_interface
+      sha256: eb99b295153abce5d683cac8c02e22faab63e50679b937fa1bf67d58bb282878
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.3.0"
+  permission_handler_windows:
+    dependency: transitive
+    description:
+      name: permission_handler_windows
+      sha256: "1a790728016f79a41216d88672dbc5df30e686e811ad4e698bfc51f76ad91f1e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.1"
   petitparser:
     dependency: transitive
     description:
@@ -1093,10 +1165,10 @@ packages:
     dependency: transitive
     description:
       name: sqlparser
-      sha256: d77749237609784e337ec36c979d41f6f38a7b279df98622ae23929c8eb954a4
+      sha256: "852cf80f9e974ac8e1b613758a8aa640215f7701352b66a7f468e95711eb570b"
       url: "https://pub.dev"
     source: hosted
-    version: "0.39.2"
+    version: "0.38.1"
   stack_trace:
     dependency: transitive
     description:

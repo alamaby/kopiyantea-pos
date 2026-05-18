@@ -21,7 +21,11 @@ dependencies:
   go_router: ^14.2.0
 
   # Local DB
-  drift: ^2.18.0
+  # Pinned to 2.20.x — drift_dev 2.21+ has a `Null is not InterfaceElement`
+  # bug with analyzer 6.4.x (which we're stuck on via freezed 2.x /
+  # riverpod 2.x transitive constraints). Bump together with freezed 3.x
+  # migration if/when we move there.
+  drift: '>=2.20.0 <2.21.0'
   sqlite3_flutter_libs: ^0.5.24
   path_provider: ^2.1.3
   path: ^1.9.0
@@ -74,7 +78,7 @@ dev_dependencies:
   build_runner: ^2.4.11
   freezed: ^2.5.2
   json_serializable: ^6.8.0
-  drift_dev: ^2.18.0
+  drift_dev: '>=2.20.0 <2.21.0'
   riverpod_generator: ^2.4.0
   envied_generator: ^0.5.4+1
 

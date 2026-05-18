@@ -5,6 +5,7 @@ import 'branch_dao.dart';
 import 'catalog_dao.dart';
 import 'customer_dao.dart';
 import 'inventory_dao.dart';
+import 'option_dao.dart';
 import 'outbox_dao.dart';
 import 'transaction_dao.dart';
 
@@ -34,4 +35,8 @@ final customerDaoProvider = Provider<CustomerDao>(
 
 final outboxDaoProvider = Provider<OutboxDao>(
   (ref) => OutboxDao(ref.watch(databaseProvider)),
+);
+
+final optionDaoProvider = Provider<OptionDao>(
+  (ref) => OptionDao(ref.watch(databaseProvider)),
 );

@@ -11,6 +11,7 @@ import 'tables/branch_tables.dart';
 import 'tables/catalog_tables.dart';
 import 'tables/customer_tables.dart';
 import 'tables/inventory_tables.dart';
+import 'tables/option_tables.dart';
 import 'tables/outbox_table.dart';
 import 'tables/settings_tables.dart';
 import 'tables/transaction_tables.dart';
@@ -36,6 +37,11 @@ part 'app_database.g.dart';
     TransactionItems,
     ReceiptSettings,
     OutboxItems,
+    // FEAT-001 — modifier system (added at schemaVersion 2)
+    OptionGroups,
+    MenuOptions,
+    ProductOptionGroups,
+    TransactionItemOptions,
   ],
   // DAOs removed from annotation — instantiated as lazy getters below.
 )
@@ -43,7 +49,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -51,7 +57,14 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
         },
         onUpgrade: (m, from, to) async {
-          // Future migration steps go here (ADR-0008).
+          // ADR-0008 — non-destructive migrations only.
+          if (from < 2) {
+            // FEAT-001 modifier system tables.
+            await m.createTable(optionGroups);
+            await m.createTable(menuOptions);
+            await m.createTable(productOptionGroups);
+            await m.createTable(transactionItemOptions);
+          }
         },
         beforeOpen: (_) async {
           await customStatement('PRAGMA foreign_keys = ON');

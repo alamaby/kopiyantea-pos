@@ -422,10 +422,13 @@ class _SyncSection extends ConsumerWidget {
                 ? 'Belum pernah'
                 : formatDateTime(syncState.lastSyncAt!),
           ),
-          if (syncState.lastPushed > 0 || syncState.lastFailed > 0)
+          if (syncState.lastPushed > 0 ||
+              syncState.lastFailed > 0 ||
+              syncState.lastPulled > 0)
             _Row(
               label: 'Hasil terakhir',
-              value: '${syncState.lastPushed} terkirim, '
+              value: '${syncState.lastPushed} kirim · '
+                  '${syncState.lastPulled} terima · '
                   '${syncState.lastFailed} gagal',
             ),
           if (syncState.lastError != null) ...[
@@ -449,7 +452,15 @@ class _SyncSection extends ConsumerWidget {
             icon: Icons.sync,
             onPressed: syncState.isSyncing
                 ? null
-                : () => ref.read(syncProvider.notifier).syncNow(),
+                : () async {
+                    // Pull master for all branches the user currently has access to.
+                    final branches = await ref
+                        .read(allBranchesProvider.future);
+                    if (!context.mounted) return;
+                    await ref.read(syncProvider.notifier).syncNow(
+                          branchIds: branches.map((b) => b.id).toList(),
+                        );
+                  },
             isLoading: syncState.isSyncing,
             fullWidth: true,
           ),

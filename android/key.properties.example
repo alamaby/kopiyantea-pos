@@ -1,0 +1,4 @@
+storePassword=<keystore password>
+keyPassword=<key password>
+keyAlias=kopiyantea
+storeFile=../upload-keystore.jks

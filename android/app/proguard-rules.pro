@@ -61,6 +61,12 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
+# ── Play Core (deferred components — unused but referenced by flutter_embedding) ─
+# We don't use deferred components / dynamic feature modules, so tell R8 the
+# missing Play Core split-install classes are intentionally absent.
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
+
 # ── Generic cleanups ─────────────────────────────────────────────────────────
 -dontwarn org.codehaus.mojo.animal_sniffer.*
 -dontwarn javax.annotation.**

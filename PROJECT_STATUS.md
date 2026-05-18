@@ -2,7 +2,7 @@
 
 > Workflow: `TODO → IN PROGRESS → DONE DEV → DONE QA`. Forward-only. Regressions create new `[BUG]` entries.
 
-**Last updated:** 2026-05-14
+**Last updated:** 2026-05-18
 
 ---
 
@@ -69,7 +69,7 @@
 
 ## Phase 4 — UI Construction — **DONE QA** (semua sub-batch)
 
-### 4.3 — Catalog management — **DONE DEV** (awaiting build_runner + QA)
+### 4.3 — Catalog management — **DONE QA** (FEAT-004 tax UI + FEAT-005 inventory stock UI deferred to backlog)
 - [x] `CatalogDao` ekstensi: `watchAllForBranch`, `watchProductById`, `getProductById`, `getBySku`, `watchBranchProductPair`, `setBranchProductAvailability`, `updateProduct`, `updateBranchProduct`
 - [x] `BranchDao.getActiveBranches` (snapshot read untuk propagasi)
 - [x] `catalog_providers.dart` — `branchMenuFullProvider`, `productByIdProvider`, `branchProductPairProvider`
@@ -104,7 +104,6 @@
 - [x] `ReceiptSummarySheet` with derived discount + payment summary
 - [x] Wired `/pos` route to real `PosScreen`
 - [x] `main.dart` initializes intl date symbols for id_ID
-### 4.3 — Catalog (Menu) management — **TODO**
 ### 4.4 — Inventory + Transactions history — **DONE QA**
 - [x] Local `cached_stock` reconciliation in CheckoutUseCase — client-side delta application in the same db.transaction. Converges with the Supabase trigger at sync time (Phase 6).
 - [x] `labels.dart` — paymentMethod/movementType/stockUnit/transactionStatus Indonesian mappers + `formatStock`
@@ -215,7 +214,7 @@
 
 ## Phase 6 — Supabase Sync & Security — **IN PROGRESS**
 
-### 6a — SQL migrations — **DONE DEV** (awaiting apply on Supabase project)
+### 6a — SQL migrations — **DONE QA** (applied on Supabase, verified via owner login)
 - [x] 10 migration files in `/supabase/migrations/` with timestamped names
 - [x] `001_branches_users` (branches + app_users + user_branch_access)
 - [x] `002_catalog` (products + branch_products) with discount/override constraints
@@ -229,14 +228,14 @@
 - [x] `010_rls_policies` — full matrix from ADR-0007: append-only transactions (no UPDATE/DELETE), owner-only products write, branch-scoped reads
 - [x] `seed.sql` mirrors `SeedService` for staging parity
 
-### 6b — Code foundation (env, secure storage, Supabase init) — **DONE DEV**
+### 6b — Code foundation (env, secure storage, Supabase init) — **DONE QA**
 - [x] `lib/core/storage/secure_storage.dart` — Keychain/encrypted-SharedPreferences wrapper dengan key constants
 - [x] `lib/core/network/supabase_providers.dart` — `supabaseClientProvider` + `secureStorageProvider`
 - [x] `main.dart` boot reorganized:
   1. `Env.validate()` — fail-fast dengan dedicated `_EnvErrorApp` fallback (no black screen)
   2. Local-first: intl + Drift + seed (must succeed)
   3. `Supabase.initialize()` — graceful failure dengan logger warn (offline-first per ADR + master prompt §14 risk #4)
-### 6c — Auth flow (Supabase login) — **DONE DEV**
+### 6c — Auth flow (Supabase login) — **DONE QA**
 - [x] `AuthRepository` — Supabase signin/signout + Drift app_users lookup; graceful when Supabase not initialized
 - [x] `AuthError` enum, `AuthedSession` value class
 - [x] `authProvider` rewrite — microtask session restore, `signIn`/`signInAsDemo`/`signOut` methods, `currentUserProvider` returns `AppUserRow?`
@@ -275,7 +274,7 @@
 - [x] `docs/release.md` — full procedure: pre-flight checklist, keystore + `key.properties` + `build.gradle` signingConfig, ProGuard wire-up, `flutter build apk/appbundle` commands, iOS ipa, cert pinning rotation (extract → overlap → drop), Play Store submission checklist, post-release tagging
 - [x] README updated with Build Commands section + link to release.md
 - [x] No `print()` calls in feature code (all logging via `Logger` / `AppLogger`)
-- [ ] App signing wired in `build.gradle` — **user-specific (keystore not in repo)**; full instructions in release.md
+- [x] App signing wired in `build.gradle.kts` (Kotlin DSL signingConfigs + R8 Play Core keep rules; keystore `upload-keystore.jks` at repo root, gitignored; release AAB built successfully 2026-05-18)
 - [ ] iOS archive + TestFlight — **deferred unless requested**, instructions in release.md
 - [ ] CI test diffing DDL ⇄ Freezed models — **deferred** (master prompt §14 risk #10)
 
@@ -317,6 +316,45 @@
 - **Estimated effort:** 1 provider + 1 screen + extend OutboxDao with `markDone`/`delete`. ~3 files. Small.
 
 
+
+### [FEAT-006] User Management UI (owner-only)
+- **Requested:** 2026-05-18 (Phase 4.3 QA)
+- **Use case:** Owner saat ini tidak punya jalur UI untuk menambah user baru (Manager / Kasir) dan assign role + branch access. User hanya bisa di-create via Supabase Dashboard + insert manual ke `app_users` + `user_branch_access`. Saat buka cabang baru atau onboard staff, ini blocker.
+- **Scope:**
+  - Route `/more/settings/users` (gated: hanya visible saat `currentUser.role == 'owner'`)
+  - `UserListScreen` — list semua user di tenant + role badge + branch access summary
+  - `UserFormScreen` — email, nama, role (owner/manager/cashier — sesuai enum di ADR-0007), pilih branch access (multi-select dari active branches)
+  - Create flow: panggil Supabase `auth.admin.createUser` (atau invite via email) → insert `app_users` + `user_branch_access` rows
+  - Edit flow: ubah role + branch access (email/auth tidak boleh diubah di sini)
+  - Soft delete / lock: set `locked_at` (sesuai partial index di migration 007)
+  - RLS: policies sudah ada per ADR-0007 — endpoint write hanya boleh dipanggil saat `user_global_role() = 'owner'`
+  - Outbox enqueue untuk sync
+- **Estimated effort:** 1 list screen + 1 form + 2 DAO methods + 1 Supabase admin endpoint wrapper. ~5 file. Sedang. Bisa pre-syarat untuk multi-staff deployment.
+- **Dependency:** Idealnya setelah [FEAT-002] Multi-Tenant Isolation kalau target SaaS — kalau single-tenant deployment, bisa langsung dikerjakan.
+
+### [FEAT-004] Tax Settings UI (per-branch)
+- **Requested:** 2026-05-18 (Phase 4.3 QA)
+- **Use case:** Pajak (PB1/PPN) saat ini hardcoded di seed (`taxRate` + `taxInclusive` di `branches`). Owner tidak bisa mengubah tarif atau toggle inclusive/exclusive tanpa edit DB langsung. Saat tarif pajak daerah berubah atau buka cabang baru dengan rezim pajak berbeda, tidak ada jalur UI.
+- **Scope:**
+  - Settings sub-screen `/more/settings/tax` (atau section di Settings utama)
+  - Form per active branch: `taxRate` (numeric input 0–100%), `taxInclusive` (switch)
+  - Validasi: rate 0–100, decimal 2 digit
+  - Update via `BranchDao.updateTaxConfig` (perlu ditambah)
+  - Outbox enqueue untuk sync ke Supabase
+  - Preview: contoh perhitungan Rp10.000 dengan tarif saat ini (inclusive vs exclusive) per ADR-0012
+- **Estimated effort:** 1 DAO method + 1 screen + 1 route + 1 outbox entity type. Kecil (~3 file).
+
+### [FEAT-005] Inventory Stock Management UI
+- **Requested:** 2026-05-18 (Phase 4.3 QA)
+- **Use case:** Stok bahan baku (mis. gula aren, susu, kopi) hanya bisa diatur lewat checkout deduction. Tidak ada UI untuk: (1) initial stock saat barang masuk, (2) adjustment manual (susut, rusak, hilang), (3) tambah inventory item baru, (4) edit nama/unit/threshold low-stock.
+- **Scope:**
+  - `InventoryListScreen` — tambah FAB "+" untuk inventory item baru
+  - `InventoryItemFormScreen` — name, unit (gram/ml/pcs), lowStockThreshold
+  - `InventoryDetailScreen` — tombol "Tambah Stok" / "Kurangi Stok" / "Penyesuaian" → form qty + alasan (catatan)
+  - Tulis `inventory_movements` row dengan `type` sesuai (purchase / adjustment / waste) — append-only per ADR-0003
+  - `cached_stock` di-update via reconciliation logic yang sudah ada (CheckoutUseCase pattern)
+  - Outbox enqueue untuk sync
+- **Estimated effort:** 1 form screen + 2 bottom sheets + extend InventoryDao dengan `recordMovement(type, qty, notes)`. ~5 file. Sedang.
 
 ### [FEAT-001] Product Modifier / Option System
 - **Requested:** Phase 4.2 QA (2026-05-15)

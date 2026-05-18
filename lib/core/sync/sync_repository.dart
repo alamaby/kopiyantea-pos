@@ -225,6 +225,82 @@ class SyncRepository {
     return (upserted: upserted, errors: errors);
   }
 
+  /// Pulls recent transactions (+ items + linked inventory_movements) for the
+  /// given branches. Used so transactions made on other devices show in the
+  /// local Transaksi screen.
+  ///
+  /// MVP: last [limit] transactions ordered by client_created_at DESC, no
+  /// incremental cursor yet. Inventory cached_stock is NOT recomputed from
+  /// pulled movements — `pullMasterData` already grabs server's authoritative
+  /// cached_stock via inventory_items.
+  Future<({int upserted, int errors})> pullTransactions(
+    List<String> branchIds, {
+    int limit = 100,
+  }) async {
+    final sb = _sb;
+    if (sb == null || branchIds.isEmpty) {
+      return (upserted: 0, errors: 0);
+    }
+
+    var upserted = 0;
+    var errors = 0;
+
+    try {
+      // ── transactions ──
+      final txRows = await sb
+          .from('transactions')
+          .select()
+          .inFilter('branch_id', branchIds)
+          .order('client_created_at', ascending: false)
+          .limit(limit);
+      final txList = (txRows as List).cast<Map<String, dynamic>>();
+      final txIds = txList.map((j) => j['id'] as String).toList();
+
+      for (final json in txList) {
+        await _db
+            .into(_db.transactions)
+            .insertOnConflictUpdate(transactionFromJson(json));
+        upserted++;
+      }
+
+      if (txIds.isNotEmpty) {
+        // ── transaction_items ──
+        final itemRows = await sb
+            .from('transaction_items')
+            .select()
+            .inFilter('transaction_id', txIds);
+        for (final json
+            in (itemRows as List).cast<Map<String, dynamic>>()) {
+          await _db
+              .into(_db.transactionItems)
+              .insertOnConflictUpdate(transactionItemFromJson(json));
+          upserted++;
+        }
+
+        // ── inventory_movements (reference_id = txId) ──
+        final movRows = await sb
+            .from('inventory_movements')
+            .select()
+            .inFilter('reference_id', txIds);
+        for (final json
+            in (movRows as List).cast<Map<String, dynamic>>()) {
+          await _db
+              .into(_db.inventoryMovements)
+              .insertOnConflictUpdate(inventoryMovementFromJson(json));
+          upserted++;
+        }
+      }
+
+      _log.i(
+          '[Sync] tx pull — ${txList.length} tx, $upserted total rows upserted');
+    } catch (e, st) {
+      _log.e('[Sync] pullTransactions failed', error: e, stackTrace: st);
+      errors++;
+    }
+
+    return (upserted: upserted, errors: errors);
+  }
+
   // ── PUSH ────────────────────────────────────────────────────────────────────
 
   /// Drains the outbox in FIFO. Each item is routed by `entityType`:

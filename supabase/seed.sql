@@ -7,10 +7,10 @@
 
 -- Branches
 INSERT INTO branches (id, name, address, phone, created_at, updated_at) VALUES
-  ('00000000-0000-0000-0000-000000000001', 'Kopiyantea Tebet',
-   'Jl. Tebet Raya No. 42, Jakarta Selatan', '+62 21 8290 0001', NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002', 'Kopiyantea Senayan',
-   'Jl. Asia Afrika, Senayan, Jakarta Pusat', '+62 21 5790 0002', NOW(), NOW())
+  ('00000000-0000-0000-0000-000000000001', 'Kopiyantea SGC',
+   'Perumahan Subang Green City A21/15, Cibogo, Subang', '+62 81324498379', NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000002', 'Kopiyantea Kamarasan',
+   'Kamarasan Residence A3/2, Bandung', '+62 81324498379', NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
 UPDATE branches SET tax_inclusive = TRUE

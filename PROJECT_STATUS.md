@@ -262,6 +262,7 @@
 - [x] `pendingOutboxCountProvider` (Stream from outbox DAO)
 - [x] Settings `_SyncSection` — badge (Tersinkron / N menunggu), last sync timestamp, last result counters, error banner, Sinkron Sekarang button
 - [x] Master data pull — `pullMasterData(branchIds)` covers products (chain-wide), branch_products + inventory_items + product_recipes + receipt_settings (branch-scoped), customers (chain-wide). LWW via `insertOnConflictUpdate`. Settings sync button wires through `allBranchesProvider`.
+- [x] Transaction history pull (Phase 6e3) — `pullTransactions(branchIds, limit=100)` fetches recent transactions + items + linked inventory_movements. Multi-device history visibility works. No incremental cursor yet — fetches last 100 each sync.
 - [x] `InventoryDao.upsertRecipe` for pull idempotency
 - [x] `SyncState` carries `lastPulled` counter; Settings card shows `kirim · terima · gagal` breakdown
 - [ ] Background sync via workmanager — deferred (0.5.2 broken; need 0.6.x or alternative)
@@ -290,6 +291,32 @@
 - **Resolution path:** Do a coordinated upgrade — bump `freezed`, `freezed_annotation`, `riverpod`, `riverpod_annotation`, `riverpod_generator`, `json_serializable`, `analyzer`, `drift`, `drift_dev` together. Schedule for a dedicated maintenance phase.
 
 ## Backlog (deferred features)
+
+### [FEAT-002] Multi-Tenant Isolation
+- **Requested:** 2026-05-18
+- **Use case:** Vendor model — owner A runs "Kopiyantea" chain, owner B runs separate "Cafe XYZ", both use the same app/Supabase project with **data isolated per business**. Currently the schema is single-tenant (master prompt §14 risk #7) — all owners share `products`/`customers`/`option_groups`/`branches` across the project.
+- **Scope (Phase 8):**
+  - Add `tenants` table (id, name, created_at, owner_user_id)
+  - Add `tenant_id` column to all chain-wide tables: `branches`, `products`, `customers`, `option_groups`, `options`, `app_users` (and propagate via branch chain for branch-scoped tables)
+  - Backfill existing rows to a single default tenant (non-destructive per ADR-0008)
+  - Add `user_tenant()` SQL helper + update all RLS policies to filter by `tenant_id = user_tenant()`
+  - Onboarding flow: signup creates new tenant; invite flow joins existing tenant
+  - Add tenant indicator in UI (branch picker shows tenant scope)
+- **Estimated effort:** 15-20 SQL migration files + RLS rewrite + onboarding UI + tenant-aware sync. Substantial — typically pre-launch hardening for SaaS pivot. Not needed for single-business deployment.
+
+### [FEAT-003] Outbox Queue Detail Screen
+- **Requested:** 2026-05-18 (after first Supabase migrate)
+- **Use case:** When sync push fails (e.g., RLS reject from stale demo cashier_id, FK violation, network error mid-push), the badge shows "N gagal" but user has no way to inspect WHICH rows failed, WHY, or to clear them. Currently the only recovery is `adb shell pm clear` (lossy) or wait for backoff retries (which keep failing).
+- **Scope (Phase 7+):**
+  - New route `/more/settings/sync` (or sub-route from Settings sync section)
+  - List outbox rows grouped by status (pending / failed / done)
+  - Per row: entity type, payload preview (e.g., tx short id, amount), createdAt, attempt count, lastError, nextRetryAt
+  - Actions per row: Retry now (resets nextRetryAt to now), Skip (mark done without push — lossy), Delete (hard delete from outbox)
+  - Bulk actions: Clear all failed, Retry all failed
+  - Warning banner explaining "Skip" loses data — only for dev/cleanup
+- **Estimated effort:** 1 provider + 1 screen + extend OutboxDao with `markDone`/`delete`. ~3 files. Small.
+
+
 
 ### [FEAT-001] Product Modifier / Option System
 - **Requested:** Phase 4.2 QA (2026-05-15)

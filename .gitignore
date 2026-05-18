@@ -24,6 +24,11 @@ lib/l10n/generated/
 *.jks
 key.properties
 
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+supabase/.env
+
 # Platform
 .gradle/
 android/local.properties

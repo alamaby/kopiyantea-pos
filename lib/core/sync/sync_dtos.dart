@@ -187,6 +187,70 @@ CustomersCompanion customerFromJson(Map<String, dynamic> json) =>
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
 
+TransactionsCompanion transactionFromJson(Map<String, dynamic> json) =>
+    TransactionsCompanion.insert(
+      id: json['id'] as String,
+      branchId: json['branch_id'] as String,
+      cashierId: json['cashier_id'] as String,
+      customerId: Value(json['customer_id'] as String?),
+      subtotal: (json['subtotal'] as num).toDouble(),
+      discountAmount:
+          Value((json['discount_amount'] as num?)?.toDouble() ?? 0),
+      taxAmount: Value((json['tax_amount'] as num?)?.toDouble() ?? 0),
+      total: (json['total'] as num).toDouble(),
+      taxPercentageSnapshot:
+          (json['tax_percentage_snapshot'] as num).toDouble(),
+      taxLabelSnapshot: json['tax_label_snapshot'] as String,
+      taxInclusiveSnapshot: json['tax_inclusive_snapshot'] as bool,
+      paymentMethod: _enumByName(
+        PaymentMethod.values,
+        json['payment_method'] as String,
+      ),
+      paymentReceived: Value((json['payment_received'] as num?)?.toDouble()),
+      paymentChange: Value((json['payment_change'] as num?)?.toDouble()),
+      status: _enumByName(
+        TransactionStatus.values,
+        json['status'] as String,
+      ),
+      voidedByTransactionId:
+          Value(json['voided_by_transaction_id'] as String?),
+      voidReason: Value(json['void_reason'] as String?),
+      clientCreatedAt: DateTime.parse(json['client_created_at'] as String),
+      serverReceivedAt: Value(_maybeDate(json['server_received_at'])),
+    );
+
+TransactionItemsCompanion transactionItemFromJson(
+  Map<String, dynamic> json,
+) =>
+    TransactionItemsCompanion.insert(
+      id: json['id'] as String,
+      transactionId: json['transaction_id'] as String,
+      productId: json['product_id'] as String,
+      nameSnapshot: json['name_snapshot'] as String,
+      priceSnapshot: (json['price_snapshot'] as num).toDouble(),
+      quantity: (json['quantity'] as num).toDouble(),
+      subtotal: (json['subtotal'] as num).toDouble(),
+      notes: Value(json['notes'] as String?),
+    );
+
+InventoryMovementsCompanion inventoryMovementFromJson(
+  Map<String, dynamic> json,
+) =>
+    InventoryMovementsCompanion.insert(
+      id: json['id'] as String,
+      inventoryItemId: json['inventory_item_id'] as String,
+      branchId: json['branch_id'] as String,
+      movementType: _enumByName(
+        MovementType.values,
+        json['movement_type'] as String,
+      ),
+      deltaSigned: (json['delta_signed'] as num).toDouble(),
+      referenceId: Value(json['reference_id'] as String?),
+      notes: Value(json['notes'] as String?),
+      createdBy: Value(json['created_by'] as String?),
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+
 ReceiptSettingsCompanion receiptSettingFromJson(Map<String, dynamic> json) =>
     ReceiptSettingsCompanion.insert(
       id: json['id'] as String,

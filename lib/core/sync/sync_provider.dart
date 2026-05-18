@@ -25,22 +25,27 @@ class Sync extends _$Sync {
   @override
   SyncState build() => const SyncState();
 
-  /// Manual sync: push outbox + pull master data for the active branch.
+  /// Manual sync: push outbox + pull master data + pull recent transactions
+  /// for the active branch.
   Future<SyncState> syncNow({List<String>? branchIds}) async {
     if (state.isSyncing) return state;
     state = state.copyWith(isSyncing: true, lastError: null);
     try {
       final repo = ref.read(syncRepositoryProvider);
       final push = await repo.pushOutbox();
-      final pull = branchIds == null || branchIds.isEmpty
-          ? (upserted: 0, errors: 0)
-          : await repo.pullMasterData(branchIds);
+      final hasBranches = branchIds != null && branchIds.isNotEmpty;
+      final master = hasBranches
+          ? await repo.pullMasterData(branchIds)
+          : (upserted: 0, errors: 0);
+      final txn = hasBranches
+          ? await repo.pullTransactions(branchIds)
+          : (upserted: 0, errors: 0);
       state = state.copyWith(
         isSyncing: false,
         lastSyncAt: DateTime.now(),
         lastPushed: push.pushed,
         lastFailed: push.failed,
-        lastPulled: pull.upserted,
+        lastPulled: master.upserted + txn.upserted,
       );
     } catch (e) {
       state = state.copyWith(isSyncing: false, lastError: e.toString());

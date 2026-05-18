@@ -9,6 +9,7 @@ import '../../core/database/database_provider.dart';
 import '../../core/domain/enums.dart';
 import '../../core/pricing/pricing.dart';
 import '../../core/utils/result.dart';
+import '../auth/auth_provider.dart';
 import 'cart_state.dart';
 
 // TODO(Phase 6): replace with the authenticated user ID from authProvider.
@@ -272,6 +273,13 @@ class CheckoutUseCase {
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-final checkoutUseCaseProvider = Provider<CheckoutUseCase>(
-  (ref) => CheckoutUseCase(db: ref.watch(databaseProvider)),
-);
+final checkoutUseCaseProvider = Provider<CheckoutUseCase>((ref) {
+  // Prefer the authenticated user's id; fall back to the seed cashier when
+  // not authenticated (offline-only dev — production gates checkout behind
+  // the auth router redirect, so this path shouldn't fire there).
+  final user = ref.watch(currentUserProvider);
+  return CheckoutUseCase(
+    db: ref.watch(databaseProvider),
+    cashierId: user?.id ?? _kFallbackCashierId,
+  );
+});

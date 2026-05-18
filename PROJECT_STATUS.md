@@ -236,7 +236,16 @@
   1. `Env.validate()` — fail-fast dengan dedicated `_EnvErrorApp` fallback (no black screen)
   2. Local-first: intl + Drift + seed (must succeed)
   3. `Supabase.initialize()` — graceful failure dengan logger warn (offline-first per ADR + master prompt §14 risk #4)
-### 6c — Auth flow (Supabase login + lockout) — **TODO**
+### 6c — Auth flow (Supabase login) — **DONE DEV**
+- [x] `AuthRepository` — Supabase signin/signout + Drift app_users lookup; graceful when Supabase not initialized
+- [x] `AuthError` enum, `AuthedSession` value class
+- [x] `authProvider` rewrite — microtask session restore, `signIn`/`signInAsDemo`/`signOut` methods, `currentUserProvider` returns `AppUserRow?`
+- [x] `LoginScreen` — email/password + demo bypass + error display + obscure toggle
+- [x] Router auth guard — `refreshListenable` bridges Riverpod, unauth → /login, auth on /login → /pos
+- [x] Settings `_SignOutSection` — user info + logout dengan confirm dialog
+- [x] `CheckoutUseCase` provider — pakai `currentUserProvider.id`
+- [ ] Server-side lockout via Edge Function — deferred (Supabase rate limiting suffices for MVP)
+
 ### 6d — Cert pinning HTTP client — **TODO**
 ### 6e — Sync (pull master + push outbox + workmanager) — **TODO**
 

@@ -7,9 +7,11 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../auth/auth_provider.dart';
 import 'branch_selection_provider.dart';
 import 'settings_provider.dart';
 
@@ -41,6 +43,8 @@ class SettingsScreen extends ConsumerWidget {
             _DeviceSection(settings: s),
             const SizedBox(height: AppSpacing.lg),
             const _AboutSection(),
+            const SizedBox(height: AppSpacing.lg),
+            const _SignOutSection(),
           ],
         ),
       ),
@@ -306,5 +310,68 @@ class _SectionHeader extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ── Sign-out section ──────────────────────────────────────────────────────────
+
+class _SignOutSection extends ConsumerWidget {
+  const _SignOutSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(currentUserProvider);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(label: 'Akun'),
+          const SizedBox(height: AppSpacing.sm),
+          if (user != null) ...[
+            Text(user.fullName, style: AppTypography.titleMd),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              user.globalRole.name,
+              style: AppTypography.labelSm.copyWith(
+                color: context.colors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          AppButton(
+            label: 'Keluar',
+            icon: Icons.logout,
+            variant: AppButtonVariant.danger,
+            onPressed: () => _confirmSignOut(context, ref),
+            fullWidth: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Keluar dari akun?'),
+        content: const Text(
+          'Anda akan kembali ke layar masuk. Transaksi yang belum tersinkron akan tetap tersimpan di perangkat.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Keluar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(authProvider.notifier).signOut();
   }
 }

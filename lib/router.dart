@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/widgets/adaptive_shell.dart';
+import 'features/auth/auth_provider.dart';
+import 'features/auth/login_screen.dart';
 import 'features/catalog/catalog_screen.dart';
 import 'features/catalog/product_detail_screen.dart';
 import 'features/catalog/product_form_screen.dart';
@@ -27,9 +29,31 @@ import 'features/transactions/transaction_list_screen.dart';
 /// Routes outside the shell (e.g. `/more/customers`) push as full-screen
 /// detail pages without the bottom nav / rail.
 final routerProvider = Provider<GoRouter>((ref) {
+  // Re-evaluate redirect when auth state flips (sign in / sign out).
+  final refresh = _AuthRefreshNotifier(ref);
+  ref.onDispose(refresh.dispose);
+
   return GoRouter(
     initialLocation: '/pos',
+    refreshListenable: refresh,
+    redirect: (context, state) {
+      final auth = ref.read(authProvider);
+      final isAuthed = auth is Authenticated;
+      final isLoading = auth is AuthLoading;
+      final isLogin = state.matchedLocation == '/login';
+
+      // During initial session restore, don't redirect — keeps screen stable.
+      if (isLoading) return null;
+      if (!isAuthed && !isLogin) return '/login';
+      if (isAuthed && isLogin) return '/pos';
+      return null;
+    },
     routes: [
+      GoRoute(
+        path: '/login',
+        name: 'login',
+        builder: (_, __) => const LoginScreen(),
+      ),
       // Legacy `/` redirect — bookmarks survive.
       GoRoute(path: '/', redirect: (_, __) => '/pos'),
 
@@ -156,3 +180,23 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+/// Bridges Riverpod's `authProvider` to GoRouter's `refreshListenable`.
+/// Each auth state change fires `notifyListeners()` so the redirect callback
+/// re-runs.
+class _AuthRefreshNotifier extends ChangeNotifier {
+  _AuthRefreshNotifier(Ref ref) {
+    _sub = ref.listen<AuthState>(
+      authProvider,
+      (_, __) => notifyListeners(),
+    );
+  }
+
+  late final ProviderSubscription<AuthState> _sub;
+
+  @override
+  void dispose() {
+    _sub.close();
+    super.dispose();
+  }
+}

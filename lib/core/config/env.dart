@@ -9,13 +9,21 @@ part 'env.g.dart';
 ///
 /// `validate()` MUST be called from `main()` before any consumer reads a value,
 /// to fail fast on missing / malformed configuration.
+///
+/// **About the publishable key:** Supabase introduced new API keys
+/// (`sb_publishable_*`) to replace the legacy JWT `anon` key. They serve the
+/// same purpose (public, RLS-protected, safe to ship to clients) but offer
+/// per-key revocation/rotation. The supabase_flutter SDK still names its
+/// parameter `anonKey:` — we feed our publishable key into it.
 @Envied(path: '.env', requireEnvFile: true)
 abstract class Env {
   @EnviedField(varName: 'SUPABASE_URL')
   static const String supabaseUrl = _Env.supabaseUrl;
 
-  @EnviedField(varName: 'SUPABASE_ANON_KEY')
-  static const String supabaseAnonKey = _Env.supabaseAnonKey;
+  /// Supabase publishable key (`sb_publishable_...`). The legacy JWT anon key
+  /// also works in this slot — the SDK forwards the string as-is.
+  @EnviedField(varName: 'SUPABASE_PUBLISHABLE_KEY')
+  static const String supabasePublishableKey = _Env.supabasePublishableKey;
 
   @EnviedField(varName: 'APP_ENV', defaultValue: 'development')
   static const String appEnv = _Env.appEnv;
@@ -44,12 +52,13 @@ abstract class Env {
       errors.add('SUPABASE_URL must start with https:// (got: $supabaseUrl)');
     }
 
-    if (supabaseAnonKey.isEmpty) {
-      errors.add('SUPABASE_ANON_KEY is empty');
+    if (supabasePublishableKey.isEmpty) {
+      errors.add('SUPABASE_PUBLISHABLE_KEY is empty');
     }
 
     if (!const {'development', 'staging', 'production'}.contains(appEnv)) {
-      errors.add('APP_ENV must be one of development|staging|production (got: $appEnv)');
+      errors.add(
+          'APP_ENV must be one of development|staging|production (got: $appEnv)');
     }
 
     if (isProd && certFingerprints.isEmpty) {
@@ -57,7 +66,8 @@ abstract class Env {
     }
 
     if (errors.isNotEmpty) {
-      throw StateError('Invalid environment configuration:\n  - ${errors.join('\n  - ')}');
+      throw StateError(
+          'Invalid environment configuration:\n  - ${errors.join('\n  - ')}');
     }
   }
 }

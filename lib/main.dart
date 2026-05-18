@@ -54,7 +54,8 @@ Future<void> main() async {
   try {
     await Supabase.initialize(
       url: Env.supabaseUrl,
-      anonKey: Env.supabaseAnonKey,
+      // SDK param name is historical; we feed our publishable key here.
+      anonKey: Env.supabasePublishableKey,
       // Cert pinning (ADR-0010): when fingerprints are configured, every
       // HTTP request validates the TLS leaf against the allowlist. When
       // empty (dev), falls back to default http.Client.

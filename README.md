@@ -20,7 +20,7 @@ flutter pub get
 All required env vars are declared in [`.env.example`](./.env.example). Copy it to `.env` and fill in real values before running the app.
 
 - `SUPABASE_URL` — Supabase project URL
-- `SUPABASE_ANON_KEY` — Supabase anon (public) key
+- `SUPABASE_PUBLISHABLE_KEY` — Supabase publishable key (`sb_publishable_...`); legacy JWT anon key also accepted
 - `APP_ENV` — `development` | `staging` | `production`
 - `SUPABASE_CERT_FINGERPRINTS` — SHA-256 fingerprints for cert pinning (prod)
 

@@ -1,8 +1,9 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -10,6 +11,7 @@ import 'core/config/env.dart';
 import 'core/database/app_database.dart';
 import 'core/database/database_provider.dart';
 import 'core/database/seed_service.dart';
+import 'core/logging/app_logger.dart';
 import 'core/network/pinned_http_client.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/settings_provider.dart';
@@ -25,7 +27,13 @@ import 'router.dart';
 ///    The local Drift DB is the source of truth; sync (Phase 6e) catches up later.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final log = Logger();
+
+  // 0. Global error handlers + production-gated logger (master prompt §11).
+  AppLogger.init();
+  FlutterError.onError = AppLogger.onFlutterError;
+  PlatformDispatcher.instance.onError = AppLogger.onPlatformError;
+
+  final log = AppLogger.instance;
 
   // 1. Fail fast on missing / malformed env vars (ADR-0010, master prompt §2.6).
   try {

@@ -264,15 +264,17 @@
 - [ ] Master data pull (products, branch_products, inventory, recipes, customers, receipt_settings) — deferred
 - [ ] Background sync via workmanager — deferred (0.5.2 broken; need 0.6.x or alternative)
 
-## Phase 7 — Optimization & Release — **TODO**
+## Phase 7 — Optimization & Release — **DONE DEV** (awaiting actual release runthrough)
 
-- [ ] Replace prints with `logger` (prod-gated)
-- [ ] Global error handlers wired
-- [ ] ProGuard/R8 config
-- [ ] App signing (debug + release flavors)
-- [ ] `flutter build apk --split-per-abi` + `flutter build appbundle`
-- [ ] iOS archive + TestFlight (if in scope)
-- [ ] `/docs/release.md` documents cert rotation, version bump, store submission
+- [x] `AppLogger` production-gated (warning+ in prod, debug+ in dev) — `PrettyPrinter` config, no method traces in prod
+- [x] Global error handlers wired in `main()` — `FlutterError.onError` + `PlatformDispatcher.instance.onError` → `AppLogger`
+- [x] `android/app/proguard-rules.pro` — Flutter, Drift, Supabase, Bluetooth printer, MLKit, secure storage, Freezed, kotlinx.serialization
+- [x] `docs/release.md` — full procedure: pre-flight checklist, keystore + `key.properties` + `build.gradle` signingConfig, ProGuard wire-up, `flutter build apk/appbundle` commands, iOS ipa, cert pinning rotation (extract → overlap → drop), Play Store submission checklist, post-release tagging
+- [x] README updated with Build Commands section + link to release.md
+- [x] No `print()` calls in feature code (all logging via `Logger` / `AppLogger`)
+- [ ] App signing wired in `build.gradle` — **user-specific (keystore not in repo)**; full instructions in release.md
+- [ ] iOS archive + TestFlight — **deferred unless requested**, instructions in release.md
+- [ ] CI test diffing DDL ⇄ Freezed models — **deferred** (master prompt §14 risk #10)
 
 ---
 

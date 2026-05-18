@@ -30,13 +30,30 @@ Env vars are validated at startup via [`envied`](https://pub.dev/packages/envied
 
 ## Build Commands
 
-> Filled in during **Phase 1 / Phase 7**.
-
 ```sh
-# placeholder
-flutter build apk --split-per-abi
-flutter build appbundle
+# Dev (hot reload)
+flutter run
+
+# Codegen (Drift, Freezed, Riverpod, envied)
+dart run build_runner build --delete-conflicting-outputs
+dart run build_runner watch --delete-conflicting-outputs   # continuous
+
+# Tests
+flutter test
+flutter test test/core/pricing/pricing_test.dart           # specific file
+
+# Lint
+flutter analyze
+
+# Android release (see docs/release.md for full procedure)
+flutter build apk --split-per-abi --release
+flutter build appbundle --release
+
+# iOS release
+flutter build ipa --release
 ```
+
+Full release procedure incl. signing, cert rotation, store submission: [`docs/release.md`](docs/release.md).
 
 ---
 

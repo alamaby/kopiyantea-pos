@@ -32,6 +32,9 @@ class BranchDao extends DatabaseAccessor<AppDatabase> with _$BranchDaoMixin {
   Future<void> upsertUser(AppUsersCompanion companion) =>
       into(appUsers).insertOnConflictUpdate(companion);
 
+  Future<void> upsertUserBranchAccess(UserBranchAccessesCompanion companion) =>
+      into(userBranchAccesses).insertOnConflictUpdate(companion);
+
   Stream<List<UserBranchAccessRow>> watchAccessForUser(String userId) =>
       (select(userBranchAccesses)
             ..where((a) => a.userId.equals(userId)))

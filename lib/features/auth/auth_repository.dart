@@ -7,6 +7,7 @@ import '../../core/database/daos/branch_dao.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/network/supabase_providers.dart';
 import '../../core/storage/secure_storage.dart';
+import '../../core/sync/sync_repository.dart';
 import '../../core/utils/result.dart';
 
 /// Auth errors surfaced to the UI.
@@ -35,10 +36,12 @@ class AuthRepository {
   AuthRepository({
     required this.branchDao,
     required this.secureStorage,
+    required this.syncRepository,
   });
 
   final BranchDao branchDao;
   final SecureStorage secureStorage;
+  final SyncRepository syncRepository;
   final Logger _log = Logger();
 
   /// Lazy access — returns null when Supabase isn't initialized (e.g. dev
@@ -69,6 +72,12 @@ class AuthRepository {
       if (uid == null) return const Err(AuthError.invalidCredentials);
 
       await secureStorage.write(SecureStorage.kLastSignedInEmail, email);
+
+      // Pull the user's auth context (app_users + branch access + branches)
+      // BEFORE resolving locally — otherwise first-time sign-in on this
+      // device fails with userNotRegistered.
+      await syncRepository.pullMyAuthContext(uid);
+
       return _resolveAppUser(uid, signOutOnFailure: true);
     } on AuthException catch (e) {
       _log.w('[Auth] sign-in failed: ${e.message}');
@@ -137,5 +146,6 @@ final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(
     branchDao: ref.watch(branchDaoProvider),
     secureStorage: ref.watch(secureStorageProvider),
+    syncRepository: ref.watch(syncRepositoryProvider),
   ),
 );

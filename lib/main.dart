@@ -10,6 +10,7 @@ import 'core/config/env.dart';
 import 'core/database/app_database.dart';
 import 'core/database/database_provider.dart';
 import 'core/database/seed_service.dart';
+import 'core/network/pinned_http_client.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/settings_provider.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -46,9 +47,13 @@ Future<void> main() async {
     await Supabase.initialize(
       url: Env.supabaseUrl,
       anonKey: Env.supabaseAnonKey,
-      // Phase 6d will inject the pinned HTTP client here.
+      // Cert pinning (ADR-0010): when fingerprints are configured, every
+      // HTTP request validates the TLS leaf against the allowlist. When
+      // empty (dev), falls back to default http.Client.
+      httpClient: buildPinnedHttpClient(Env.certFingerprints),
     );
-    log.i('Supabase initialized for ${Env.appEnv}');
+    log.i('Supabase initialized for ${Env.appEnv} '
+        '(pinning: ${Env.certFingerprints.isNotEmpty ? "on" : "off"})');
   } catch (e, st) {
     log.w('Supabase init failed — running offline-only',
         error: e, stackTrace: st);

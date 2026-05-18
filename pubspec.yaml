@@ -57,6 +57,7 @@ dependencies:
   # Networking + cert pinning
   dio: ^5.5.0+1
   http_certificate_pinning: ^3.0.0
+  crypto: ^3.0.5
 
   # Env
   envied: ^0.5.4+1

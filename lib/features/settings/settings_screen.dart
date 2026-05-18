@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/sync/sync_provider.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
@@ -41,6 +44,8 @@ class SettingsScreen extends ConsumerWidget {
             _ThemeSection(settings: s),
             const SizedBox(height: AppSpacing.lg),
             _DeviceSection(settings: s),
+            const SizedBox(height: AppSpacing.lg),
+            const _SyncSection(),
             const SizedBox(height: AppSpacing.lg),
             const _AboutSection(),
             const SizedBox(height: AppSpacing.lg),
@@ -373,5 +378,108 @@ class _SignOutSection extends ConsumerWidget {
     );
     if (confirmed != true) return;
     await ref.read(authProvider.notifier).signOut();
+  }
+}
+
+// ── Sync section ──────────────────────────────────────────────────────────────
+
+class _SyncSection extends ConsumerWidget {
+  const _SyncSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pendingAsync = ref.watch(pendingOutboxCountProvider);
+    final syncState = ref.watch(syncProvider);
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const _SectionHeader(label: 'Sinkronisasi'),
+              const Spacer(),
+              pendingAsync.maybeWhen(
+                data: (count) => count > 0
+                    ? AppBadge(
+                        label: '$count menunggu',
+                        icon: Icons.cloud_upload_outlined,
+                        tone: AppBadgeTone.warning,
+                      )
+                    : const AppBadge(
+                        label: 'Tersinkron',
+                        icon: Icons.cloud_done_outlined,
+                        tone: AppBadgeTone.success,
+                      ),
+                orElse: () => const SizedBox.shrink(),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          _Row(
+            label: 'Terakhir sinkron',
+            value: syncState.lastSyncAt == null
+                ? 'Belum pernah'
+                : formatDateTime(syncState.lastSyncAt!),
+          ),
+          if (syncState.lastPushed > 0 || syncState.lastFailed > 0)
+            _Row(
+              label: 'Hasil terakhir',
+              value: '${syncState.lastPushed} terkirim, '
+                  '${syncState.lastFailed} gagal',
+            ),
+          if (syncState.lastError != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.sm),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEE2E2),
+                borderRadius: AppRadius.radiusSm,
+              ),
+              child: Text(
+                syncState.lastError!,
+                style: AppTypography.labelSm
+                    .copyWith(color: AppColors.danger),
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+          AppButton(
+            label: syncState.isSyncing ? 'Menyinkronkan…' : 'Sinkron Sekarang',
+            icon: Icons.sync,
+            onPressed: syncState.isSyncing
+                ? null
+                : () => ref.read(syncProvider.notifier).syncNow(),
+            isLoading: syncState.isSyncing,
+            fullWidth: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: AppTypography.bodyMd
+                  .copyWith(color: context.colors.textSecondary),
+            ),
+          ),
+          Text(value, style: AppTypography.bodyMd),
+        ],
+      ),
+    );
   }
 }

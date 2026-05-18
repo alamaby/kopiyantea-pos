@@ -246,8 +246,23 @@
 - [x] `CheckoutUseCase` provider — pakai `currentUserProvider.id`
 - [ ] Server-side lockout via Edge Function — deferred (Supabase rate limiting suffices for MVP)
 
-### 6d — Cert pinning HTTP client — **TODO**
-### 6e — Sync (pull master + push outbox + workmanager) — **TODO**
+### 6d — Cert pinning HTTP client — **DONE DEV**
+- [x] `lib/core/network/pinned_http_client.dart` — `buildPinnedHttpClient(fingerprints)` returns http.Client backed by Dart `HttpClient` with `SecurityContext(withTrustedRoots: false)` + `badCertificateCallback` doing SHA-256 fingerprint match
+- [x] Accepts both `AA:BB:CC:...` and `AABBCC...` fingerprint forms
+- [x] Empty fingerprints → falls back to default http.Client (dev mode); production gated by `Env.validate()`
+- [x] Wired into `Supabase.initialize(httpClient: ...)` in main.dart
+- [x] Logs rejected fingerprints for debugging
+### 6e — Sync MVP (push outbox + pull auth context) — **DONE DEV**
+- [x] `BranchDao.upsertUserBranchAccess` added
+- [x] `lib/core/sync/sync_dtos.dart` — Row→JSON for `TransactionRow`/`TransactionItemRow`/`InventoryMovementRow`/`CustomerRow`; JSON→Companion for `AppUser`/`UserBranchAccess`/`Branch`
+- [x] `SyncRepository.pullMyAuthContext(userId)` — pulls user + branch access + accessible branches; called in `AuthRepository.signIn` so first-time Supabase signin on a fresh device works
+- [x] `SyncRepository.pushOutbox()` — drains outbox FIFO; tx items + linked inventory_movements ride on parent push (idempotent ON CONFLICT DO NOTHING); customers use LWW
+- [x] Exponential backoff schedule 1s/5s/30s/5m/30m on failure
+- [x] `SyncState` Freezed + `Sync` notifier with `syncNow()` manual trigger
+- [x] `pendingOutboxCountProvider` (Stream from outbox DAO)
+- [x] Settings `_SyncSection` — badge (Tersinkron / N menunggu), last sync timestamp, last result counters, error banner, Sinkron Sekarang button
+- [ ] Master data pull (products, branch_products, inventory, recipes, customers, receipt_settings) — deferred
+- [ ] Background sync via workmanager — deferred (0.5.2 broken; need 0.6.x or alternative)
 
 ## Phase 7 — Optimization & Release — **TODO**
 

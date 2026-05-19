@@ -40,6 +40,11 @@ class InventoryListScreen extends ConsumerWidget {
           orElse: () => const Text('Stok'),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/inventory/new'),
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah Item'),
+      ),
       body: branchAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(

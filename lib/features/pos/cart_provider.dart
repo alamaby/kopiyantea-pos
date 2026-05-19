@@ -24,6 +24,7 @@ class CartNotifier extends _$CartNotifier {
     required ProductRow product,
     required BranchProductRow branchProduct,
     String? notes,
+    List<CartItemOption> selectedOptions = const [],
   }) {
     final snapshot = effectiveUnitPrice(
       basePrice: product.basePrice,
@@ -33,11 +34,16 @@ class CartNotifier extends _$CartNotifier {
       now: DateTime.now(),
     );
 
+    // Two lines are mergeable only if their product, branch, notes AND
+    // selected option set all match — different modifier choices live on
+    // their own line.
+    final optionsKey = _optionsKey(selectedOptions);
     final idx = state.items.indexWhere(
       (i) =>
           i.product.id == product.id &&
           i.branchProduct.branchId == branchProduct.branchId &&
-          i.notes == notes,
+          i.notes == notes &&
+          _optionsKey(i.selectedOptions) == optionsKey,
     );
 
     if (idx >= 0) {
@@ -51,9 +57,17 @@ class CartNotifier extends _$CartNotifier {
           priceSnapshot: snapshot,
           quantity: 1,
           notes: notes,
+          selectedOptions: selectedOptions,
         ),
       ]);
     }
+  }
+
+  /// Stable key for option-set equality. Sorts by optionId so order-of-tap
+  /// in the picker doesn't break merging.
+  String _optionsKey(List<CartItemOption> opts) {
+    final ids = opts.map((o) => o.optionId).toList()..sort();
+    return ids.join('|');
   }
 
   void incrementQuantity(int index) {
@@ -100,7 +114,7 @@ class CartNotifier extends _$CartNotifier {
 
   double get subtotal => state.items.fold(
         0.0,
-        (sum, item) => sum + item.priceSnapshot * item.quantity,
+        (sum, item) => sum + item.lineSubtotal,
       );
 
   int get itemCount =>

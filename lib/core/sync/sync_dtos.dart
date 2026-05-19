@@ -76,6 +76,106 @@ extension CustomerSyncDto on CustomerRow {
       };
 }
 
+// ── FEAT-004 / 005 / 006 / 001 — additional push DTOs ─────────────────────────
+
+extension BranchSyncDto on BranchRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'name': name,
+        'address': address,
+        'phone': phone,
+        'timezone': timezone,
+        'is_active': isActive,
+        'tax_percentage': taxPercentage,
+        'tax_label': taxLabel,
+        'tax_inclusive': taxInclusive,
+        'failed_login_lockout_threshold': failedLoginLockoutThreshold,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+}
+
+extension InventoryItemSyncDto on InventoryItemRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'branch_id': branchId,
+        'name': name,
+        'unit': unit.name,
+        // cached_stock is server-authoritative; do NOT push it from client.
+        'min_stock': minStock,
+        'cost_per_unit': costPerUnit,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+}
+
+extension AppUserSyncDto on AppUserRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'full_name': fullName,
+        'global_role': globalRole.name,
+        'email': email,
+        'is_active': isActive,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+}
+
+extension UserBranchAccessSyncDto on UserBranchAccessRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'user_id': userId,
+        'branch_id': branchId,
+        'role_at_branch': roleAtBranch?.name,
+      };
+}
+
+extension PendingInvitationSyncDto on PendingInvitationRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'email': email,
+        'full_name': fullName,
+        'global_role': globalRole.name,
+        'branch_ids_csv': branchIdsCsv,
+        'invited_by': invitedBy,
+        'created_at': createdAt.toIso8601String(),
+      };
+}
+
+extension OptionGroupSyncDto on OptionGroupRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'name': name,
+        'is_required': isRequired,
+        'is_multi_select': isMultiSelect,
+        'sort_order': sortOrder,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+}
+
+extension OptionSyncDto on OptionRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'group_id': groupId,
+        'name': name,
+        'price_delta': priceDelta,
+        'sort_order': sortOrder,
+        'is_default': isDefault,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+}
+
+extension TransactionItemOptionSyncDto on TransactionItemOptionRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'transaction_item_id': transactionItemId,
+        'option_group_name_snapshot': optionGroupNameSnapshot,
+        'option_name_snapshot': optionNameSnapshot,
+        'price_delta_snapshot': priceDeltaSnapshot,
+      };
+}
+
 // ── Pull DTOs (JSON → Drift Companion) ────────────────────────────────────────
 
 T _enumByName<T extends Enum>(List<T> values, String name) =>
@@ -90,11 +190,26 @@ AppUsersCompanion appUserFromJson(Map<String, dynamic> json) =>
       fullName: json['full_name'] as String,
       globalRole:
           _enumByName(GlobalRole.values, json['global_role'] as String),
+      email: Value(json['email'] as String?),
       isActive: Value(json['is_active'] as bool? ?? true),
       failedLoginCount: Value(json['failed_login_count'] as int? ?? 0),
       lockedUntil: Value(_maybeDate(json['locked_until'])),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+
+PendingInvitationsCompanion pendingInvitationFromJson(
+  Map<String, dynamic> json,
+) =>
+    PendingInvitationsCompanion.insert(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      fullName: json['full_name'] as String,
+      globalRole:
+          _enumByName(GlobalRole.values, json['global_role'] as String),
+      branchIdsCsv: Value(json['branch_ids_csv'] as String? ?? ''),
+      invitedBy: Value(json['invited_by'] as String?),
+      createdAt: DateTime.parse(json['created_at'] as String),
     );
 
 UserBranchAccessesCompanion userBranchAccessFromJson(

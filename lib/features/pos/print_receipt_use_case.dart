@@ -30,6 +30,13 @@ class PrintReceiptUseCase {
         ? null
         : await customerDao.getById(tx.customerId!);
 
+    // FEAT-001 — fetch modifier snapshots for each item to render under
+    // the line name on the receipt.
+    final optionDao = _ref.read(optionDaoProvider);
+    final optionsByItem = await optionDao.getSnapshotsForItems(
+      items.map((i) => i.id).toList(),
+    );
+
     final payload = ReceiptPayload(
       transactionId: tx.id,
       timestamp: tx.clientCreatedAt,
@@ -43,6 +50,11 @@ class PrintReceiptUseCase {
                 priceSnapshot: it.priceSnapshot,
                 subtotal: it.subtotal,
                 notes: it.notes,
+                options: (optionsByItem[it.id] ?? const [])
+                    .map((o) => o.priceDeltaSnapshot == 0
+                        ? '${o.optionGroupNameSnapshot}: ${o.optionNameSnapshot}'
+                        : '${o.optionGroupNameSnapshot}: ${o.optionNameSnapshot} (+${o.priceDeltaSnapshot.toStringAsFixed(0)})')
+                    .toList(growable: false),
               ))
           .toList(growable: false),
       subtotal: tx.subtotal,

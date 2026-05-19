@@ -31,12 +31,44 @@ class AppUsers extends Table {
   TextColumn get globalRole => text().map(
         const EnumNameConverter<GlobalRole>(GlobalRole.values),
       )();
+  /// Added in schema v3 (FEAT-006). Nullable for backward compatibility with
+  /// rows seeded before invite flow existed.
+  TextColumn get email => text().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   IntColumn get failedLoginCount =>
       integer().withDefault(const Constant(0))();
   DateTimeColumn get lockedUntil => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Pre-auth user record created by owner via the User Management UI.
+///
+/// Flow (FEAT-006, no service_role needed on client):
+/// 1. Owner adds invite: name + email + role + branch ids (CSV)
+/// 2. Invitee installs the app and signs up to Supabase using that email
+/// 3. On first sign-in, AuthRepository looks up `pending_invitations` by email,
+///    creates the `app_users` row with auth.uid + role, fans out
+///    `user_branch_access` rows, then deletes the invitation.
+///
+/// RLS: select by own email OR owner; insert/delete by owner only.
+@DataClassName('PendingInvitationRow')
+class PendingInvitations extends Table {
+  TextColumn get id => text()();
+  TextColumn get email => text()();
+  TextColumn get fullName => text()();
+  TextColumn get globalRole => text().map(
+        const EnumNameConverter<GlobalRole>(GlobalRole.values),
+      )();
+  /// Comma-separated branch ids the invitee should get access to. Each entry
+  /// becomes a `user_branch_access` row at claim time. Empty string = no
+  /// branch access (e.g. an owner-only invite).
+  TextColumn get branchIdsCsv => text().withDefault(const Constant(''))();
+  TextColumn get invitedBy => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
 
   @override
   Set<Column<Object>> get primaryKey => {id};

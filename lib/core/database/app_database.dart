@@ -42,6 +42,8 @@ part 'app_database.g.dart';
     MenuOptions,
     ProductOptionGroups,
     TransactionItemOptions,
+    // FEAT-006 — pending invitations table (added at schemaVersion 3)
+    PendingInvitations,
   ],
   // DAOs removed from annotation — instantiated as lazy getters below.
 )
@@ -49,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -64,6 +66,11 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(menuOptions);
             await m.createTable(productOptionGroups);
             await m.createTable(transactionItemOptions);
+          }
+          if (from < 3) {
+            // FEAT-006 — add `email` to app_users + pending_invitations table.
+            await m.addColumn(appUsers, appUsers.email);
+            await m.createTable(pendingInvitations);
           }
         },
         beforeOpen: (_) async {

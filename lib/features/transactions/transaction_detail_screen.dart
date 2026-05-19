@@ -78,7 +78,7 @@ class _DetailBody extends ConsumerWidget {
                   ),
             orElse: () => const SizedBox.shrink(),
           ),
-        _ItemsCard(items: data.items),
+        _ItemsCard(items: data.items, optionsByItemId: data.optionsByItemId),
         const SizedBox(height: AppSpacing.lg),
         _TotalsCard(tx: tx),
         const SizedBox(height: AppSpacing.lg),
@@ -219,9 +219,10 @@ class _HeaderCard extends StatelessWidget {
 }
 
 class _ItemsCard extends StatelessWidget {
-  const _ItemsCard({required this.items});
+  const _ItemsCard({required this.items, required this.optionsByItemId});
 
   final List<TransactionItemRow> items;
+  final Map<String, List<TransactionItemOptionRow>> optionsByItemId;
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +234,10 @@ class _ItemsCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           for (var i = 0; i < items.length; i++) ...[
             if (i > 0) const Divider(height: AppSpacing.lg),
-            _ItemRow(item: items[i]),
+            _ItemRow(
+              item: items[i],
+              options: optionsByItemId[items[i].id] ?? const [],
+            ),
           ],
         ],
       ),
@@ -242,9 +246,10 @@ class _ItemsCard extends StatelessWidget {
 }
 
 class _ItemRow extends StatelessWidget {
-  const _ItemRow({required this.item});
+  const _ItemRow({required this.item, required this.options});
 
   final TransactionItemRow item;
+  final List<TransactionItemOptionRow> options;
 
   @override
   Widget build(BuildContext context) {
@@ -271,6 +276,30 @@ class _ItemRow extends StatelessWidget {
           '${formatRupiah(item.priceSnapshot)} per item',
           style: AppTypography.bodySm.copyWith(color: context.colors.textSecondary),
         ),
+        // FEAT-001 — modifier snapshot list.
+        if (options.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.xs),
+          for (final o in options)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                children: [
+                  const Icon(Icons.tune_outlined,
+                      size: 12, color: AppColors.accent),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      '${o.optionGroupNameSnapshot}: ${o.optionNameSnapshot}'
+                      '${o.priceDeltaSnapshot == 0 ? "" : " (+${formatRupiah(o.priceDeltaSnapshot)})"}',
+                      style: AppTypography.labelSm.copyWith(
+                        color: context.colors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
         if (item.notes != null && item.notes!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.xs),
           Row(

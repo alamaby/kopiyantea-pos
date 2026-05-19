@@ -16,8 +16,16 @@ import 'features/more/more_screen.dart';
 import 'features/placeholders/placeholder_screen.dart';
 import 'features/pos/pos_screen.dart';
 import 'features/reports/reports_screen.dart';
+import 'features/inventory/inventory_item_form_screen.dart';
+import 'features/inventory/stock_movement_screen.dart';
+import 'features/modifiers/option_group_form_screen.dart';
+import 'features/modifiers/option_groups_screen.dart';
+import 'features/modifiers/product_options_screen.dart';
 import 'features/settings/printer_settings_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/settings/tax_settings_screen.dart';
+import 'features/users/user_form_screen.dart';
+import 'features/users/user_list_screen.dart';
 import 'features/transactions/transaction_detail_screen.dart';
 import 'features/transactions/transaction_list_screen.dart';
 
@@ -173,6 +181,76 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/settings/printer',
         name: 'printerSettings',
         builder: (_, __) => const PrinterSettingsScreen(),
+      ),
+      // FEAT-004 — per-branch tax settings (owner-gated in Settings UI).
+      GoRoute(
+        path: '/more/settings/tax',
+        name: 'taxSettings',
+        builder: (_, __) => const TaxSettingsScreen(),
+      ),
+      // FEAT-005 — inventory item create/edit + standalone stock movement.
+      GoRoute(
+        path: '/inventory/new',
+        name: 'inventoryItemNew',
+        builder: (_, __) => const InventoryItemFormScreen(),
+      ),
+      GoRoute(
+        path: '/inventory/:id/edit',
+        name: 'inventoryItemEdit',
+        builder: (_, state) => InventoryItemFormScreen(
+          itemId: state.pathParameters['id'],
+        ),
+      ),
+      GoRoute(
+        path: '/inventory/:id/movement',
+        name: 'inventoryItemMovement',
+        builder: (_, state) => StockMovementScreen(
+          itemId: state.pathParameters['id']!,
+        ),
+      ),
+      // FEAT-006 — user management.
+      GoRoute(
+        path: '/more/settings/users',
+        name: 'users',
+        builder: (_, __) => const UserListScreen(),
+      ),
+      GoRoute(
+        path: '/more/settings/users/new',
+        name: 'userNew',
+        builder: (_, __) => const UserFormScreen(),
+      ),
+      GoRoute(
+        path: '/more/settings/users/:id',
+        name: 'userEdit',
+        builder: (_, state) => UserFormScreen(
+          userId: state.pathParameters['id'],
+        ),
+      ),
+      // FEAT-001 — modifier system management.
+      GoRoute(
+        path: '/more/settings/modifiers',
+        name: 'optionGroups',
+        builder: (_, __) => const OptionGroupsScreen(),
+      ),
+      GoRoute(
+        path: '/more/settings/modifiers/new',
+        name: 'optionGroupNew',
+        builder: (_, __) => const OptionGroupFormScreen(),
+      ),
+      GoRoute(
+        path: '/more/settings/modifiers/:id',
+        name: 'optionGroupEdit',
+        builder: (_, state) => OptionGroupFormScreen(
+          groupId: state.pathParameters['id'],
+        ),
+      ),
+      // FEAT-001 — link option groups to a product.
+      GoRoute(
+        path: '/products/:id/options',
+        name: 'productOptions',
+        builder: (_, state) => ProductOptionsScreen(
+          productId: state.pathParameters['id']!,
+        ),
       ),
     ],
     errorBuilder: (_, state) => Scaffold(

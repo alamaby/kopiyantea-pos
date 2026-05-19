@@ -305,7 +305,7 @@ class _CartItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final subtotal = item.priceSnapshot * item.quantity;
+    final subtotal = item.lineSubtotal;
     final hasNotes = item.notes != null && item.notes!.isNotEmpty;
 
     return Container(
@@ -330,10 +330,22 @@ class _CartItemTile extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      '${formatRupiah(item.priceSnapshot)} × ${item.quantity}',
+                      '${formatRupiah(item.effectiveUnitPrice)} × ${item.quantity}',
                       style: AppTypography.bodySm
                           .copyWith(color: context.colors.textSecondary),
                     ),
+                    // FEAT-001 — modifier summary line.
+                    if (item.selectedOptions.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        item.selectedOptions
+                            .map((o) => o.optionName)
+                            .join(' · '),
+                        style: AppTypography.labelSm.copyWith(
+                          color: AppColors.accent,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

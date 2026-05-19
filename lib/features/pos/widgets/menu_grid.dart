@@ -12,8 +12,10 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
+import '../../modifiers/modifier_providers.dart';
 import '../cart_provider.dart';
 import '../menu_provider.dart';
+import 'option_picker_sheet.dart';
 
 class MenuGrid extends ConsumerWidget {
   const MenuGrid({required this.branchId, super.key});
@@ -84,11 +86,30 @@ class _MenuTile extends ConsumerWidget {
       color: context.colors.surface,
       borderRadius: AppRadius.radiusLg,
       child: InkWell(
-        onTap: () {
+        onTap: () async {
           HapticFeedback.selectionClick();
+          // FEAT-001 — if product has option groups, open picker first.
+          // We do a quick read; the picker itself watches reactively too.
+          final groups = await ref
+              .read(productOptionGroupsProvider(product.id).future);
+          if (!context.mounted) return;
+          if (groups.isEmpty) {
+            ref.read(cartNotifierProvider.notifier).addItem(
+                  product: product,
+                  branchProduct: bp,
+                );
+            return;
+          }
+          final picked = await OptionPickerSheet.show(
+            context,
+            productId: product.id,
+            productName: bp.customName ?? product.name,
+          );
+          if (picked == null) return; // user cancelled
           ref.read(cartNotifierProvider.notifier).addItem(
                 product: product,
                 branchProduct: bp,
+                selectedOptions: picked,
               );
         },
         borderRadius: AppRadius.radiusLg,

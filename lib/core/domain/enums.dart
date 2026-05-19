@@ -21,4 +21,16 @@ enum OutboxEntityType {
   transactionItem,
   inventoryMovement,
   customer,
+  // FEAT-004 — branch tax settings update.
+  branch,
+  // FEAT-005 — inventory item create/update + standalone (non-tx) movements.
+  inventoryItem,
+  // FEAT-006 — user/access management + pending invitations.
+  appUser,
+  userBranchAccess,
+  pendingInvitation,
+  // FEAT-001 — modifier system master writes.
+  optionGroup,
+  optionItem,
+  productOptionGroup,
 }

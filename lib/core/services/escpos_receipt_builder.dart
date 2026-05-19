@@ -97,6 +97,11 @@ class EscPosReceiptBuilder {
           styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
+      // FEAT-001 — modifier snapshot bullets under the line.
+      for (final opt in item.options) {
+        bytes += g.text('  - $opt',
+            styles: const PosStyles(fontType: PosFontType.fontB));
+      }
       if (item.notes != null && item.notes!.isNotEmpty) {
         bytes += g.text('  * ${item.notes}',
             styles: const PosStyles(fontType: PosFontType.fontB));

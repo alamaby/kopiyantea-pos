@@ -65,7 +65,7 @@ class CheckoutUseCase {
 
     final subtotal = cart.items.fold<double>(
       0,
-      (sum, item) => sum + item.priceSnapshot * item.quantity,
+      (sum, item) => sum + item.lineSubtotal,
     );
     final totals = computeTotals(
       subtotal: subtotal,
@@ -107,9 +107,27 @@ class CheckoutUseCase {
             );
 
         for (final item in cart.items) {
+          final itemId = uuid.v7();
           await db.into(db.transactionItems).insert(
-                _buildItemCompanion(txId: txId, item: item),
+                _buildItemCompanion(
+                  txId: txId,
+                  itemId: itemId,
+                  item: item,
+                ),
               );
+          // FEAT-001 — snapshot each selected modifier into
+          // transaction_item_options (append-only, immutable).
+          for (final opt in item.selectedOptions) {
+            await db.into(db.transactionItemOptions).insert(
+                  TransactionItemOptionsCompanion.insert(
+                    id: uuid.v7(),
+                    transactionItemId: itemId,
+                    optionGroupNameSnapshot: opt.groupName,
+                    optionNameSnapshot: opt.optionName,
+                    priceDeltaSnapshot: opt.priceDelta,
+                  ),
+                );
+          }
         }
 
         for (final mov in movements) {
@@ -188,16 +206,20 @@ class CheckoutUseCase {
 
   TransactionItemsCompanion _buildItemCompanion({
     required String txId,
+    required String itemId,
     required CartItem item,
   }) {
+    // priceSnapshot here = effective per-unit price *including* modifier
+    // deltas, so the receipt matches what the customer paid. The per-option
+    // breakdown lives in transaction_item_options.
     return TransactionItemsCompanion.insert(
-      id: uuid.v7(),
+      id: itemId,
       transactionId: txId,
       productId: item.product.id,
       nameSnapshot: item.branchProduct.customName ?? item.product.name,
-      priceSnapshot: item.priceSnapshot,
+      priceSnapshot: item.effectiveUnitPrice,
       quantity: item.quantity.toDouble(),
-      subtotal: item.priceSnapshot * item.quantity,
+      subtotal: item.lineSubtotal,
       notes: Value(item.notes),
     );
   }

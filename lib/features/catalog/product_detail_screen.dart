@@ -232,7 +232,29 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             branchId: branch.id,
             branchName: branch.name,
           ),
+          const SizedBox(height: AppSpacing.lg),
+          // FEAT-001 — modifier link card.
+          _ModifierLinkCard(productId: product.id),
         ],
+      ),
+    );
+  }
+}
+
+class _ModifierLinkCard extends ConsumerWidget {
+  const _ModifierLinkCard({required this.productId});
+  final String productId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.tune_outlined),
+        title: const Text('Modifier'),
+        subtitle: const Text(
+            'Atur grup pilihan (gula, ukuran, dll.) untuk produk ini'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => GoRouter.of(context).push('/products/$productId/options'),
       ),
     );
   }

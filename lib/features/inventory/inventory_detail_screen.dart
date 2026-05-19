@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/domain/enums.dart';
@@ -28,6 +29,19 @@ class InventoryDetailScreen extends ConsumerWidget {
           data: (item) => Text(item?.name ?? 'Detail Stok'),
           orElse: () => const Text('Detail Stok'),
         ),
+        actions: [
+          itemAsync.maybeWhen(
+            data: (item) => item == null
+                ? const SizedBox.shrink()
+                : IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: 'Ubah item',
+                    onPressed: () =>
+                        context.push('/inventory/${item.id}/edit'),
+                  ),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
       ),
       body: itemAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
@@ -63,6 +77,8 @@ class _DetailBody extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         _SummaryCard(item: item),
+        const SizedBox(height: AppSpacing.md),
+        _ActionRow(item: item),
         const SizedBox(height: AppSpacing.lg),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
@@ -144,6 +160,30 @@ class _SummaryCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({required this.item});
+  final InventoryItemRow item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () =>
+                context.push('/inventory/${item.id}/movement'),
+            icon: const Icon(Icons.add),
+            label: const Text('Catat Pergerakan'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

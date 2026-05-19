@@ -5,11 +5,17 @@ import '../../core/database/daos/dao_providers.dart';
 
 part 'transaction_providers.g.dart';
 
-/// Bundles a transaction header with its line items for the detail screen.
+/// Bundles a transaction header with its line items + modifier snapshots
+/// (FEAT-001) for the detail screen.
 class TransactionDetailData {
-  const TransactionDetailData({required this.transaction, required this.items});
+  const TransactionDetailData({
+    required this.transaction,
+    required this.items,
+    required this.optionsByItemId,
+  });
   final TransactionRow transaction;
   final List<TransactionItemRow> items;
+  final Map<String, List<TransactionItemOptionRow>> optionsByItemId;
 }
 
 /// Reactive paginated list of transactions for the active branch.
@@ -33,5 +39,13 @@ Future<TransactionDetailData?> transactionDetail(
   final tx = await dao.getTransactionById(transactionId);
   if (tx == null) return null;
   final items = await dao.getItemsForTransaction(transactionId);
-  return TransactionDetailData(transaction: tx, items: items);
+  final optionDao = ref.watch(optionDaoProvider);
+  final options = await optionDao.getSnapshotsForItems(
+    items.map((i) => i.id).toList(),
+  );
+  return TransactionDetailData(
+    transaction: tx,
+    items: items,
+    optionsByItemId: options,
+  );
 }

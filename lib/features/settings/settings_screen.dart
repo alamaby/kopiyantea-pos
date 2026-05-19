@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/domain/enums.dart';
 import '../../core/sync/sync_provider.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
@@ -25,6 +26,8 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsNotifierProvider);
     final branches = ref.watch(allBranchesProvider);
+    final currentUser = ref.watch(currentUserProvider);
+    final isOwner = currentUser?.globalRole == GlobalRole.owner;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pengaturan')),
@@ -44,12 +47,101 @@ class SettingsScreen extends ConsumerWidget {
             _ThemeSection(settings: s),
             const SizedBox(height: AppSpacing.lg),
             _DeviceSection(settings: s),
+            if (isOwner) ...[
+              const SizedBox(height: AppSpacing.lg),
+              const _OwnerSection(),
+            ],
             const SizedBox(height: AppSpacing.lg),
             const _SyncSection(),
             const SizedBox(height: AppSpacing.lg),
             const _AboutSection(),
             const SizedBox(height: AppSpacing.lg),
             const _SignOutSection(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Owner-only section (FEAT-004/005/006/001) ────────────────────────────────
+
+class _OwnerSection extends StatelessWidget {
+  const _OwnerSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(label: 'Khusus Pemilik'),
+          const SizedBox(height: AppSpacing.sm),
+          _OwnerTile(
+            icon: Icons.people_outline,
+            title: 'Pengguna',
+            subtitle: 'Tambah kasir, manajer, atur akses cabang',
+            route: '/more/settings/users',
+          ),
+          const Divider(height: 1),
+          _OwnerTile(
+            icon: Icons.tune_outlined,
+            title: 'Modifier Produk',
+            subtitle: 'Atur grup pilihan (gula, ukuran, dll.)',
+            route: '/more/settings/modifiers',
+          ),
+          const Divider(height: 1),
+          _OwnerTile(
+            icon: Icons.percent_outlined,
+            title: 'Pajak',
+            subtitle: 'Tarif & label per cabang (PB1/PPN)',
+            route: '/more/settings/tax',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OwnerTile extends StatelessWidget {
+  const _OwnerTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.route,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => GoRouter.of(context).push(route),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+        child: Row(
+          children: [
+            Icon(icon, color: context.colors.textSecondary, size: 20),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTypography.titleMd),
+                  Text(
+                    subtitle,
+                    style: AppTypography.bodySm.copyWith(
+                      color: context.colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right,
+                color: context.colors.textTertiary, size: 18),
           ],
         ),
       ),

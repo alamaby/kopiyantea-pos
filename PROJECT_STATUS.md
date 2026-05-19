@@ -2,7 +2,7 @@
 
 > Workflow: `TODO → IN PROGRESS → DONE DEV → DONE QA`. Forward-only. Regressions create new `[BUG]` entries.
 
-**Last updated:** 2026-05-18
+**Last updated:** 2026-05-19
 
 ---
 
@@ -316,6 +316,57 @@
 - **Estimated effort:** 1 provider + 1 screen + extend OutboxDao with `markDone`/`delete`. ~3 files. Small.
 
 
+
+## Phase 8 — Feature Backlog Sprint 1 — **DONE DEV** (awaiting build_runner + QA)
+
+Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh `dart run build_runner build --delete-conflicting-outputs` sebelum bisa di-build, dan satu migration Supabase manual.
+
+### Phase 8a — FEAT-004 Tax Settings UI per-branch — **DONE DEV**
+- [x] `BranchDao.updateById` partial update untuk tax columns
+- [x] `TaxSettingsScreen` (`/more/settings/tax`) — list cabang, edit tarif/label/inclusive, preview perhitungan, outbox enqueue
+- [x] Sync push `_pushBranch` di SyncRepository + `BranchSyncDto`
+- [x] Owner-gated link di Settings screen
+
+### Phase 8b — FEAT-005 Inventory Stock Management UI — **DONE DEV**
+- [x] `InventoryItemFormScreen` (`/inventory/new`, `/inventory/:id/edit`) — master CRUD untuk bahan baru
+- [x] `StockMovementScreen` (`/inventory/:id/movement`) — Pembelian / Penyesuaian / Limbah dengan qty + notes, local cached_stock reconciliation
+- [x] FAB "+ Tambah Item" di `InventoryListScreen`
+- [x] Tombol "Catat Pergerakan" + edit di `InventoryDetailScreen`
+- [x] Sync push standalone `inventoryItem` + non-tx `inventoryMovement` di SyncRepository + DTO
+
+### Phase 8c — FEAT-006 User Management — **DONE DEV**
+- [x] Drift schema v3: `app_users.email` column + `PendingInvitations` table
+- [x] `BranchDao` extensions: `watchAllUsers`, `getUserByEmail`, `getPendingInvitationByEmail`, `upsertPendingInvitation`, `deletePendingInvitation`, access diff helpers
+- [x] `UserListScreen` (`/more/settings/users`) — daftar user + pending invitations, FAB "Undang"
+- [x] `UserFormScreen` (`/more/settings/users/new`, `:id`) — invite (name + email + role + branch multi-select) + edit (role/active/access)
+- [x] **Invite-only claim flow** (no service_role needed): owner writes `pending_invitations` row → outbox push → invitee signs up to Supabase with that email → on first sign-in `AuthRepository._maybeClaimInvitation` matches by email, fans out into `app_users` + `user_branch_access`, deletes invitation
+- [x] `SyncRepository.pullPendingInvitationByEmail` + entity-aware push for app_user / user_branch_access / pending_invitation
+- [x] Supabase migration `20260519150001_user_management.sql` — `app_users.email` column + `pending_invitations` table + RLS (owner-write, self-read-by-email-match, self-claim insert into `app_users` + `user_branch_access`)
+- [x] Owner-gated link di Settings screen
+
+### Phase 8d — FEAT-001 Modifier System (full) — **DONE DEV**
+- [x] Schema sudah ada dari sebelumnya (Drift `option_tables.dart` + Supabase `20260518150011_modifiers.sql`)
+- [x] DAO `OptionDao` lengkap (group/option CRUD, product link, snapshot insert/read)
+- [x] `OptionGroupsScreen` (`/more/settings/modifiers`) — daftar grup, FAB "Grup Baru"
+- [x] `OptionGroupFormScreen` (`/more/settings/modifiers/new`, `:id`) — CRUD grup + bottom sheet untuk opsi (nama, +Rp delta, isDefault)
+- [x] `ProductOptionsScreen` (`/products/:id/options`) — checkbox list bind/unbind grup ke produk
+- [x] `OptionPickerSheet` POS — modal saat tambah ke kasir, multi/single select + required validation + default-seeding + total delta preview
+- [x] `cart_state` extended: `CartItemOption` + `selectedOptions` per item + `effectiveUnitPrice`/`lineSubtotal` helpers
+- [x] `cart_provider.addItem` accepts `selectedOptions`, merges line hanya jika option set sama persis
+- [x] `MenuGrid` membuka picker dulu kalau produk punya bound groups
+- [x] `CheckoutUseCase` insert `transaction_item_options` snapshots; `transaction_items.priceSnapshot` = effective unit price (base + deltas)
+- [x] `TransactionDetailScreen` & `transactionDetailProvider` show modifier snapshots di bawah item
+- [x] `ReceiptItem.options` field; `EscPosReceiptBuilder` print bullet `- Grup: Opsi` di bawah baris item
+- [x] `print_receipt_use_case` fetch snapshots via `OptionDao.getSnapshotsForItems`
+- [x] Sync push extended: `_pushTransaction` ikut push `transaction_item_options`, `_pushOptionGroup`/`_pushOption`/`_pushProductOptionGroup`
+- [x] Owner-gated "Modifier Produk" link di Settings + link card di Product Detail
+
+### Outstanding (untuk QA)
+- [ ] Run `dart run build_runner build --delete-conflicting-outputs` (Drift v3 + new providers + cart_state.freezed)
+- [ ] Apply Supabase migration `20260519150001_user_management.sql`
+- [ ] Test end-to-end: tax change → sync, stock movement → cached_stock reconcile, invite → sign up → claim, modifier checkout → receipt print
+
+---
 
 ### [FEAT-006] User Management UI (owner-only)
 - **Requested:** 2026-05-18 (Phase 4.3 QA)

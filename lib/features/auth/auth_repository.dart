@@ -1,10 +1,16 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/branch_dao.dart';
 import '../../core/database/daos/dao_providers.dart';
+import '../../core/database/daos/outbox_dao.dart';
+import '../../core/domain/enums.dart';
 import '../../core/network/supabase_providers.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/sync/sync_repository.dart';
@@ -35,11 +41,13 @@ class AuthedSession {
 class AuthRepository {
   AuthRepository({
     required this.branchDao,
+    required this.outboxDao,
     required this.secureStorage,
     required this.syncRepository,
   });
 
   final BranchDao branchDao;
+  final OutboxDao outboxDao;
   final SecureStorage secureStorage;
   final SyncRepository syncRepository;
   final Logger _log = Logger();
@@ -77,6 +85,17 @@ class AuthRepository {
       // BEFORE resolving locally — otherwise first-time sign-in on this
       // device fails with userNotRegistered.
       await syncRepository.pullMyAuthContext(uid);
+
+      // FEAT-006 — pull any pending invitation matching this email so the
+      // claim step below can run on the inviter's device too. Cheap: server
+      // returns single row or null.
+      await syncRepository.pullPendingInvitationByEmail(email);
+
+      // FEAT-006 — first-time claim of a pending invitation.
+      // If app_users row still doesn't exist locally after pull, but there's
+      // a pending_invitations row matching this email, create the user
+      // record + branch access from the invitation and delete it.
+      await _maybeClaimInvitation(uid: uid, email: email);
 
       return _resolveAppUser(uid, signOutOnFailure: true);
     } on AuthException catch (e) {
@@ -120,6 +139,86 @@ class AuthRepository {
     await secureStorage.clearAll();
   }
 
+  /// Claims a pending invitation matching [email] by creating the local
+  /// `app_users` row + `user_branch_access` rows + outbox pushes, then
+  /// deleting the invitation.
+  ///
+  /// Idempotent — no-op if the user already exists locally OR no invitation
+  /// matches. Server-side, `pending_invitations` is also looked up via
+  /// `pullMyAuthContext` (TODO: extend pull to fetch invitations by email
+  /// pre-claim; current pull is row-by-id which presumes the row exists).
+  Future<void> _maybeClaimInvitation({
+    required String uid,
+    required String email,
+  }) async {
+    // Already a registered user? Skip.
+    final existing = await branchDao.getUserById(uid);
+    if (existing != null) return;
+
+    final invitation =
+        await branchDao.getPendingInvitationByEmail(email);
+    if (invitation == null) {
+      _log.w('[Auth] no pending invitation for $email');
+      return;
+    }
+
+    final now = DateTime.now();
+    await branchDao.upsertUser(AppUsersCompanion.insert(
+      id: uid,
+      fullName: invitation.fullName,
+      globalRole: invitation.globalRole,
+      email: Value(invitation.email),
+      isActive: const Value(true),
+      createdAt: now,
+      updatedAt: now,
+    ));
+    await outboxDao.enqueue(OutboxItemsCompanion.insert(
+      id: const Uuid().v7(),
+      entityType: OutboxEntityType.appUser,
+      payload: jsonEncode({'id': uid}),
+      createdAt: now,
+    ));
+
+    final branchIds = invitation.branchIdsCsv
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty);
+    for (final branchId in branchIds) {
+      final branchRole = switch (invitation.globalRole) {
+        GlobalRole.owner => null,
+        GlobalRole.manager => BranchRole.manager,
+        GlobalRole.cashier => BranchRole.cashier,
+      };
+      await branchDao.upsertUserBranchAccess(
+        UserBranchAccessesCompanion.insert(
+          userId: uid,
+          branchId: branchId,
+          roleAtBranch: Value(branchRole),
+        ),
+      );
+      await outboxDao.enqueue(OutboxItemsCompanion.insert(
+        id: const Uuid().v7(),
+        entityType: OutboxEntityType.userBranchAccess,
+        payload: jsonEncode({
+          'user_id': uid,
+          'branch_id': branchId,
+          'action': 'upsert',
+        }),
+        createdAt: now,
+      ));
+    }
+
+    await branchDao.deletePendingInvitation(invitation.id);
+    await outboxDao.enqueue(OutboxItemsCompanion.insert(
+      id: const Uuid().v7(),
+      entityType: OutboxEntityType.pendingInvitation,
+      payload: jsonEncode({'id': invitation.id, 'action': 'delete'}),
+      createdAt: now,
+    ));
+    _log.i('[Auth] claimed invitation for $email → uid=$uid '
+        '(${branchIds.length} branches)');
+  }
+
   Future<Result<AuthedSession, AuthError>> _resolveAppUser(
     String uid, {
     required bool signOutOnFailure,
@@ -145,6 +244,7 @@ class AuthRepository {
 final authRepositoryProvider = Provider<AuthRepository>(
   (ref) => AuthRepository(
     branchDao: ref.watch(branchDaoProvider),
+    outboxDao: ref.watch(outboxDaoProvider),
     secureStorage: ref.watch(secureStorageProvider),
     syncRepository: ref.watch(syncRepositoryProvider),
   ),

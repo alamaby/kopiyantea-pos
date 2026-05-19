@@ -301,6 +301,29 @@ class SyncRepository {
     return (upserted: upserted, errors: errors);
   }
 
+  /// FEAT-006 — pull a pending invitation matching [email] so the local claim
+  /// flow can fan it out into `app_users` + `user_branch_access`. Returns
+  /// true when an invitation was upserted.
+  Future<bool> pullPendingInvitationByEmail(String email) async {
+    final sb = _sb;
+    if (sb == null) return false;
+    try {
+      final json = await sb
+          .from('pending_invitations')
+          .select()
+          .eq('email', email)
+          .maybeSingle();
+      if (json == null) return false;
+      await _ref.read(branchDaoProvider).upsertPendingInvitation(
+            pendingInvitationFromJson(json),
+          );
+      return true;
+    } catch (e) {
+      _log.w('[Sync] pullPendingInvitationByEmail failed', error: e);
+      return false;
+    }
+  }
+
   // ── PUSH ────────────────────────────────────────────────────────────────────
 
   /// Drains the outbox in FIFO. Each item is routed by `entityType`:
@@ -328,9 +351,33 @@ class SyncRepository {
             await _pushTransaction(id);
           case OutboxEntityType.customer:
             await _pushCustomer(id);
-          case OutboxEntityType.transactionItem:
+          case OutboxEntityType.branch:
+            await _pushBranch(id);
+          case OutboxEntityType.inventoryItem:
+            await _pushInventoryItem(id);
           case OutboxEntityType.inventoryMovement:
-            // Children are pushed alongside their parent; mark done here.
+            // Standalone movements (FEAT-005 manual adjustments) push here;
+            // transaction-attached movements ride on parent push and are
+            // marked done without a separate call (handled by the parent push
+            // when this case fires for a tx child id, the lookup returns null
+            // so we skip).
+            await _pushInventoryMovementIfStandalone(id);
+          case OutboxEntityType.appUser:
+            await _pushAppUser(id);
+          case OutboxEntityType.userBranchAccess:
+            // payload carries both user_id + branch_id for the composite key
+            await _pushUserBranchAccess(payload);
+          case OutboxEntityType.pendingInvitation:
+            await _pushPendingInvitation(id);
+          case OutboxEntityType.optionGroup:
+            await _pushOptionGroup(id);
+          case OutboxEntityType.optionItem:
+            await _pushOption(id);
+          case OutboxEntityType.productOptionGroup:
+            // payload carries both product_id + option_group_id
+            await _pushProductOptionGroup(payload);
+          case OutboxEntityType.transactionItem:
+            // Children of a transaction; rides on parent push.
             break;
         }
 
@@ -372,6 +419,18 @@ class SyncRepository {
             items.map((i) => i.toSupabaseJson()).toList(),
             ignoreDuplicates: true,
           );
+
+      // FEAT-001 — push modifier snapshots for these items.
+      final itemIds = items.map((i) => i.id).toList();
+      final snapshots = await (_db.select(_db.transactionItemOptions)
+            ..where((s) => s.transactionItemId.isIn(itemIds)))
+          .get();
+      if (snapshots.isNotEmpty) {
+        await sb.from('transaction_item_options').upsert(
+              snapshots.map((s) => s.toSupabaseJson()).toList(),
+              ignoreDuplicates: true,
+            );
+      }
     }
 
     // Push related inventory_movements (reference_id = txId)
@@ -395,6 +454,125 @@ class SyncRepository {
     }
     // Customers use LWW — let upsert update existing rows.
     await sb.from('customers').upsert(c.toSupabaseJson());
+  }
+
+  Future<void> _pushBranch(String branchId) async {
+    final sb = _sb!;
+    final dao = _ref.read(branchDaoProvider);
+    final b = await dao.getBranchById(branchId);
+    if (b == null) {
+      throw StateError('Branch $branchId not found in local DB');
+    }
+    await sb.from('branches').upsert(b.toSupabaseJson());
+  }
+
+  Future<void> _pushInventoryItem(String itemId) async {
+    final sb = _sb!;
+    final row = await (_db.select(_db.inventoryItems)
+          ..where((i) => i.id.equals(itemId)))
+        .getSingleOrNull();
+    if (row == null) {
+      throw StateError('InventoryItem $itemId not found in local DB');
+    }
+    await sb.from('inventory_items').upsert(row.toSupabaseJson());
+  }
+
+  Future<void> _pushInventoryMovementIfStandalone(String movementId) async {
+    final sb = _sb!;
+    final row = await (_db.select(_db.inventoryMovements)
+          ..where((m) => m.id.equals(movementId)))
+        .getSingleOrNull();
+    if (row == null) return; // child of a tx already pushed via parent
+    await sb
+        .from('inventory_movements')
+        .upsert(row.toSupabaseJson(), ignoreDuplicates: true);
+  }
+
+  Future<void> _pushAppUser(String userId) async {
+    final sb = _sb!;
+    final dao = _ref.read(branchDaoProvider);
+    final u = await dao.getUserById(userId);
+    if (u == null) {
+      throw StateError('AppUser $userId not found in local DB');
+    }
+    await sb.from('app_users').upsert(u.toSupabaseJson());
+  }
+
+  Future<void> _pushUserBranchAccess(Map<String, dynamic> payload) async {
+    final sb = _sb!;
+    final userId = payload['user_id'] as String;
+    final branchId = payload['branch_id'] as String;
+    final action = payload['action'] as String? ?? 'upsert';
+    if (action == 'delete') {
+      await sb
+          .from('user_branch_access')
+          .delete()
+          .eq('user_id', userId)
+          .eq('branch_id', branchId);
+      return;
+    }
+    final q = _db.select(_db.userBranchAccesses)
+      ..where((a) => a.userId.equals(userId))
+      ..where((a) => a.branchId.equals(branchId));
+    final row = await q.getSingleOrNull();
+    if (row == null) return;
+    await sb.from('user_branch_access').upsert(row.toSupabaseJson());
+  }
+
+  Future<void> _pushPendingInvitation(String invitationId) async {
+    final sb = _sb!;
+    final row = await (_db.select(_db.pendingInvitations)
+          ..where((i) => i.id.equals(invitationId)))
+        .getSingleOrNull();
+    if (row == null) {
+      // Deleted locally (likely claimed) — propagate delete to server.
+      await sb.from('pending_invitations').delete().eq('id', invitationId);
+      return;
+    }
+    await sb.from('pending_invitations').upsert(row.toSupabaseJson());
+  }
+
+  Future<void> _pushOptionGroup(String groupId) async {
+    final sb = _sb!;
+    final row = await (_db.select(_db.optionGroups)
+          ..where((g) => g.id.equals(groupId)))
+        .getSingleOrNull();
+    if (row == null) {
+      await sb.from('option_groups').delete().eq('id', groupId);
+      return;
+    }
+    await sb.from('option_groups').upsert(row.toSupabaseJson());
+  }
+
+  Future<void> _pushOption(String optionId) async {
+    final sb = _sb!;
+    final row = await (_db.select(_db.menuOptions)
+          ..where((o) => o.id.equals(optionId)))
+        .getSingleOrNull();
+    if (row == null) {
+      await sb.from('options').delete().eq('id', optionId);
+      return;
+    }
+    await sb.from('options').upsert(row.toSupabaseJson());
+  }
+
+  Future<void> _pushProductOptionGroup(Map<String, dynamic> payload) async {
+    final sb = _sb!;
+    final productId = payload['product_id'] as String;
+    final groupId = payload['option_group_id'] as String;
+    final action = payload['action'] as String? ?? 'upsert';
+    if (action == 'delete') {
+      await sb
+          .from('product_option_groups')
+          .delete()
+          .eq('product_id', productId)
+          .eq('option_group_id', groupId);
+      return;
+    }
+    await sb.from('product_option_groups').upsert({
+      'product_id': productId,
+      'option_group_id': groupId,
+    });
   }
 
   /// Exponential backoff: 1s, 5s, 30s, 5m, 30m, then plateau (master prompt §9.4).

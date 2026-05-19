@@ -8,6 +8,7 @@ class ReceiptItem {
     required this.priceSnapshot,
     required this.subtotal,
     this.notes,
+    this.options = const [],
   });
 
   final String name;
@@ -15,6 +16,9 @@ class ReceiptItem {
   final double priceSnapshot;
   final double subtotal;
   final String? notes;
+  /// FEAT-001 — bullet list of selected modifier names. Empty when product
+  /// has no modifiers.
+  final List<String> options;
 }
 
 /// Full data the printer needs to render a receipt.

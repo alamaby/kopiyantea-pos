@@ -4,10 +4,27 @@ import '../../core/database/app_database.dart';
 
 part 'cart_state.freezed.dart';
 
+/// A selected modifier option attached to a [CartItem] (FEAT-001).
+///
+/// Stores both the master IDs (for traceability) and immutable snapshot
+/// strings — the snapshots are what land in `transaction_item_options` at
+/// checkout so receipts survive master renames.
+@freezed
+class CartItemOption with _$CartItemOption {
+  const factory CartItemOption({
+    required String optionGroupId,
+    required String optionId,
+    required String groupName,
+    required String optionName,
+    required double priceDelta,
+  }) = _CartItemOption;
+}
+
 /// One line in the POS cart.
 ///
-/// [priceSnapshot] is pre-computed via `effectiveUnitPrice` at add-time and
-/// mirrors what will be stored in `transaction_items.price_snapshot`.
+/// [priceSnapshot] is the base unit price post-discount/override but
+/// EXCLUDING modifier deltas. Modifier deltas live in [selectedOptions]
+/// and are summed in by `lineSubtotal`/cart totals.
 @freezed
 class CartItem with _$CartItem {
   const factory CartItem({
@@ -16,7 +33,20 @@ class CartItem with _$CartItem {
     required double priceSnapshot,
     required int quantity,
     String? notes,
+    @Default([]) List<CartItemOption> selectedOptions,
   }) = _CartItem;
+}
+
+extension CartItemPricing on CartItem {
+  /// Sum of modifier deltas for one unit.
+  double get optionDelta =>
+      selectedOptions.fold<double>(0, (s, o) => s + o.priceDelta);
+
+  /// Effective per-unit price (base snapshot + modifier deltas).
+  double get effectiveUnitPrice => priceSnapshot + optionDelta;
+
+  /// Subtotal for this line.
+  double get lineSubtotal => effectiveUnitPrice * quantity;
 }
 
 /// Full in-memory POS cart state.

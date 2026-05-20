@@ -16,10 +16,17 @@ Stream<List<BranchRow>> allBranches(AllBranchesRef ref) {
 
 /// The currently active branch, derived from [SettingsNotifier.selectedBranchId].
 /// Returns null when no branch is selected (first run before seed).
+///
+/// Reactive (Stream) so changes to the branch row (e.g. tax % update via
+/// Tax Settings) flow into screens watching this provider — otherwise the
+/// POS cart would keep a stale `BranchRow` snapshot.
 @riverpod
-Future<BranchRow?> selectedBranch(SelectedBranchRef ref) async {
+Stream<BranchRow?> selectedBranch(SelectedBranchRef ref) async* {
   final settings = await ref.watch(settingsNotifierProvider.future);
   final id = settings.selectedBranchId;
-  if (id == null) return null;
-  return ref.watch(branchDaoProvider).getBranchById(id);
+  if (id == null) {
+    yield null;
+    return;
+  }
+  yield* ref.watch(branchDaoProvider).watchBranchById(id);
 }

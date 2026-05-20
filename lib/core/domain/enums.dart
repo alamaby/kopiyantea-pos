@@ -33,4 +33,10 @@ enum OutboxEntityType {
   optionGroup,
   optionItem,
   productOptionGroup,
+  // Opsi C (seed sync) — chain-wide catalog + per-branch overrides + recipes
+  // are pushed to Supabase via outbox so first-device seed data appears in
+  // server tables (otherwise transaction FKs reject sync).
+  product,
+  branchProduct,
+  productRecipe,
 }

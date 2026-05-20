@@ -303,7 +303,15 @@
   - Add tenant indicator in UI (branch picker shows tenant scope)
 - **Estimated effort:** 15-20 SQL migration files + RLS rewrite + onboarding UI + tenant-aware sync. Substantial — typically pre-launch hardening for SaaS pivot. Not needed for single-business deployment.
 
-### [FEAT-003] Outbox Queue Detail Screen
+### [FEAT-003] Outbox Queue Detail Screen — **DONE DEV** (2026-05-20)
+**Implemented:**
+- `OutboxDao.watchAll` / `deleteById` / `retryNow` / `retryAllFailed`
+- `/more/settings/sync` route → `OutboxQueueScreen`
+- Settings sync section: tombol "Lihat Antrian"
+- UI: list grouped by status (gagal/menunggu/selesai), per-row entity icon + label, payload preview, lastError banner, attempt count, retry/delete per row, retry-all from AppBar
+- Confirm dialog before delete (warning: lossy)
+
+**Backlog entry — original:**
 - **Requested:** 2026-05-18 (after first Supabase migrate)
 - **Use case:** When sync push fails (e.g., RLS reject from stale demo cashier_id, FK violation, network error mid-push), the badge shows "N gagal" but user has no way to inspect WHICH rows failed, WHY, or to clear them. Currently the only recovery is `adb shell pm clear` (lossy) or wait for backoff retries (which keep failing).
 - **Scope (Phase 7+):**
@@ -368,6 +376,70 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 
 ---
 
+### [FEAT-010] WhatsApp Business API Integration untuk Notifikasi Undangan
+- **Requested:** 2026-05-20 (FEAT-006 QA)
+- **Use case:** Owner saat ini harus secara manual kirim instruksi via WA setelah submit form undangan ([docs/inviting-users.md](docs/inviting-users.md) Langkah 3). Untuk owner dengan banyak staff atau onboarding massal (mis. buka cabang baru → undang 5 kasir sekaligus), step manual ini jadi friction + error-prone (lupa kirim, typo email).
+- **Scope:**
+  - Integrasi WhatsApp Business API (Meta Cloud API atau Twilio WhatsApp)
+  - Settings → tambah "Konfigurasi WhatsApp" (API token, phone number ID)
+  - Saat owner submit invitation: optional checkbox "Kirim notifikasi WA ke nomor [phone]"
+  - Phone number sebagai field tambahan di UserFormScreen (saat ini tidak ada)
+  - Template WA message dengan variable substitution (nama, role, cabang, email)
+  - Status "WA terkirim" di list undangan
+  - Retry button kalau gagal kirim
+- **Estimated effort:** Sedang-besar. Meta Business verification + setup template message + integration code. ~3-5 hari termasuk testing.
+- **Alternative simpler:** Deep link `whatsapp://send?phone=X&text=Y` di kode — tap tombol di list undangan langsung buka WA dengan template pre-filled. Tidak butuh API, tapi user harus tap kirim manual. ~1 file, 2 jam kerja.
+- **Dependency:** Phone number field di pending_invitations + form
+
+### [FEAT-011] Swipe-to-Cancel Invitation
+- **Requested:** 2026-05-20 (FEAT-006 QA)
+- **Use case:** Saat owner salah ketik email atau pikiran berubah (mis. kandidat tidak jadi diterima), tidak ada cara cancel undangan dari UI. Workaround saat ini: hapus manual via Supabase Dashboard → table `pending_invitations` → delete row. Tidak feasible untuk owner non-teknis.
+- **Scope:**
+  - `UserListScreen` — section "Diundang (belum aktif)" → tiap row jadi `Dismissible` dengan swipe-left action
+  - Konfirmasi dialog: "Batalkan undangan untuk [email]?" + warning "User tidak akan bisa klaim lagi dengan link yang sudah dikirim"
+  - Delete dari `pending_invitations` lokal + enqueue ke outbox (delete action)
+  - Sync push → DELETE row di Supabase
+  - Optional: tombol "Kirim ulang link" di place yang sama (resend magic link via owner — perlu Edge Function karena resend butuh service_role)
+- **Estimated effort:** Kecil. 1 widget edit + 1 DAO delete method + outbox enqueue pattern existing. ~2 file, 1 jam.
+
+### [FEAT-007] Remember Me at Login
+- **Requested:** 2026-05-20 (FEAT-006 QA)
+- **Use case:** Kasir/owner harus mengetik email + password tiap kali buka app — di shift sibuk ini gesekan. Supabase session sebenarnya sudah persisted via `flutter_secure_storage`, tapi UX-nya tidak ekspos: ada gap antara "session restored otomatis" vs "user mengira harus login tiap kali". Kalau session expire (1 jam default), user harus re-login dari nol.
+- **Scope:**
+  - Add "Ingat saya" checkbox di LoginScreen (default ON)
+  - Saat ON: simpan email terakhir di SharedPreferences, auto-fill di next launch
+  - Saat OFF: clear stored email + force signout setelah app keluar foreground
+  - Refresh token rotation lebih agresif (`autoRefreshToken: true` di Supabase init — sudah ON, tapi expose ke user kalau session expire)
+  - Settings entry: "Hapus sesi tersimpan" untuk forced clear (privacy)
+- **Estimated effort:** 1 ChangeNotifier + LoginScreen edit + secure storage key. ~3 file. Kecil.
+
+### [FEAT-008] Google Sign-In (OAuth)
+- **Requested:** 2026-05-20 (FEAT-006 QA)
+- **Use case:** Kasir non-teknis lebih familiar tap "Sign in with Google" daripada manage password baru. Mengurangi friction onboarding dan password-reset support burden. Supabase mendukung Google OAuth natively.
+- **Scope:**
+  - Setup Google Cloud Console project: OAuth client ID (web + Android + iOS)
+  - Supabase Dashboard → Authentication → Providers → Google → enable + paste client ID/secret
+  - Tambah package `google_sign_in` (atau pakai `supabase_flutter` native `signInWithOAuth(OAuthProvider.google)` via WebView/Chrome Custom Tabs)
+  - Tombol "Masuk dengan Google" di LoginScreen
+  - Handle session restore via `onAuthStateChange` (sudah ready dari FEAT-006 magic link)
+  - Claim flow tetap jalan (same path as magic link) — pending_invitations matching by email
+  - Android: tambah `google-services.json` dari Firebase/Google Cloud, configure SHA-1 di Google Console
+- **Estimated effort:** Sedang. Setup OAuth + integration ~2-3 jam. Test flow di Android real device wajib.
+- **Dependency:** [FEAT-006] selesai (claim flow + onAuthStateChange listener sudah ada)
+
+### [FEAT-009] Hold Order / Open Bill
+- **Requested:** 2026-05-20 (FEAT-006 QA)
+- **Use case:** Customer dine-in datang, pesan minum dulu sambil tunggu teman/keputusan order tambahan. Kasir butuh cara "park" cart current → ambil order lain → kembali ke order pertama saat customer siap bayar. Saat ini tidak ada cara menyimpan cart yang belum dibayar.
+- **Scope:**
+  - Drift table baru: `held_orders` (id, branchId, label/customerName/tableNumber, cartJson, createdAt, createdBy)
+  - Supabase migration: same schema dengan RLS branch-scoped
+  - PosScreen → tombol "Tahan Pesanan" di sebelah Checkout (saat cart tidak kosong) → prompt label/meja → save → clear cart
+  - PosScreen → tombol "Pesanan Tertahan" (badge dengan count) → bottom sheet list semua held → tap → restore cart, hapus dari held_orders
+  - Auto-expire: held > 24 jam dihapus saat startup (configurable)
+  - Receipt nanti: meja/label muncul di header struk
+  - Sync: held_orders ride outbox (LWW)
+- **Estimated effort:** Sedang. 1 table + 1 DAO + 1 provider + 2 UI entry points + 1 sheet. ~5-6 file.
+
 ### [FEAT-006] User Management UI (owner-only)
 - **Requested:** 2026-05-18 (Phase 4.3 QA)
 - **Use case:** Owner saat ini tidak punya jalur UI untuk menambah user baru (Manager / Kasir) dan assign role + branch access. User hanya bisa di-create via Supabase Dashboard + insert manual ke `app_users` + `user_branch_access`. Saat buka cabang baru atau onboard staff, ini blocker.
@@ -419,6 +491,17 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 - **Resolution timing:** Dedicated **Phase 4.6 — Modifier System**, setelah 4.3–4.5 selesai. Atau bisa juga jadi Phase 8 jika MVP-first prioritas.
 
 ## Bug Log
+
+### [BUG-002] Sync state hilang setelah navigate — **FIXED 2026-05-20**
+- Sync provider auto-dispose, jadi "Terakhir sinkron" selalu reset ke "Belum pernah" tiap kali Settings dibuka, meskipun sync barusan jalan
+- **Fix:** `@Riverpod(keepAlive: true)` di `Sync` notifier
+
+### [BUG-003] Tax 0% tidak bisa di-save — **FIXED 2026-05-20**
+- Tombol Simpan grey saat branch.taxPercentage sudah 0 dan user mengetik 0 (no-op detection di `_dirty`)
+- UMKM tanpa NPWP butuh konfirmasi 0% berulang, ini blocker
+- **Fix:** Drop `_dirty` check; Simpan selalu enabled saat input valid. Save idempotent.
+
+
 
 ### [BUG-001] Dark mode tidak rendered correctly di widget primitives — **FIXED in Phase 4.5a**
 

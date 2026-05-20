@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import '../../core/database/app_database.dart';
 import '../../core/utils/result.dart';
@@ -23,12 +27,49 @@ sealed class AuthState with _$AuthState {
 
 @riverpod
 class Auth extends _$Auth {
+  final Logger _log = Logger();
+  StreamSubscription<sb.AuthState>? _supaSub;
+
   @override
   AuthState build() {
     // Kick off session restore after the current frame. State starts as
     // loading; the microtask flips it to authenticated/unauthenticated.
     Future.microtask(_restoreSession);
+    // FEAT-006 — listen for magic-link redirects (or any out-of-band sign-in
+    // event from Supabase) and re-resolve so the claim flow runs.
+    _subscribeToSupabaseEvents();
+    ref.onDispose(() => _supaSub?.cancel());
     return const AuthState.loading();
+  }
+
+  void _subscribeToSupabaseEvents() {
+    final repo = ref.read(authRepositoryProvider);
+    final events = repo.authEvents;
+    if (events == null) return;
+    _supaSub = events.listen((e) async {
+      if (e.event != sb.AuthChangeEvent.signedIn) return;
+      // Skip if our state already mirrors this session — e.g. signIn() just
+      // finished and updated state directly. Magic-link redirects fire when
+      // current state is Unauthenticated/Loading.
+      final current = state;
+      if (current is Authenticated &&
+          current.user.id == e.session?.user.id) {
+        return;
+      }
+      final session = e.session;
+      if (session == null) return;
+      _log.i('[Auth] signed-in via Supabase event (magic link?) — '
+          'running claim flow');
+      state = const AuthState.loading();
+      final result = await repo.resolveSessionWithClaim(session);
+      state = switch (result) {
+        Ok(:final value) => AuthState.authenticated(
+            user: value.user,
+            branchId: value.branchId,
+          ),
+        Err() => const AuthState.unauthenticated(),
+      };
+    });
   }
 
   Future<void> _restoreSession() async {
@@ -42,6 +83,14 @@ class Auth extends _$Auth {
         branchId: restored.branchId,
       );
     }
+  }
+
+  /// FEAT-006 — request a magic-link email. UI shows a "check your email"
+  /// confirmation; auth state flips to Authenticated only after the user
+  /// taps the link and the redirect handler fires [resolveSessionWithClaim].
+  Future<Result<Unit, AuthError>> signInWithMagicLink(String email) async {
+    final repo = ref.read(authRepositoryProvider);
+    return repo.signInWithMagicLink(email);
   }
 
   Future<Result<Unit, AuthError>> signIn({

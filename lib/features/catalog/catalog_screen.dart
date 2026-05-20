@@ -58,6 +58,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_catalog',
         onPressed: () => context.push('/products/new'),
         icon: const Icon(Icons.add),
         label: const Text('Tambah Produk'),

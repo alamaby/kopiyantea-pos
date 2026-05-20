@@ -176,6 +176,44 @@ extension TransactionItemOptionSyncDto on TransactionItemOptionRow {
       };
 }
 
+// ── Opsi C — catalog push DTOs ──────────────────────────────────────────────
+
+extension ProductSyncDto on ProductRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'name': name,
+        'category': category,
+        'base_price': basePrice,
+        'sku': sku,
+        'image_url': imageUrl,
+        'is_active': isActive,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+}
+
+extension BranchProductSyncDto on BranchProductRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'product_id': productId,
+        'branch_id': branchId,
+        'price_override': priceOverride,
+        'is_available': isAvailable,
+        'custom_name': customName,
+        'discount_percentage': discountPercentage,
+        'discount_valid_until': discountValidUntil?.toIso8601String(),
+      };
+}
+
+extension ProductRecipeSyncDto on ProductRecipeRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'product_id': productId,
+        'branch_id': branchId,
+        'inventory_item_id': inventoryItemId,
+        'quantity_required': quantityRequired,
+      };
+}
+
 // ── Pull DTOs (JSON → Drift Companion) ────────────────────────────────────────
 
 T _enumByName<T extends Enum>(List<T> values, String name) =>

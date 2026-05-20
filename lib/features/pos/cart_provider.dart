@@ -88,6 +88,36 @@ class CartNotifier extends _$CartNotifier {
     _replaceAt(index, state.items[index].copyWith(notes: notes));
   }
 
+  /// Replace the modifier selections for the line at [index] (FEAT-001
+  /// tap-to-edit). If another line in the cart now has the exact same
+  /// (product, branch, notes, options) tuple, the two lines are merged.
+  void updateOptions(int index, List<CartItemOption> options) {
+    final current = state.items[index];
+    final updated = current.copyWith(selectedOptions: options);
+    final newKey = _optionsKey(options);
+    final mergeIdx = state.items.indexWhere((other) {
+      final i = state.items.indexOf(other);
+      return i != index &&
+          other.product.id == current.product.id &&
+          other.branchProduct.branchId == current.branchProduct.branchId &&
+          other.notes == current.notes &&
+          _optionsKey(other.selectedOptions) == newKey;
+    });
+    if (mergeIdx >= 0) {
+      final merged = state.items[mergeIdx].copyWith(
+        quantity: state.items[mergeIdx].quantity + current.quantity,
+      );
+      final items = [...state.items];
+      // Remove edited line first; adjust mergeIdx if it sits after.
+      items.removeAt(index);
+      final adjustedMergeIdx = mergeIdx > index ? mergeIdx - 1 : mergeIdx;
+      items[adjustedMergeIdx] = merged;
+      state = state.copyWith(items: items);
+    } else {
+      _replaceAt(index, updated);
+    }
+  }
+
   void removeItem(int index) {
     final items = [...state.items]..removeAt(index);
     state = state.copyWith(items: items);

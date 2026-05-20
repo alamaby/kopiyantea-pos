@@ -344,38 +344,49 @@ class SyncRepository {
     for (final item in pending) {
       try {
         final payload = jsonDecode(item.payload) as Map<String, dynamic>;
-        final id = payload['id'] as String;
+        // Composite-key entities (userBranchAccess, productOptionGroup) do
+        // NOT carry a top-level 'id' — they identify rows by (a,b). Cast
+        // nullable here so those payloads don't crash before reaching the
+        // composite-aware push function.
+        final id = payload['id'] as String?;
 
         switch (item.entityType) {
           case OutboxEntityType.transaction:
-            await _pushTransaction(id);
+            await _pushTransaction(id!);
           case OutboxEntityType.customer:
-            await _pushCustomer(id);
+            await _pushCustomer(id!);
           case OutboxEntityType.branch:
-            await _pushBranch(id);
+            await _pushBranch(id!);
           case OutboxEntityType.inventoryItem:
-            await _pushInventoryItem(id);
+            await _pushInventoryItem(id!);
           case OutboxEntityType.inventoryMovement:
             // Standalone movements (FEAT-005 manual adjustments) push here;
             // transaction-attached movements ride on parent push and are
             // marked done without a separate call (handled by the parent push
             // when this case fires for a tx child id, the lookup returns null
             // so we skip).
-            await _pushInventoryMovementIfStandalone(id);
+            await _pushInventoryMovementIfStandalone(id!);
           case OutboxEntityType.appUser:
-            await _pushAppUser(id);
+            await _pushAppUser(id!);
           case OutboxEntityType.userBranchAccess:
             // payload carries both user_id + branch_id for the composite key
             await _pushUserBranchAccess(payload);
           case OutboxEntityType.pendingInvitation:
-            await _pushPendingInvitation(id);
+            await _pushPendingInvitation(id!);
           case OutboxEntityType.optionGroup:
-            await _pushOptionGroup(id);
+            await _pushOptionGroup(id!);
           case OutboxEntityType.optionItem:
-            await _pushOption(id);
+            await _pushOption(id!);
           case OutboxEntityType.productOptionGroup:
             // payload carries both product_id + option_group_id
             await _pushProductOptionGroup(payload);
+          case OutboxEntityType.product:
+            await _pushProduct(id!);
+          case OutboxEntityType.branchProduct:
+            // payload carries product_id + branch_id composite
+            await _pushBranchProduct(payload);
+          case OutboxEntityType.productRecipe:
+            await _pushProductRecipe(id!);
           case OutboxEntityType.transactionItem:
             // Children of a transaction; rides on parent push.
             break;
@@ -573,6 +584,49 @@ class SyncRepository {
       'product_id': productId,
       'option_group_id': groupId,
     });
+  }
+
+  // ── Opsi C — seed catalog push ────────────────────────────────────────────
+
+  Future<void> _pushProduct(String productId) async {
+    final sb = _sb!;
+    final row = await (_db.select(_db.products)
+          ..where((p) => p.id.equals(productId)))
+        .getSingleOrNull();
+    if (row == null) {
+      throw StateError('Product $productId not found in local DB');
+    }
+    await sb.from('products').upsert(row.toSupabaseJson());
+  }
+
+  Future<void> _pushBranchProduct(Map<String, dynamic> payload) async {
+    final sb = _sb!;
+    final productId = payload['product_id'] as String;
+    final branchId = payload['branch_id'] as String;
+    final q = _db.select(_db.branchProducts)
+      ..where((bp) => bp.productId.equals(productId))
+      ..where((bp) => bp.branchId.equals(branchId));
+    final row = await q.getSingleOrNull();
+    if (row == null) {
+      throw StateError(
+        'BranchProduct ($productId,$branchId) not found in local DB',
+      );
+    }
+    await sb.from('branch_products').upsert(
+      row.toSupabaseJson(),
+      onConflict: 'product_id,branch_id',
+    );
+  }
+
+  Future<void> _pushProductRecipe(String recipeId) async {
+    final sb = _sb!;
+    final row = await (_db.select(_db.productRecipes)
+          ..where((r) => r.id.equals(recipeId)))
+        .getSingleOrNull();
+    if (row == null) {
+      throw StateError('ProductRecipe $recipeId not found in local DB');
+    }
+    await sb.from('product_recipes').upsert(row.toSupabaseJson());
   }
 
   /// Exponential backoff: 1s, 5s, 30s, 5m, 30m, then plateau (master prompt §9.4).

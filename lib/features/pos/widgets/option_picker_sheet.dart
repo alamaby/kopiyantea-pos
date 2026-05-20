@@ -20,15 +20,24 @@ import '../cart_state.dart';
 /// Returns `List<CartItemOption>?` — null on cancel; an empty list is a
 /// valid "no extras" confirmation when all groups are optional.
 class OptionPickerSheet extends ConsumerStatefulWidget {
-  const OptionPickerSheet({required this.productId, required this.productName, super.key});
+  const OptionPickerSheet({
+    required this.productId,
+    required this.productName,
+    this.initialSelections,
+    super.key,
+  });
 
   final String productId;
   final String productName;
+  /// When provided, the picker pre-fills with these instead of group defaults.
+  /// Used for tap-to-edit of an existing cart item.
+  final List<CartItemOption>? initialSelections;
 
   static Future<List<CartItemOption>?> show(
     BuildContext context, {
     required String productId,
     required String productName,
+    List<CartItemOption>? initialSelections,
   }) {
     return showModalBottomSheet<List<CartItemOption>>(
       context: context,
@@ -36,6 +45,7 @@ class OptionPickerSheet extends ConsumerStatefulWidget {
       builder: (_) => OptionPickerSheet(
         productId: productId,
         productName: productName,
+        initialSelections: initialSelections,
       ),
     );
   }
@@ -52,6 +62,15 @@ class _OptionPickerSheetState extends ConsumerState<OptionPickerSheet> {
   void _seedDefaults(List<OptionGroupWithOptions> groups) {
     if (_initialized) return;
     _initialized = true;
+    final initial = widget.initialSelections;
+    if (initial != null && initial.isNotEmpty) {
+      // Edit mode — seed from existing selections.
+      for (final sel in initial) {
+        _picked.putIfAbsent(sel.optionGroupId, () => <String>{})
+            .add(sel.optionId);
+      }
+      return;
+    }
     for (final g in groups) {
       final defaults =
           g.options.where((o) => o.isDefault).map((o) => o.id).toSet();
@@ -222,8 +241,12 @@ class _OptionPickerSheetState extends ConsumerState<OptionPickerSheet> {
                           ),
                         Expanded(
                           child: AppButton(
-                            label: 'Tambahkan ke Keranjang',
-                            icon: Icons.add_shopping_cart_outlined,
+                            label: widget.initialSelections == null
+                                ? 'Tambahkan ke Keranjang'
+                                : 'Simpan Perubahan',
+                            icon: widget.initialSelections == null
+                                ? Icons.add_shopping_cart_outlined
+                                : Icons.save_outlined,
                             onPressed: valid
                                 ? () => Navigator.pop(
                                       context,

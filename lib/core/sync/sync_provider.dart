@@ -20,7 +20,10 @@ class SyncState with _$SyncState {
   }) = _SyncState;
 }
 
-@riverpod
+/// keepAlive: true — sync state (last timestamp, counters) must survive
+/// navigation away from Settings; otherwise the user always sees
+/// "Belum pernah" because the provider rebuilds fresh on every visit.
+@Riverpod(keepAlive: true)
 class Sync extends _$Sync {
   @override
   SyncState build() => const SyncState();

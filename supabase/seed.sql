@@ -28,7 +28,7 @@ INSERT INTO products (id, name, category, base_price, created_at, updated_at) VA
   ('00000000-0000-0000-0000-000000000107', 'Air Mineral 600ml',  'Lainnya',      8000,  NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
--- Branch products for Tebet (full menu, Latte gets 10% discount,
+-- Branch products for SGC (full menu, Latte gets 10% discount,
 -- Es Kopi Susu gets a price override)
 INSERT INTO branch_products (product_id, branch_id, price_override, discount_percentage) VALUES
   ('00000000-0000-0000-0000-000000000100', '00000000-0000-0000-0000-000000000001', NULL,   0),
@@ -41,7 +41,7 @@ INSERT INTO branch_products (product_id, branch_id, price_override, discount_per
   ('00000000-0000-0000-0000-000000000107', '00000000-0000-0000-0000-000000000001', NULL,   0)
 ON CONFLICT (product_id, branch_id) DO NOTHING;
 
--- Branch products for Senayan (smaller menu, no overrides)
+-- Branch products for Kamarasan (smaller menu, no overrides)
 INSERT INTO branch_products (product_id, branch_id) VALUES
   ('00000000-0000-0000-0000-000000000100', '00000000-0000-0000-0000-000000000002'),
   ('00000000-0000-0000-0000-000000000101', '00000000-0000-0000-0000-000000000002'),

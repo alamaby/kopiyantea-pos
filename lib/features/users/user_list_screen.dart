@@ -24,6 +24,7 @@ class UserListScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Pengguna')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_users',
         onPressed: () => context.push('/more/settings/users/new'),
         icon: const Icon(Icons.person_add_outlined),
         label: const Text('Undang'),

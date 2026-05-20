@@ -24,7 +24,17 @@ enum AuthError {
   noBranchAccess,
   networkUnavailable,
   unknown,
+  /// FEAT-006 magic link: Supabase rejected the email (rate limit, invalid).
+  emailDispatchFailed,
 }
+
+/// FEAT-006 — deep link target for Supabase magic-link redirects.
+///
+/// Configured at three places that MUST stay in sync:
+///   1. This constant — used as `emailRedirectTo` in signInWithOtp
+///   2. `android/app/src/main/AndroidManifest.xml` intent-filter
+///   3. Supabase project → Authentication → URL Configuration → Redirect URLs
+const String kAuthDeepLink = 'kopiyantea://login-callback';
 
 /// Lightweight result type for sign-in.
 class AuthedSession {
@@ -63,6 +73,52 @@ class AuthRepository {
   }
 
   Session? get currentSession => _supabase?.auth.currentSession;
+
+  /// Stream of Supabase auth events — used by [Auth] notifier to react to
+  /// magic-link redirects (SIGNED_IN events fire when the user taps the
+  /// magic-link email and the deep link returns to the app).
+  Stream<AuthState>? get authEvents => _supabase?.auth.onAuthStateChange;
+
+  /// FEAT-006 — send a magic-link email. No password required. The email
+  /// contains a link that deep-links back into the app, which Supabase's
+  /// Flutter SDK auto-handles via [onAuthStateChange].
+  Future<Result<Unit, AuthError>> signInWithMagicLink(String email) async {
+    final sb = _supabase;
+    if (sb == null) return const Err(AuthError.networkUnavailable);
+    try {
+      await sb.auth.signInWithOtp(
+        email: email,
+        emailRedirectTo: kAuthDeepLink,
+      );
+      await secureStorage.write(SecureStorage.kLastSignedInEmail, email);
+      return Ok(Unit.instance);
+    } on AuthException catch (e) {
+      _log.w('[Auth] magic-link send failed: ${e.message}');
+      return const Err(AuthError.emailDispatchFailed);
+    } catch (e) {
+      _log.e('[Auth] magic-link error', error: e);
+      return const Err(AuthError.networkUnavailable);
+    }
+  }
+
+  /// Called by [Auth] notifier when a session arrives via deep link (magic
+  /// link redirect). Mirrors the post-Supabase-signin work that [signIn]
+  /// does, minus the password call.
+  Future<Result<AuthedSession, AuthError>> resolveSessionWithClaim(
+    Session session,
+  ) async {
+    final uid = session.user.id;
+    final email = session.user.email ?? '';
+    if (email.isNotEmpty) {
+      await secureStorage.write(SecureStorage.kLastSignedInEmail, email);
+    }
+    await syncRepository.pullMyAuthContext(uid);
+    if (email.isNotEmpty) {
+      await syncRepository.pullPendingInvitationByEmail(email);
+      await _maybeClaimInvitation(uid: uid, email: email);
+    }
+    return _resolveAppUser(uid, signOutOnFailure: true);
+  }
 
   Future<Result<AuthedSession, AuthError>> signIn({
     required String email,

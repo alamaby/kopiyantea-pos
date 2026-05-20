@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/daos/inventory_dao.dart';
+import '../../core/domain/enums.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
@@ -410,7 +411,7 @@ class _QuantityField extends StatelessWidget {
   });
 
   final TextEditingController controller;
-  final dynamic unit; // StockUnit but typed loosely to avoid extra import here
+  final StockUnit unit;
   final String? errorText;
 
   @override

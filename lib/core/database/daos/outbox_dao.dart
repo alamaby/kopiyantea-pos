@@ -51,6 +51,37 @@ class OutboxDao extends DatabaseAccessor<AppDatabase> with _$OutboxDaoMixin {
         ),
       );
 
+  /// FEAT-003 — list everything for the Outbox Queue screen.
+  Stream<List<OutboxItemRow>> watchAll() =>
+      (select(outboxItems)..orderBy([(o) => OrderingTerm.desc(o.createdAt)]))
+          .watch();
+
+  /// FEAT-003 — clear a row from the queue (lossy if status != done).
+  Future<int> deleteById(String id) =>
+      (delete(outboxItems)..where((o) => o.id.equals(id))).go();
+
+  /// FEAT-003 — reset a failed row to pending so it pushes on the next sync.
+  Future<void> retryNow(String id) =>
+      (update(outboxItems)..where((o) => o.id.equals(id))).write(
+        OutboxItemsCompanion(
+          status: Value(OutboxStatus.pending),
+          nextRetryAt: const Value(null),
+          lastError: const Value(null),
+        ),
+      );
+
+  /// FEAT-003 — bulk retry all failed rows.
+  Future<int> retryAllFailed() =>
+      (update(outboxItems)
+            ..where((o) => o.status.equalsValue(OutboxStatus.failed)))
+          .write(
+        OutboxItemsCompanion(
+          status: Value(OutboxStatus.pending),
+          nextRetryAt: const Value(null),
+          lastError: const Value(null),
+        ),
+      );
+
   Future<void> markFailed(
     String id, {
     required String error,

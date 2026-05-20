@@ -556,6 +556,14 @@ class _SyncSection extends ConsumerWidget {
             isLoading: syncState.isSyncing,
             fullWidth: true,
           ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
+            label: 'Lihat Antrian',
+            icon: Icons.list_alt_outlined,
+            variant: AppButtonVariant.secondary,
+            onPressed: () => context.push('/more/settings/sync'),
+            fullWidth: true,
+          ),
         ],
       ),
     );

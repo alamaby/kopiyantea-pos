@@ -22,6 +22,7 @@ class OptionGroupsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Modifier Produk')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_option_groups',
         onPressed: () => context.push('/more/settings/modifiers/new'),
         icon: const Icon(Icons.add),
         label: const Text('Grup Baru'),

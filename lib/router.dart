@@ -21,6 +21,7 @@ import 'features/inventory/stock_movement_screen.dart';
 import 'features/modifiers/option_group_form_screen.dart';
 import 'features/modifiers/option_groups_screen.dart';
 import 'features/modifiers/product_options_screen.dart';
+import 'features/settings/outbox_queue_screen.dart';
 import 'features/settings/printer_settings_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/settings/tax_settings_screen.dart';
@@ -144,6 +145,27 @@ final routerProvider = Provider<GoRouter>((ref) {
           transactionId: state.pathParameters['id']!,
         ),
       ),
+      // FEAT-005 — more-specific routes MUST come before `/inventory/:id` so
+      // GoRouter doesn't match "new"/"edit"/"movement" as an id.
+      GoRoute(
+        path: '/inventory/new',
+        name: 'inventoryItemNew',
+        builder: (_, __) => const InventoryItemFormScreen(),
+      ),
+      GoRoute(
+        path: '/inventory/:id/edit',
+        name: 'inventoryItemEdit',
+        builder: (_, state) => InventoryItemFormScreen(
+          itemId: state.pathParameters['id'],
+        ),
+      ),
+      GoRoute(
+        path: '/inventory/:id/movement',
+        name: 'inventoryItemMovement',
+        builder: (_, state) => StockMovementScreen(
+          itemId: state.pathParameters['id']!,
+        ),
+      ),
       GoRoute(
         path: '/inventory/:id',
         name: 'inventoryDetail',
@@ -182,31 +204,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         name: 'printerSettings',
         builder: (_, __) => const PrinterSettingsScreen(),
       ),
+      // FEAT-003 — outbox queue inspector.
+      GoRoute(
+        path: '/more/settings/sync',
+        name: 'outboxQueue',
+        builder: (_, __) => const OutboxQueueScreen(),
+      ),
       // FEAT-004 — per-branch tax settings (owner-gated in Settings UI).
       GoRoute(
         path: '/more/settings/tax',
         name: 'taxSettings',
         builder: (_, __) => const TaxSettingsScreen(),
-      ),
-      // FEAT-005 — inventory item create/edit + standalone stock movement.
-      GoRoute(
-        path: '/inventory/new',
-        name: 'inventoryItemNew',
-        builder: (_, __) => const InventoryItemFormScreen(),
-      ),
-      GoRoute(
-        path: '/inventory/:id/edit',
-        name: 'inventoryItemEdit',
-        builder: (_, state) => InventoryItemFormScreen(
-          itemId: state.pathParameters['id'],
-        ),
-      ),
-      GoRoute(
-        path: '/inventory/:id/movement',
-        name: 'inventoryItemMovement',
-        builder: (_, state) => StockMovementScreen(
-          itemId: state.pathParameters['id']!,
-        ),
       ),
       // FEAT-006 — user management.
       GoRoute(

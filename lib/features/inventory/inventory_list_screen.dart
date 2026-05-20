@@ -41,6 +41,7 @@ class InventoryListScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_inventory',
         onPressed: () => context.push('/inventory/new'),
         icon: const Icon(Icons.add),
         label: const Text('Tambah Item'),

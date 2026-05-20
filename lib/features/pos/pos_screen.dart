@@ -17,6 +17,16 @@ import 'cart_provider.dart';
 import 'widgets/cart_panel.dart';
 import 'widgets/menu_grid.dart';
 
+/// Returns true if the cart's cached branch row matches the active one on
+/// every field that affects checkout totals — so we know whether to re-sync.
+bool _branchSyncedForTotals(BranchRow? cached, BranchRow active) {
+  if (cached == null) return false;
+  return cached.id == active.id &&
+      cached.taxPercentage == active.taxPercentage &&
+      cached.taxLabel == active.taxLabel &&
+      cached.taxInclusive == active.taxInclusive;
+}
+
 class PosScreen extends ConsumerWidget {
   const PosScreen({super.key});
 
@@ -28,10 +38,14 @@ class PosScreen extends ConsumerWidget {
     // `ref.listen` (Riverpod 2.x) does NOT fire for the initial value — so
     // we drive the sync from `ref.watch` results, scheduled post-frame to
     // avoid mutating provider state during build.
-    final cartBranchId =
-        ref.watch(cartNotifierProvider.select((c) => c.branch?.id));
+    //
+    // Re-sync when ANY tax-relevant field differs, not just id — otherwise
+    // a tax % change on the same branch would leave the cart with a stale
+    // snapshot and totals would not reflect the new rate.
+    final cartBranch =
+        ref.watch(cartNotifierProvider.select((c) => c.branch));
     final activeBranch = selectedBranch.valueOrNull;
-    if (activeBranch != null && activeBranch.id != cartBranchId) {
+    if (activeBranch != null && !_branchSyncedForTotals(cartBranch, activeBranch)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(cartNotifierProvider.notifier).setBranch(activeBranch);
       });

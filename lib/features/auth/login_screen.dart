@@ -69,6 +69,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _signInWithMagicLink() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) {
+      setState(() => _error = 'Masukkan email dulu');
+      return;
+    }
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+    final result =
+        await ref.read(authProvider.notifier).signInWithMagicLink(email);
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+    switch (result) {
+      case Ok():
+        showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            icon: const Icon(Icons.mark_email_read_outlined,
+                size: 48, color: AppColors.primary),
+            title: const Text('Cek email Anda'),
+            content: Text(
+              'Link masuk sudah dikirim ke $email. Buka email tersebut '
+              'di perangkat ini lalu tap "Masuk ke Kopiyantea" — Anda '
+              'akan otomatis masuk ke aplikasi.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      case Err(:final error):
+        setState(() => _error = _label(error));
+    }
+  }
+
   String _label(AuthError e) => switch (e) {
         AuthError.invalidCredentials => 'Email atau password salah',
         AuthError.userInactive =>
@@ -79,6 +119,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           'Pengguna tidak punya akses ke cabang manapun',
         AuthError.networkUnavailable =>
           'Tidak ada koneksi ke server — coba lagi',
+        AuthError.emailDispatchFailed =>
+          'Gagal mengirim email — coba lagi sebentar',
         AuthError.unknown => 'Terjadi kesalahan, coba lagi',
       };
 
@@ -196,6 +238,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     isLoading: _isSubmitting,
                     size: AppButtonSize.primary,
                     fullWidth: true,
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  // Magic link
+                  AppButton(
+                    label: 'Masuk via Link Email',
+                    icon: Icons.mark_email_read_outlined,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: _isSubmitting ? null : _signInWithMagicLink,
+                    fullWidth: true,
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    'Untuk pengguna baru yang diundang Pemilik — '
+                    'tanpa perlu password.',
+                    style: AppTypography.labelXs.copyWith(
+                      color: context.colors.textTertiary,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
 
                   const SizedBox(height: AppSpacing.lg),

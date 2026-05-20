@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 import '../domain/enums.dart';
 import 'app_database.dart';
@@ -60,11 +63,71 @@ class SeedService {
       await _seedInventory(now);
       await _seedRecipes();
       await _seedCustomers(now);
+      // Opsi C — push seed catalog/inventory/customers ke Supabase via outbox
+      // saat owner sync first time. Branch + users + access TIDAK di-enqueue
+      // (branches dibuat manual via migration; auth.users harus dibuat di
+      // Supabase Dashboard sebelum claim flow; user_branch_access mengandalkan
+      // claim flow). Idempotent via upsert di server.
+      await _enqueueSeedToOutbox(now);
     });
 
     // Auto-pick the default branch if the user hasn't chosen one yet.
     if (prefs.getString(_kPrefSelectedBranchId) == null) {
       await prefs.setString(_kPrefSelectedBranchId, _kBranchTebetId);
+    }
+  }
+
+  // ── Outbox enqueue for sync ─────────────────────────────────────────────────
+
+  Future<void> _enqueueSeedToOutbox(DateTime now) async {
+    const uuid = Uuid();
+    Future<void> enq(OutboxEntityType type, Map<String, dynamic> payload) =>
+        db.into(db.outboxItems).insert(
+              OutboxItemsCompanion.insert(
+                id: uuid.v7(),
+                entityType: type,
+                payload: jsonEncode(payload),
+                createdAt: now,
+              ),
+            );
+
+    // Products (chain-wide).
+    final products = await db.select(db.products).get();
+    for (final p in products) {
+      await enq(OutboxEntityType.product, {'id': p.id});
+    }
+
+    // Branch products (per-branch overrides — composite key, payload carries both).
+    final branchProducts = await db.select(db.branchProducts).get();
+    for (final bp in branchProducts) {
+      await enq(OutboxEntityType.branchProduct, {
+        'product_id': bp.productId,
+        'branch_id': bp.branchId,
+      });
+    }
+
+    // Inventory items.
+    final invItems = await db.select(db.inventoryItems).get();
+    for (final i in invItems) {
+      await enq(OutboxEntityType.inventoryItem, {'id': i.id});
+    }
+
+    // Recipes.
+    final recipes = await db.select(db.productRecipes).get();
+    for (final r in recipes) {
+      await enq(OutboxEntityType.productRecipe, {'id': r.id});
+    }
+
+    // Customers.
+    final customers = await db.select(db.customers).get();
+    for (final c in customers) {
+      await enq(OutboxEntityType.customer, {'id': c.id});
+    }
+
+    // Branches — push so taxRate/taxLabel/etc. match what's in app.
+    final branches = await db.select(db.branches).get();
+    for (final b in branches) {
+      await enq(OutboxEntityType.branch, {'id': b.id});
     }
   }
 

@@ -101,12 +101,7 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
     super.dispose();
   }
 
-  bool get _dirty {
-    final parsed = double.tryParse(_percentCtrl.text.replaceAll(',', '.'));
-    return parsed != widget.branch.taxPercentage ||
-        _labelCtrl.text.trim() != widget.branch.taxLabel ||
-        _inclusive != widget.branch.taxInclusive;
-  }
+  // (_dirty removed — see Simpan button comment)
 
   Future<void> _save() async {
     if (_saving) return;
@@ -243,7 +238,11 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
           AppButton(
             label: _saving ? 'Menyimpan…' : 'Simpan',
             icon: Icons.save_outlined,
-            onPressed: _saving || !_dirty ? null : _save,
+            // Always enabled when not currently saving — re-saving identical
+            // values is idempotent. The dirty check was confusing users who
+            // wanted to "re-confirm" 0% (e.g. UMKM tanpa pajak) but the form
+            // already showed 0 from a previous save.
+            onPressed: _saving ? null : _save,
             isLoading: _saving,
             fullWidth: true,
           ),

@@ -14,6 +14,7 @@ import '../../customers/customer_picker_sheet.dart';
 import '../cart_provider.dart';
 import '../cart_state.dart';
 import 'checkout_sheet.dart';
+import 'option_picker_sheet.dart';
 
 class CartPanel extends ConsumerWidget {
   const CartPanel({super.key});
@@ -334,18 +335,38 @@ class _CartItemTile extends StatelessWidget {
                       style: AppTypography.bodySm
                           .copyWith(color: context.colors.textSecondary),
                     ),
-                    // FEAT-001 — modifier summary line.
-                    if (item.selectedOptions.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        item.selectedOptions
-                            .map((o) => o.optionName)
-                            .join(' · '),
-                        style: AppTypography.labelSm.copyWith(
-                          color: AppColors.accent,
+                    // FEAT-001 — modifier summary line. Tap to edit.
+                    if (item.selectedOptions.isNotEmpty)
+                      InkWell(
+                        onTap: () => _editOptions(context),
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.only(top: AppSpacing.xs),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.tune_outlined,
+                                  size: 12, color: AppColors.accent),
+                              const SizedBox(width: AppSpacing.xs),
+                              Flexible(
+                                child: Text(
+                                  item.selectedOptions
+                                      .map((o) => o.optionName)
+                                      .join(' · '),
+                                  style: AppTypography.labelSm.copyWith(
+                                    color: AppColors.accent,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.xs),
+                              Icon(Icons.edit_outlined,
+                                  size: 12,
+                                  color: AppColors.accent.withValues(
+                                      alpha: 0.7)),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
                   ],
                 ),
               ),
@@ -389,6 +410,17 @@ class _CartItemTile extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _editOptions(BuildContext context) async {
+    final picked = await OptionPickerSheet.show(
+      context,
+      productId: item.product.id,
+      productName: item.branchProduct.customName ?? item.product.name,
+      initialSelections: item.selectedOptions,
+    );
+    if (picked == null) return;
+    notifier.updateOptions(index, picked);
   }
 
   Future<void> _confirmDelete(BuildContext context) async {

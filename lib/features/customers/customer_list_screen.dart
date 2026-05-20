@@ -35,6 +35,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Pelanggan')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab_customers',
         onPressed: () => context.push('/more/customers/new'),
         icon: const Icon(Icons.person_add_outlined),
         label: const Text('Tambah'),

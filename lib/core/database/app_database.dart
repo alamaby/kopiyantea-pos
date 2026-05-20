@@ -10,6 +10,7 @@ import '../domain/enums.dart';
 import 'tables/branch_tables.dart';
 import 'tables/catalog_tables.dart';
 import 'tables/customer_tables.dart';
+import 'tables/held_order_table.dart';
 import 'tables/inventory_tables.dart';
 import 'tables/option_tables.dart';
 import 'tables/outbox_table.dart';
@@ -44,6 +45,8 @@ part 'app_database.g.dart';
     TransactionItemOptions,
     // FEAT-006 — pending invitations table (added at schemaVersion 3)
     PendingInvitations,
+    // FEAT-009 — held orders / open bill (added at schemaVersion 4)
+    HeldOrders,
   ],
   // DAOs removed from annotation — instantiated as lazy getters below.
 )
@@ -51,7 +54,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -71,6 +74,10 @@ class AppDatabase extends _$AppDatabase {
             // FEAT-006 — add `email` to app_users + pending_invitations table.
             await m.addColumn(appUsers, appUsers.email);
             await m.createTable(pendingInvitations);
+          }
+          if (from < 4) {
+            // FEAT-009 — local-only held orders.
+            await m.createTable(heldOrders);
           }
         },
         beforeOpen: (_) async {

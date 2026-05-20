@@ -140,6 +140,12 @@ class CartNotifier extends _$CartNotifier {
 
   void clear() => state = CartState(branch: state.branch);
 
+  /// FEAT-009 — replace the entire cart state in one shot. Used when
+  /// restoring a held order so items, customer, and manual discount all
+  /// hydrate atomically. The held-order service is responsible for
+  /// re-resolving Drift rows so what we get here is already valid.
+  void restoreState(CartState restored) => state = restored;
+
   // ── Computed (read-only views) ──────────────────────────────────────────────
 
   double get subtotal => state.items.fold(

@@ -1,8 +1,14 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/database/daos/dao_providers.dart';
+import '../../core/domain/enums.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
@@ -66,7 +72,7 @@ class UserListScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 for (final inv in invites) ...[
-                  _InvitationTile(invitation: inv),
+                  _DismissibleInvitation(invitation: inv),
                   const SizedBox(height: AppSpacing.sm),
                 ],
                 const SizedBox(height: AppSpacing.lg),
@@ -159,6 +165,85 @@ class _UserTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// FEAT-011 — wraps [_InvitationTile] in a Dismissible with confirm dialog.
+/// Swipe-left fires a confirm prompt; on confirm we delete the local row
+/// and enqueue a `pendingInvitation` outbox entry. The push side already
+/// propagates a missing-local row as a server DELETE (see
+/// `SyncRepository._pushPendingInvitation`), so no new push branch needed.
+class _DismissibleInvitation extends ConsumerWidget {
+  const _DismissibleInvitation({required this.invitation});
+  final PendingInvitationRow invitation;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Dismissible(
+      key: ValueKey('invitation-${invitation.id}'),
+      direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirm(context),
+      onDismissed: (_) => _cancelInvitation(context, ref),
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: AppColors.danger,
+          borderRadius: AppRadius.radiusLg,
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.delete_outline, color: Colors.white),
+            SizedBox(width: AppSpacing.xs),
+            Text('Batalkan',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+      child: _InvitationTile(invitation: invitation),
+    );
+  }
+
+  Future<bool?> _confirm(BuildContext context) => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          icon: const Icon(Icons.warning_amber_outlined,
+              size: 36, color: AppColors.warning),
+          title: const Text('Batalkan undangan?'),
+          content: Text(
+            'Undangan untuk ${invitation.email} akan dihapus. '
+            'Jika link sudah dikirim, pengguna tidak akan bisa klaim akses '
+            'lagi dengan link itu.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Jangan'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+              child: const Text('Batalkan Undangan'),
+            ),
+          ],
+        ),
+      );
+
+  Future<void> _cancelInvitation(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final dao = ref.read(branchDaoProvider);
+    final outboxDao = ref.read(outboxDaoProvider);
+    await dao.deletePendingInvitation(invitation.id);
+    await outboxDao.enqueue(OutboxItemsCompanion.insert(
+      id: const Uuid().v7(),
+      entityType: OutboxEntityType.pendingInvitation,
+      payload: jsonEncode({'id': invitation.id, 'action': 'delete'}),
+      createdAt: DateTime.now(),
+    ));
+    messenger.showSnackBar(
+      SnackBar(content: Text('Undangan untuk ${invitation.email} dibatalkan')),
     );
   }
 }

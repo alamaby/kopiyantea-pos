@@ -7,6 +7,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/result.dart';
 import '../../core/widgets/app_button.dart';
+import '../settings/settings_provider.dart';
 import 'auth_provider.dart';
 import 'auth_repository.dart';
 
@@ -22,6 +23,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   bool _isSubmitting = false;
   bool _obscure = true;
+  bool _rememberMe = true;
+  bool _prefilled = false;
   String? _error;
 
   @override
@@ -48,10 +51,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isSubmitting = false);
     switch (result) {
       case Ok():
+        await _persistRemember(email);
         // Router redirect will navigate away.
         break;
       case Err(:final error):
         setState(() => _error = _label(error));
+    }
+  }
+
+  /// FEAT-007 — persist (or clear) the last login email based on the
+  /// checkbox state. Saved on success only.
+  Future<void> _persistRemember(String email) async {
+    final settings = ref.read(settingsNotifierProvider.notifier);
+    await settings.setRememberMe(_rememberMe);
+    if (_rememberMe) {
+      await settings.setLastLoginEmail(email);
+    } else {
+      await settings.setLastLoginEmail(null);
     }
   }
 
@@ -85,6 +101,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isSubmitting = false);
     switch (result) {
       case Ok():
+        await _persistRemember(email);
         showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -126,6 +143,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // FEAT-007 — pre-fill saved email on first build. We read settings via
+    // `watch` so the field repopulates if the user toggles "Hapus sesi
+    // tersimpan" elsewhere and comes back. Guarded by `_prefilled` so we
+    // don't clobber a partially-typed email on rebuild.
+    final settingsAsync = ref.watch(settingsNotifierProvider);
+    settingsAsync.whenData((s) {
+      if (!_prefilled) {
+        _prefilled = true;
+        _rememberMe = s.rememberMe;
+        final saved = s.lastLoginEmail;
+        if (saved != null && saved.isNotEmpty && _emailCtrl.text.isEmpty) {
+          _emailCtrl.text = saved;
+        }
+      }
+    });
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -200,6 +233,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
+                  ),
+
+                  // FEAT-007 — Remember me
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: _rememberMe,
+                        onChanged: _isSubmitting
+                            ? null
+                            : (v) =>
+                                setState(() => _rememberMe = v ?? true),
+                        activeColor: AppColors.primary,
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _isSubmitting
+                              ? null
+                              : () => setState(
+                                  () => _rememberMe = !_rememberMe),
+                          child: Text(
+                            'Ingat email saya di perangkat ini',
+                            style: AppTypography.bodySm,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
 
                   // Error

@@ -13,6 +13,7 @@ import '../../../core/widgets/app_empty_state.dart';
 import '../../customers/customer_picker_sheet.dart';
 import '../cart_provider.dart';
 import '../cart_state.dart';
+import '../held_order_service.dart';
 import 'checkout_sheet.dart';
 import 'option_picker_sheet.dart';
 
@@ -78,21 +79,103 @@ class CartPanel extends ConsumerWidget {
           top: false,
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            child: AppButton(
-              label: totals == null
-                  ? 'Bayar'
-                  : 'Bayar ${formatRupiah(totals.total)}',
-              onPressed: totals != null && totals.total > 0
-                  ? () => _openCheckout(context)
-                  : null,
-              size: AppButtonSize.primary,
-              fullWidth: true,
-              icon: Icons.payment_outlined,
+            child: Column(
+              children: [
+                AppButton(
+                  label: totals == null
+                      ? 'Bayar'
+                      : 'Bayar ${formatRupiah(totals.total)}',
+                  onPressed: totals != null && totals.total > 0
+                      ? () => _openCheckout(context)
+                      : null,
+                  size: AppButtonSize.primary,
+                  fullWidth: true,
+                  icon: Icons.payment_outlined,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                AppButton(
+                  label: 'Tahan Pesanan',
+                  icon: Icons.pause_circle_outline,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: cartState.branch == null
+                      ? null
+                      : () => _holdOrder(context, ref, cartState),
+                  fullWidth: true,
+                ),
+              ],
             ),
           ),
         ),
       ],
     );
+  }
+
+  /// FEAT-009 — prompt for a label (table # / customer name) then park the
+  /// current cart. Cart is cleared after save so the cashier can start the
+  /// next order immediately.
+  Future<void> _holdOrder(
+    BuildContext context,
+    WidgetRef ref,
+    CartState cartState,
+  ) async {
+    final labelCtrl = TextEditingController();
+    final messenger = ScaffoldMessenger.of(context);
+    final defaultLabel = cartState.customer?.name ?? '';
+    labelCtrl.text = defaultLabel;
+    final label = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.pause_circle_outline,
+            size: 36, color: AppColors.accent),
+        title: const Text('Tahan Pesanan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Beri label supaya mudah ditemukan saat customer kembali '
+              '(mis. nomor meja atau nama).',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: labelCtrl,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Label',
+                hintText: 'Meja 5 / Budi',
+              ),
+              onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, labelCtrl.text.trim()),
+            child: const Text('Tahan'),
+          ),
+        ],
+      ),
+    );
+    if (label == null || label.isEmpty) return;
+
+    try {
+      await ref.read(heldOrderServiceProvider).hold(
+            state: cartState,
+            label: label,
+          );
+      ref.read(cartNotifierProvider.notifier).clear();
+      messenger.showSnackBar(
+        SnackBar(content: Text('Pesanan "$label" ditahan')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal menahan pesanan: $e')),
+      );
+    }
   }
 
   void _openCheckout(BuildContext context) {

@@ -6,7 +6,7 @@
 
 ---
 
-## Phase 0 — Foundation Docs — **DONE DEV** (awaiting QA review)
+## Phase 0 — Foundation Docs — **DONE QA**
 
 - [x] Write full body for ADR-0001 (UUID v7 for client IDs)
 - [x] Write full body for ADR-0002 (Drift for local DB)
@@ -329,13 +329,13 @@
 
 Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh `dart run build_runner build --delete-conflicting-outputs` sebelum bisa di-build, dan satu migration Supabase manual.
 
-### Phase 8a — FEAT-004 Tax Settings UI per-branch — **DONE DEV**
+### Phase 8a — FEAT-004 Tax Settings UI per-branch — **DONE QA**
 - [x] `BranchDao.updateById` partial update untuk tax columns
 - [x] `TaxSettingsScreen` (`/more/settings/tax`) — list cabang, edit tarif/label/inclusive, preview perhitungan, outbox enqueue
 - [x] Sync push `_pushBranch` di SyncRepository + `BranchSyncDto`
 - [x] Owner-gated link di Settings screen
 
-### Phase 8b — FEAT-005 Inventory Stock Management UI — **DONE DEV**
+### Phase 8b — FEAT-005 Inventory Stock Management UI — **DONE QA**
 - [x] `InventoryItemFormScreen` (`/inventory/new`, `/inventory/:id/edit`) — master CRUD untuk bahan baru
 - [x] `StockMovementScreen` (`/inventory/:id/movement`) — Pembelian / Penyesuaian / Limbah dengan qty + notes, local cached_stock reconciliation
 - [x] FAB "+ Tambah Item" di `InventoryListScreen`
@@ -352,7 +352,7 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 - [x] Supabase migration `20260519150001_user_management.sql` — `app_users.email` column + `pending_invitations` table + RLS (owner-write, self-read-by-email-match, self-claim insert into `app_users` + `user_branch_access`)
 - [x] Owner-gated link di Settings screen
 
-### Phase 8d — FEAT-001 Modifier System (full) — **DONE DEV**
+### Phase 8d — FEAT-001 Modifier System (full) — **DONE QA**
 - [x] Schema sudah ada dari sebelumnya (Drift `option_tables.dart` + Supabase `20260518150011_modifiers.sql`)
 - [x] DAO `OptionDao` lengkap (group/option CRUD, product link, snapshot insert/read)
 - [x] `OptionGroupsScreen` (`/more/settings/modifiers`) — daftar grup, FAB "Grup Baru"
@@ -375,6 +375,49 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 - [ ] Test end-to-end: tax change → sync, stock movement → cached_stock reconcile, invite → sign up → claim, modifier checkout → receipt print
 
 ---
+
+### [FEAT-007] Remember Me at Login — **DONE DEV** (2026-05-20)
+**Implemented:**
+- `AppSettings.rememberMe` (default true) + `lastLoginEmail` di `settings_provider.dart`
+- `setRememberMe` / `setLastLoginEmail` methods. Toggle OFF auto-clears the saved email
+- `LoginScreen` pre-fills email dari saved value, checkbox "Ingat email saya"
+- On successful signIn / signInWithMagicLink → `_persistRemember(email)` saves jika checkbox ON
+- Settings → new "Privasi & Sesi" section: switch toggle + "Hapus Email Tersimpan" button saat ada email tersimpan
+
+**Outstanding for QA:**
+- [ ] Run `dart run build_runner build --delete-conflicting-outputs` (settings_provider.freezed needs new fields)
+- [ ] Smoke test: login → kill app → reopen → email auto-fill; toggle OFF → email hilang
+
+### [FEAT-009] Hold Order / Open Bill — **DONE DEV** (2026-05-20)
+**Implemented (local-only — Supabase sync deferred):**
+- Drift v4: `HeldOrders` table + non-destructive migration
+- `HeldOrderDao` (`watchForBranch`, `getById`, `insert`, `deleteById`, `deleteOlderThan`)
+- `held_order_service.dart` — encode/restore cart, re-resolves ProductRow + BranchProductRow live (price changes propagate)
+- `heldOrdersForBranchProvider` + `heldOrdersCountProvider` (reactive)
+- `CartNotifier.restoreState` for atomic hydration
+- `CartPanel` → tombol "Tahan Pesanan" (label prompt dialog, default = customer name)
+- `PosScreen` AppBar → `HeldOrdersAction` with badge count → opens `HeldOrdersSheet`
+- Sheet: list, tap-to-restore (confirm overwrite if cart not empty), per-row delete
+- `main.dart` boot prunes held orders > 24 jam (best-effort, non-blocking)
+
+**Outstanding for QA:**
+- [ ] Run `dart run build_runner build --delete-conflicting-outputs` (Drift v4 + new `.g.dart` for `held_order_dao` + `held_order_service`)
+- [ ] Smoke test: tahan → keranjang clear, badge naik; tap di sheet → cart re-hydrate utuh (item + modifier + customer + diskon); switch branch → list empty
+- [ ] Verifikasi prune > 24h: insert manual via SQL dengan createdAt 25 jam yg lalu → restart app → row hilang
+
+**Deferred:**
+- Sync ke Supabase via outbox (perlu migration `held_orders` + RLS + push function) — bisa Phase 8 sprint 2
+
+### [FEAT-011] Swipe-to-Cancel Invitation — **DONE DEV** (2026-05-20)
+**Implemented:**
+- `UserListScreen._DismissibleInvitation` wraps `_InvitationTile` with swipe-left
+- Confirm dialog menampilkan email + warning "link tidak bisa dipakai lagi"
+- `BranchDao.deletePendingInvitation` (sudah ada) + outbox enqueue `pendingInvitation` (action: delete)
+- `SyncRepository._pushPendingInvitation` sudah handle missing-local → DELETE di server (no new push branch)
+- Snackbar feedback
+
+**Outstanding for QA:**
+- [ ] Smoke: owner → undangan list → swipe → confirm → row hilang + outbox terisi; setelah sync → row di Supabase `pending_invitations` ikut hilang
 
 ### [FEAT-010] WhatsApp Business API Integration untuk Notifikasi Undangan
 - **Requested:** 2026-05-20 (FEAT-006 QA)

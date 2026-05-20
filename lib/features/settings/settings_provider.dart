@@ -12,6 +12,9 @@ abstract final class _Keys {
   static const themeMode = 'themeMode'; // 'system' | 'light' | 'dark'
   static const printEnabled = 'printEnabled';
   static const lastPrinterAddress = 'lastPrinterAddress';
+  // FEAT-007 — remember-me at login.
+  static const rememberMe = 'rememberMe';
+  static const lastLoginEmail = 'lastLoginEmail';
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -23,6 +26,11 @@ class AppSettings with _$AppSettings {
     @Default('system') String themeMode,
     @Default(true) bool printEnabled,
     String? lastPrinterAddress,
+    // FEAT-007 — when true, last successful login email is pre-filled at the
+    // next LoginScreen open. Default ON so kasir di shift sibuk gak ngetik
+    // ulang. Toggle OFF di settings untuk perangkat bersama.
+    @Default(true) bool rememberMe,
+    String? lastLoginEmail,
   }) = _AppSettings;
 }
 
@@ -38,6 +46,8 @@ class SettingsNotifier extends _$SettingsNotifier {
       themeMode: prefs.getString(_Keys.themeMode) ?? 'system',
       printEnabled: prefs.getBool(_Keys.printEnabled) ?? true,
       lastPrinterAddress: prefs.getString(_Keys.lastPrinterAddress),
+      rememberMe: prefs.getBool(_Keys.rememberMe) ?? true,
+      lastLoginEmail: prefs.getString(_Keys.lastLoginEmail),
     );
   }
 
@@ -62,6 +72,23 @@ class SettingsNotifier extends _$SettingsNotifier {
           await prefs.remove(_Keys.lastPrinterAddress);
         } else {
           await prefs.setString(_Keys.lastPrinterAddress, address);
+        }
+      });
+
+  Future<void> setRememberMe(bool enabled) =>
+      _update((prefs) async {
+        await prefs.setBool(_Keys.rememberMe, enabled);
+        if (!enabled) {
+          await prefs.remove(_Keys.lastLoginEmail);
+        }
+      });
+
+  Future<void> setLastLoginEmail(String? email) =>
+      _update((prefs) async {
+        if (email == null || email.isEmpty) {
+          await prefs.remove(_Keys.lastLoginEmail);
+        } else {
+          await prefs.setString(_Keys.lastLoginEmail, email);
         }
       });
 

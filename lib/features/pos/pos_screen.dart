@@ -15,6 +15,7 @@ import '../../core/widgets/app_loading_indicator.dart';
 import '../settings/branch_selection_provider.dart';
 import 'cart_provider.dart';
 import 'widgets/cart_panel.dart';
+import 'widgets/held_orders_sheet.dart';
 import 'widgets/menu_grid.dart';
 
 /// Returns true if the cart's cached branch row matches the active one on
@@ -69,6 +70,10 @@ class PosScreen extends ConsumerWidget {
           ),
           orElse: () => const Text('Kasir'),
         ),
+        actions: [
+          if (activeBranch != null)
+            HeldOrdersAction(branchId: activeBranch.id),
+        ],
       ),
       body: selectedBranch.when(
         loading: () => const Center(child: AppLoadingIndicator()),

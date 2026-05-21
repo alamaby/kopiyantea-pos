@@ -169,6 +169,24 @@ class EscPosReceiptBuilder {
       bytes += _kv(g, 'Kembalian', formatRupiah(p.paymentChange!));
     }
 
+    // ── QRIS (ENH-004 — static QR on receipt) ──
+    // Customer scans this and inputs nominal manually from the TOTAL
+    // line above. No dynamic generation.
+    if (p.qrisImageBytes != null) {
+      bytes += g.feed(1);
+      bytes += g.text(
+        'SCAN QRIS UNTUK BAYAR',
+        styles: const PosStyles(align: PosAlign.center, bold: true),
+      );
+      bytes += g.text(
+        'Masukkan nominal sesuai TOTAL di atas',
+        styles: const PosStyles(align: PosAlign.center),
+      );
+      final qrCmd =
+          _renderLogo(g, p.qrisImageBytes!, p.paperWidthMm);
+      if (qrCmd != null) bytes += qrCmd;
+    }
+
     // ── Footer ──
     bytes += g.feed(1);
     bytes += g.text(

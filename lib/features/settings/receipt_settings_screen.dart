@@ -71,6 +71,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
   String? _logoUrl;
   String _logoPosition = 'top';
   bool _showCashierName = true;
+  bool _printQrisOnReceipt = false;
 
   bool _loaded = false;
   bool _saving = false;
@@ -106,6 +107,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
         _logoUrl = row.logoUrl;
         _logoPosition = row.logoPosition;
         _showCashierName = row.showCashierName;
+        _printQrisOnReceipt = row.printQrisOnReceipt;
       }
       _loaded = true;
     });
@@ -129,6 +131,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
       paperWidthMm: Value(_paperWidth),
       showLogo: Value(_showLogo),
       showCashierName: Value(_showCashierName),
+      printQrisOnReceipt: Value(_printQrisOnReceipt),
       updatedAt: Value(now),
     );
     await db.into(db.receiptSettings).insertOnConflictUpdate(companion);
@@ -380,6 +383,25 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
                 style: AppTypography.titleMd),
             subtitle: Text(
               'Cetak "Kasir: Nama" di header struk untuk audit',
+              style: AppTypography.bodySm.copyWith(
+                color: context.colors.textSecondary,
+              ),
+            ),
+            contentPadding: EdgeInsets.zero,
+            activeColor: AppColors.primary,
+          ),
+
+          // ENH-004 — print static QRIS on receipt.
+          SwitchListTile(
+            value: _printQrisOnReceipt,
+            onChanged: (v) => setState(() => _printQrisOnReceipt = v),
+            title: Text('Cetak QRIS di struk',
+                style: AppTypography.titleMd),
+            subtitle: Text(
+              'Untuk transaksi QRIS, cetak QR cabang di struk. Berguna '
+              'untuk skenario bayar belakangan (takeaway, delivery, '
+              'pro-forma invoice). Customer scan QR + masukkan nominal '
+              'manual sesuai TOTAL.',
               style: AppTypography.bodySm.copyWith(
                 color: context.colors.textSecondary,
               ),

@@ -24,6 +24,13 @@ class ReceiptSettings extends Table {
   /// the cashier's name on the customer copy.
   BoolColumn get showCashierName =>
       boolean().withDefault(const Constant(true))();
+  /// ENH-004 — print the branch's static QRIS image on the receipt when
+  /// the payment method is QRIS. Useful for "pay later" flows (takeaway,
+  /// delivery, pro-forma invoice). Off by default — most flows complete
+  /// payment before the receipt prints, making the on-receipt QR
+  /// redundant.
+  BoolColumn get printQrisOnReceipt =>
+      boolean().withDefault(const Constant(false))();
   TextColumn get locale =>
       text().withDefault(const Constant('id_ID'))();
   DateTimeColumn get updatedAt => dateTime()();

@@ -11,7 +11,6 @@ import 'core/config/env.dart';
 import 'core/database/app_database.dart';
 import 'core/database/daos/held_order_dao.dart';
 import 'core/database/database_provider.dart';
-import 'core/database/seed_service.dart';
 import 'core/logging/app_logger.dart';
 import 'core/network/pinned_http_client.dart';
 import 'core/theme/app_theme.dart';
@@ -48,8 +47,10 @@ Future<void> main() async {
   // 2. Local-first initialization — must succeed.
   await initializeDateFormatting('id_ID', null);
   final db = await AppDatabase.open();
-  final prefs = await SharedPreferences.getInstance();
-  await SeedService(db: db, prefs: prefs).ensureSeeded();
+  // SharedPreferences instance — touched here to surface any platform-channel
+  // init errors early. Seed step was removed: first-time data is pulled from
+  // Supabase via the post-login bootstrap flow (lib/features/auth/bootstrap_*).
+  await SharedPreferences.getInstance();
 
   // FEAT-009 — drop held orders older than 24h so dine-in carts left over
   // from a previous shift don't litter the picker. Best-effort; failure

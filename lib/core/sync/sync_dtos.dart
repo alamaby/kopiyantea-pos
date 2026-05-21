@@ -446,6 +446,8 @@ ReceiptSettingsCompanion receiptSettingFromJson(Map<String, dynamic> json) =>
       paperWidthMm: Value(json['paper_width_mm'] as int? ?? 58),
       showLogo: Value(json['show_logo'] as bool? ?? false),
       showCashierName: Value(json['show_cashier_name'] as bool? ?? true),
+      printQrisOnReceipt:
+          Value(json['print_qris_on_receipt'] as bool? ?? false),
       locale: Value(json['locale'] as String? ?? 'id_ID'),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );

@@ -52,6 +52,7 @@ class ReceiptPayload {
     this.logoBytes,
     this.logoPosition = 'top',
     this.bankAccountSnapshot,
+    this.qrisImageBytes,
   });
 
   final String transactionId;
@@ -76,6 +77,13 @@ class ReceiptPayload {
   /// on the next line after "Bayar: Transfer" so the receipt records
   /// exactly which rekening received the money.
   final String? bankAccountSnapshot;
+  /// ENH-004 — branch's static QRIS image bytes, fetched from
+  /// `branches.qrisImageUrl` and rendered on the receipt. Only populated
+  /// by [PrintReceiptUseCase] when the receipt setting opts in AND the
+  /// transaction's payment method is QRIS. Customer scans QR, inputs
+  /// nominal manually from the receipt total. Static-only — no dynamic
+  /// QRIS generation (see TODO QRIS-DYN-STATIC / QRIS-DYN-AGGR).
+  final Uint8List? qrisImageBytes;
   final String? headerText;
   final String? footerText;
   final int paperWidthMm; // 58 or 80

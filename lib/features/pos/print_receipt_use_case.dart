@@ -7,6 +7,7 @@ import 'package:logger/logger.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/database_provider.dart';
+import '../../core/domain/enums.dart';
 import '../../core/services/printer_service.dart';
 import '../../core/services/service_providers.dart';
 import '../../core/utils/labels.dart';
@@ -25,9 +26,9 @@ class PrintReceiptUseCase {
   static final Logger _log = Logger();
 
   /// In-memory cache so reprinting in the same session doesn't re-download
-  /// the logo. Keyed by URL — invalidated when owner uploads a new logo
-  /// (new URL).
-  static final Map<String, Uint8List> _logoCache = {};
+  /// the same image (logo, QRIS, etc.). Keyed by URL — implicitly
+  /// invalidated when owner uploads a new image (different URL is issued).
+  static final Map<String, Uint8List> _imageCache = {};
 
   Future<Result<Unit, PrinterError>> print(String transactionId) async {
     final txDao = _ref.read(transactionDaoProvider);
@@ -59,6 +60,18 @@ class PrintReceiptUseCase {
     // resolved (e.g. demo fallback id).
     final cashierName = setting?.showCashierName ?? true
         ? (await branchDao.getUserById(tx.cashierId))?.fullName
+        : null;
+
+    // ENH-004 — opt-in static QRIS image on receipt. Only fired when
+    // (a) owner enabled in receipt settings, (b) tx paid via QRIS,
+    // (c) branch has a QRIS image uploaded. Uses the same cached
+    // fetch path as the logo.
+    final printQris = setting?.printQrisOnReceipt ?? false;
+    final qrisBytes = (printQris &&
+            tx.paymentMethod == PaymentMethod.qris &&
+            branch.qrisImageUrl != null &&
+            branch.qrisImageUrl!.isNotEmpty)
+        ? await _fetchCached(branch.qrisImageUrl!)
         : null;
 
     final payload = ReceiptPayload(
@@ -97,6 +110,7 @@ class PrintReceiptUseCase {
       logoBytes: logoBytes,
       logoPosition: setting?.logoPosition ?? 'top',
       bankAccountSnapshot: tx.bankAccountSnapshot,
+      qrisImageBytes: qrisBytes,
     );
 
     final printer = _ref.read(printerServiceProvider);
@@ -115,18 +129,24 @@ class PrintReceiptUseCase {
     if (!setting.showLogo) return null;
     final url = setting.logoUrl;
     if (url == null || url.isEmpty) return null;
-    if (_logoCache.containsKey(url)) return _logoCache[url];
+    return _fetchCached(url);
+  }
+
+  /// HTTP GET with in-memory caching. Returns null on any failure so the
+  /// receipt still prints (without the image) rather than aborting.
+  Future<Uint8List?> _fetchCached(String url) async {
+    if (_imageCache.containsKey(url)) return _imageCache[url];
     try {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode != 200) {
-        _log.w('[Print] logo fetch HTTP ${response.statusCode}: $url');
+        _log.w('[Print] image fetch HTTP ${response.statusCode}: $url');
         return null;
       }
       final bytes = response.bodyBytes;
-      _logoCache[url] = bytes;
+      _imageCache[url] = bytes;
       return bytes;
     } catch (e) {
-      _log.w('[Print] logo fetch failed', error: e);
+      _log.w('[Print] image fetch failed: $url', error: e);
       return null;
     }
   }

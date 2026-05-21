@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'core/widgets/adaptive_shell.dart';
 import 'features/auth/auth_provider.dart';
+import 'features/auth/bootstrap_provider.dart';
+import 'features/auth/bootstrap_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/bank_accounts/bank_accounts_screen.dart';
 import 'features/catalog/catalog_screen.dart';
@@ -42,7 +44,7 @@ import 'features/transactions/transaction_list_screen.dart';
 /// Routes outside the shell (e.g. `/more/customers`) push as full-screen
 /// detail pages without the bottom nav / rail.
 final routerProvider = Provider<GoRouter>((ref) {
-  // Re-evaluate redirect when auth state flips (sign in / sign out).
+  // Re-evaluate redirect when auth OR bootstrap state flips.
   final refresh = _AuthRefreshNotifier(ref);
   ref.onDispose(refresh.dispose);
 
@@ -51,14 +53,29 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: refresh,
     redirect: (context, state) {
       final auth = ref.read(authProvider);
+      final bootstrap = ref.read(bootstrapProvider);
       final isAuthed = auth is Authenticated;
       final isLoading = auth is AuthLoading;
       final isLogin = state.matchedLocation == '/login';
+      final isBootstrap = state.matchedLocation == '/bootstrap';
+      final bootstrapInFlight = bootstrap is BootstrapPending ||
+          bootstrap is BootstrapRunning ||
+          bootstrap is BootstrapFailed;
 
       // During initial session restore, don't redirect — keeps screen stable.
       if (isLoading) return null;
-      if (!isAuthed && !isLogin) return '/login';
-      if (isAuthed && isLogin) return '/pos';
+
+      // Unauthenticated — only the login screen is reachable.
+      if (!isAuthed) return isLogin ? null : '/login';
+
+      // Authenticated. If a post-login data pull is still in progress
+      // (pending / running / failed), lock the user on /bootstrap.
+      if (bootstrapInFlight) {
+        return isBootstrap ? null : '/bootstrap';
+      }
+
+      // Bootstrap is complete — bounce off /login or /bootstrap.
+      if (isLogin || isBootstrap) return '/pos';
       return null;
     },
     routes: [
@@ -66,6 +83,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         name: 'login',
         builder: (_, __) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/bootstrap',
+        name: 'bootstrap',
+        builder: (_, __) => const BootstrapScreen(),
       ),
       // Legacy `/` redirect — bookmarks survive.
       GoRoute(path: '/', redirect: (_, __) => '/pos'),
@@ -295,22 +317,28 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Bridges Riverpod's `authProvider` to GoRouter's `refreshListenable`.
-/// Each auth state change fires `notifyListeners()` so the redirect callback
-/// re-runs.
+/// Bridges Riverpod's `authProvider` + `bootstrapProvider` to GoRouter's
+/// `refreshListenable`. Any change to either re-runs the redirect callback
+/// so the user transitions smoothly from /login → /bootstrap → /pos.
 class _AuthRefreshNotifier extends ChangeNotifier {
   _AuthRefreshNotifier(Ref ref) {
-    _sub = ref.listen<AuthState>(
+    _authSub = ref.listen<AuthState>(
       authProvider,
+      (_, __) => notifyListeners(),
+    );
+    _bootstrapSub = ref.listen<BootstrapState>(
+      bootstrapProvider,
       (_, __) => notifyListeners(),
     );
   }
 
-  late final ProviderSubscription<AuthState> _sub;
+  late final ProviderSubscription<AuthState> _authSub;
+  late final ProviderSubscription<BootstrapState> _bootstrapSub;
 
   @override
   void dispose() {
-    _sub.close();
+    _authSub.close();
+    _bootstrapSub.close();
     super.dispose();
   }
 }

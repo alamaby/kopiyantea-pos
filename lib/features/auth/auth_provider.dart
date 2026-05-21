@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../../core/database/app_database.dart';
 import '../../core/utils/result.dart';
 import 'auth_repository.dart';
+import 'bootstrap_provider.dart';
 
 part 'auth_provider.freezed.dart';
 part 'auth_provider.g.dart';
@@ -63,10 +64,15 @@ class Auth extends _$Auth {
       state = const AuthState.loading();
       final result = await repo.resolveSessionWithClaim(session);
       state = switch (result) {
-        Ok(:final value) => AuthState.authenticated(
-            user: value.user,
-            branchId: value.branchId,
-          ),
+        Ok(:final value) => () {
+            // Magic-link redirect counts as an explicit sign-in → trigger
+            // post-login bootstrap pull.
+            ref.read(bootstrapProvider.notifier).markPending();
+            return AuthState.authenticated(
+              user: value.user,
+              branchId: value.branchId,
+            );
+          }(),
         Err() => const AuthState.unauthenticated(),
       };
     });
@@ -102,25 +108,10 @@ class Auth extends _$Auth {
     final result = await repo.signIn(email: email, password: password);
     return switch (result) {
       Ok(:final value) => () {
-          state = AuthState.authenticated(
-            user: value.user,
-            branchId: value.branchId,
-          );
-          return Ok<Unit, AuthError>(Unit.instance);
-        }(),
-      Err(:final error) => () {
-          state = const AuthState.unauthenticated();
-          return Err<Unit, AuthError>(error);
-        }(),
-    };
-  }
-
-  Future<Result<Unit, AuthError>> signInAsDemo() async {
-    state = const AuthState.loading();
-    final repo = ref.read(authRepositoryProvider);
-    final result = await repo.signInAsDemo();
-    return switch (result) {
-      Ok(:final value) => () {
+          // Trigger bootstrap pull BEFORE flipping state so the router
+          // sees `pending` on first redirect evaluation and routes to
+          // /bootstrap (not /pos).
+          ref.read(bootstrapProvider.notifier).markPending();
           state = AuthState.authenticated(
             user: value.user,
             branchId: value.branchId,
@@ -137,6 +128,9 @@ class Auth extends _$Auth {
   Future<void> signOut() async {
     final repo = ref.read(authRepositoryProvider);
     await repo.signOut();
+    // Clear bootstrap state so a future sign-in starts from `complete` and
+    // the markPending in signIn drives the post-login pull.
+    ref.read(bootstrapProvider.notifier).reset();
     state = const AuthState.unauthenticated();
   }
 }

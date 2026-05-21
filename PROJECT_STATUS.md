@@ -376,6 +376,60 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 
 ---
 
+## Bootstrap Flow (2026-05-20)
+
+### Remove seed + post-login bootstrap pull — **DONE DEV**
+**Rationale:** First-time use requires login (which requires internet) anyway. Local seed is dev clutter that creates a stale-data trap (developer test data leaking into prod sessions). After login, pull fresh data from Supabase → user always operates on up-to-date state.
+
+**Implemented:**
+- `lib/core/database/seed_service.dart` **deleted**
+- `main.dart` — removed `SeedService(...).ensureSeeded()` call
+- `lib/features/auth/bootstrap_provider.dart` (new) — `BootstrapState` sealed union: `complete`, `pending`, `running(step)`, `failed(error)`. `keepAlive: true` so state survives auth state churn. `markPending`, `reset`, and `run()` that calls `pullMyAuthContext` → `pullMasterData` → `pullTransactions` with step-by-step UI updates
+- `lib/features/auth/bootstrap_screen.dart` (new) — blocking loading screen with brand mark, current step text, error block with Coba Lagi + Keluar buttons
+- `auth_provider.dart` — `signIn` + magic-link `resolveSessionWithClaim` now call `bootstrapProvider.markPending()` BEFORE flipping auth state to Authenticated so router sees pending on first redirect. `signOut` calls `bootstrap.reset()` for clean slate.
+- `auth_repository.dart` — `signInAsDemo()` removed (depended on seed)
+- `login_screen.dart` — demo button + footer text removed
+- `router.dart` — new `/bootstrap` route, redirect logic: `unauth → /login`, `authed + bootstrap in-flight → /bootstrap`, `authed + complete → /pos`. RefreshListenable now bridges BOTH auth and bootstrap providers
+
+**Session-restore behavior:** When the app cold-starts and a Supabase session is restored from `flutter_secure_storage`, bootstrap state stays `complete` (default) — user goes straight to /pos with cached data. Only explicit sign-in (form / magic link) triggers the bootstrap pull. Trade-off: a user could be using stale data after long offline period; the manual "Sinkron Sekarang" in Settings + on-app-resume sync (future) cover that.
+
+**Outstanding QA:**
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (new freezed + riverpod files)
+- [ ] Smoke: install app first time → login → bootstrap screen muncul → step labels berjalan ("Memuat akses cabang…" → "Memuat menu & stok…" → "Memuat riwayat transaksi…") → navigate ke /pos
+- [ ] Edge: matikan internet di tengah bootstrap → error screen muncul → "Coba Lagi" → tunggu internet kembali → bootstrap ulang
+- [ ] Edge: kill app saat di /pos → buka lagi → langsung ke /pos (session restore, tanpa bootstrap)
+- [ ] Edge: sign out → sign in lagi (user sama) → bootstrap ulang berjalan
+- [ ] Edge: user yang tidak punya branch access → error screen menampilkan "tidak punya akses ke cabang manapun"
+- [ ] Verifikasi seed_service.dart benar-benar terhapus dari `git log` setelah commit
+
+**Catatan migrasi:** User existing yang sudah punya seed data lokal masih punya datanya — bootstrap akan upsert/overlay dengan data Supabase, tidak menghapus. Untuk fresh-state test, hapus app + reinstall, atau `adb shell pm clear`.
+
+---
+
+## Receipt QR (2026-05-20)
+
+### [ENH-004] Print Static QRIS on Receipt — **DONE DEV**
+**Implemented (static QR only — no dynamic generation):**
+- Drift v10: `receipt_settings.printQrisOnReceipt` column (default false)
+- `ReceiptPayload.qrisImageBytes` — raw image bytes, decoded + rendered by ESC/POS builder
+- `EscPosReceiptBuilder` — when `qrisImageBytes` set, append "SCAN QRIS UNTUK BAYAR" header + "Masukkan nominal sesuai TOTAL di atas" hint + QR image (auto-resize to paper width via existing `_renderLogo` helper)
+- `PrintReceiptUseCase` — opt-in fetch only when `setting.printQrisOnReceipt && tx.paymentMethod == qris && branch.qrisImageUrl != null`. Refactored `_maybeFetchLogo` → shared `_fetchCached(url)` helper (renamed `_logoCache` → `_imageCache`)
+- `ReceiptSettingsScreen` — new SwitchListTile "Cetak QRIS di struk" with use-case explanation
+- `sync_dtos.dart` — `receiptSettingFromJson` includes `print_qris_on_receipt`
+- Supabase migration `20260520150005_receipt_qris_toggle.sql`
+
+**Outstanding QA:**
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (schema v10)
+- [ ] Apply Supabase migration
+- [ ] Smoke: owner aktifkan toggle + branch sudah punya QRIS → checkout method QRIS → print → QR muncul di struk dengan header "SCAN QRIS UNTUK BAYAR"
+- [ ] Smoke: toggle OFF → QR tidak muncul; method ≠ QRIS → QR tidak muncul walau toggle ON
+- [ ] Edge: branch tanpa QRIS upload + toggle ON → QR skip silently
+- [ ] Edge: offline saat cetak pertama (sebelum cache) → skip silent, struk tetap keluar
+
+**Scope catatan:** ENH-004 versi aman — pakai QR statis yang sudah di-upload owner. Tidak generate dynamic QR. Untuk dynamic QR, lihat 2 backlog item baru: `TODO-QRIS-DYN-STATIC` dan `TODO-QRIS-DYN-AGGR`.
+
+---
+
 ## Bank Accounts (2026-05-20)
 
 ### [FEAT-015] Global Bank Transfer Accounts — **DONE DEV**
@@ -598,6 +652,76 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 
 **Outstanding for QA:**
 - [ ] Smoke: owner → undangan list → swipe → confirm → row hilang + outbox terisi; setelah sync → row di Supabase `pending_invitations` ikut hilang
+
+### [TODO-BG-SYNC-ON-RESUME] Background Re-sync on Session Restore + App Resume
+- **Use case:** Saat ini bootstrap pull hanya jalan saat *explicit* login. Kalau user kill app lalu buka lagi (session restore), atau pakai app terus-menerus tanpa logout, data lokal bisa stale dari edits di device lain (mis. owner ubah harga produk di laptop, kasir di mobile pakai data lama). Manual "Sinkron Sekarang" di Settings ada, tapi mengandalkan kasir untuk inisiatif.
+- **Scope:**
+  - **Trigger 1 — session restore:** Saat `Auth._restoreSession` sukses, fire-and-forget `Sync.syncNow()` di background (tidak blocking UI). User langsung lihat /pos dengan cache, dalam ~5 detik data update silently. Tampilkan badge sync state di POS AppBar (mis. dot kecil hijau "tersinkron" / kuning "menyinkronkan").
+  - **Trigger 2 — app resume:** Pakai `AppLifecycleListener.onResume` (Flutter 3.13+). Saat app dari background ke foreground, kalau last sync > threshold (mis. 5 menit), fire-and-forget sync. Throttle supaya tidak hammer Supabase di pemakaian normal.
+  - **Trigger 3 — interval timer (opsional):** Sync setiap 15 menit selama app aktif, kalau koneksi OK. Hapus saat app pause.
+  - Reactive UI indikator di POS AppBar untuk in-flight sync (kecil, tidak mengganggu).
+- **Edge cases:**
+  - Sync sedang in-flight, user explicit tap "Sinkron Sekarang" → dedupe / queue, jangan double-pull
+  - Sync gagal karena network → silent retry exponential backoff (pattern sudah ada di `Sync` provider)
+  - Catat `lastSyncAt` per provider sumber (master vs tx history) supaya bisa tampilkan "Terakhir sinkron 3 menit yang lalu"
+- **Files affected:**
+  - `lib/features/auth/auth_provider.dart` — call sync notifier setelah restoreSession sukses
+  - `lib/core/sync/sync_provider.dart` — add throttle + lastSyncAt tracking
+  - New `lib/core/app_lifecycle_listener.dart` — wrap MaterialApp dengan resume handler
+  - `lib/features/pos/pos_screen.dart` — add sync indicator di AppBar
+- **Estimated effort:** Kecil-sedang. 4-5 file, ~3-4 jam. Risk utama: dedupe + concurrency saat multiple triggers fire.
+- **Dependency:** Bootstrap flow (done DEV). Tidak ada blocker.
+
+### [TODO-QRIS-DYN-STATIC] Generate Dynamic QRIS from Owner's Static QR
+- **Use case:** Static QRIS = customer harus input nominal manual → error-prone (salah ketik nominal, dispute "udah bayar tapi nominal beda"). Dynamic QRIS = nominal pre-embedded di QR, customer tinggal scan + tap bayar. Owner sudah punya static QRIS (uploaded via FEAT-013) — kita generate dynamic version client-side dengan modifikasi TLV.
+- **Technical approach:**
+  1. Decode owner's `qrisImageUrl` PNG → string QRIS payload via QR scanner (`mobile_scanner` atau `qr_code_tools`). Cache decoded string di `branches.qrisStaticPayload` (new column) supaya decode sekali per cabang
+  2. Parse EMVCo TLV: Tag 00 (format), Tag 01 (point of init = "11" static), Tag 26-51 (merchant identifiers), Tag 53 (currency = "360" IDR), Tag 58 (country), Tag 59 (merchant name), Tag 60 (city), Tag 63 (CRC16)
+  3. Modify untuk dynamic:
+     - Tag 01: ubah dari "11" ke "12"
+     - Insert Tag 54 dengan nominal (mis. `5410016000` = panjang 10, value "16000" untuk Rp16.000) — *wait, format Tag 54 panjangnya 2-byte ASCII length prefix + value*. Actual: `54` + `05` + `16000` (length=5 chars)
+     - Remove existing Tag 63
+     - Compute CRC16-CCITT (polynomial 0x1021, init 0xFFFF) atas payload baru (TANPA Tag 63), append sebagai `6304XXXX` (hex uppercase)
+  4. Render hasilnya pakai `qr_flutter` package sebagai widget atau bytes
+  5. Tampilkan di POS / di struk dengan nominal tepat
+- **Validation:** test dengan beberapa bank app (BCA mobile, BRImo, GoPay, OVO) untuk verify QR diterima
+- **Risk:** Tergantung merchant agreement dengan PJSP. Beberapa PJSP secara teknis bisa baca, tapi T&C-nya mungkin require dynamic QR di-generate via API PJSP-nya. Owner perlu cek dokumen daftar QRIS-nya sebelum aktifkan.
+- **Files affected:**
+  - `lib/core/qris/qris_tlv_parser.dart` — TLV decode/encode + CRC16-CCITT
+  - `lib/core/qris/qris_dynamic_generator.dart` — orchestrate decode → modify → encode → render
+  - `branches.qrisStaticPayload` column (cache decoded string)
+  - `pubspec.yaml` — `qr_flutter` + `qr_code_tools` (atau `mobile_scanner` reuse)
+  - Settings → toggle "Generate Dynamic QR" per cabang
+  - `QrisDisplaySheet` — pakai generated QR saat enabled
+- **Estimated effort:** 2-3 hari. TLV parser + CRC16 tested, plus QA dengan multiple bank apps.
+
+### [TODO-QRIS-DYN-AGGR] Dynamic QRIS via Payment Aggregator
+- **Use case:** Path resmi untuk dynamic QRIS — pakai aggregator (Xendit, Midtrans, DOKU, OY!, Flip Business). Tidak melanggar T&C apapun, dapat webhook konfirmasi pembayaran otomatis (tidak perlu kasir verifikasi manual via app banking).
+- **Technical approach:**
+  1. Pilih aggregator + sign up merchant account. Rekomendasi:
+     - **Xendit** — paling popular di Indonesia, dev docs bagus, ~0.7% per tx
+     - **Midtrans** — owned by GoTo, integrasi GoPay smooth
+     - **Flip Business** — biaya lebih rendah ~0.5%, tapi setup lebih ribet
+  2. Setup webhook endpoint di Supabase Edge Function untuk receive payment confirmations
+  3. Add settings: API key + webhook secret stored encrypted via `flutter_secure_storage`
+  4. Saat checkout method=QRIS:
+     - Call `POST /qr_codes` (atau equivalent) dengan amount + tx id
+     - Receive QR string + payment URL + expires_at
+     - Render QR ke customer
+     - Poll status atau wait for webhook
+  5. Webhook → Edge Function → update `transactions.status` + mark paid + sync ke client
+  6. Auto-checkout setelah confirmed (no manual "Pembayaran Diterima" tap)
+- **Fee implication:** Tambah biaya per transaksi (% atau Rp fixed). Owner perlu set markup atau absorb.
+- **Settlement:** Aggregator collect ke virtual account → settle harian/mingguan ke rekening bank merchant (T+1 atau T+2 tergantung aggregator).
+- **Files affected:**
+  - `lib/core/payments/aggregator_service.dart` — abstract interface
+  - `lib/core/payments/aggregators/xendit_service.dart` (etc.)
+  - Server-side: Supabase Edge Function untuk webhook receiver
+  - `branches.payment_aggregator_config` (encrypted JSON)
+  - `transactions.aggregator_payment_id` + status tracking columns
+  - CheckoutSheet integration replace static flow dengan dynamic
+- **Estimated effort:** 1-2 minggu. Termasuk aggregator account setup + KYC + sandbox testing + production go-live.
+- **Dependency:** Owner siap bayar fee per tx + KYC documentation (NPWP usaha, KTP, surat keterangan domisili)
 
 ### [FEAT-010] WhatsApp Business API Integration untuk Notifikasi Undangan
 - **Requested:** 2026-05-20 (FEAT-006 QA)

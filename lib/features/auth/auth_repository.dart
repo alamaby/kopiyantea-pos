@@ -166,18 +166,6 @@ class AuthRepository {
     }
   }
 
-  /// Dev-only — bypasses Supabase, picks the seed cashier from local Drift.
-  /// Outbox push will fail without auth.uid; demo mode is offline-only.
-  Future<Result<AuthedSession, AuthError>> signInAsDemo() async {
-    const seedCashierId = '00000000-0000-0000-0000-000000000012';
-    const seedBranchId = '00000000-0000-0000-0000-000000000001';
-    final user = await branchDao.getUserById(seedCashierId);
-    if (user == null) return const Err(AuthError.userNotRegistered);
-    if (!user.isActive) return const Err(AuthError.userInactive);
-    _log.i('[Auth] demo sign-in as ${user.fullName}');
-    return Ok(AuthedSession(user: user, branchId: seedBranchId));
-  }
-
   /// Restore a previously-authenticated session on app launch.
   Future<AuthedSession?> restoreSession() async {
     final session = currentSession;

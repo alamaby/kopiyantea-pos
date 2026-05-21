@@ -71,20 +71,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _signInDemo() async {
-    setState(() {
-      _isSubmitting = true;
-      _error = null;
-    });
-    final auth = ref.read(authProvider.notifier);
-    final result = await auth.signInAsDemo();
-    if (!mounted) return;
-    setState(() => _isSubmitting = false);
-    if (result is Err<Unit, AuthError>) {
-      setState(() => _error = _label(result.error));
-    }
-  }
-
   Future<void> _signInWithMagicLink() async {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty) {
@@ -320,42 +306,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
 
-                  const SizedBox(height: AppSpacing.lg),
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: context.colors.border)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                        ),
-                        child: Text(
-                          'atau',
-                          style: AppTypography.labelSm.copyWith(
-                            color: context.colors.textTertiary,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: context.colors.border)),
-                    ],
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Demo
-                  AppButton(
-                    label: 'Masuk sebagai Demo Kasir',
-                    icon: Icons.flash_on_outlined,
-                    variant: AppButtonVariant.secondary,
-                    onPressed: _isSubmitting ? null : _signInDemo,
-                    fullWidth: true,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    'Mode offline — tanpa Supabase. Transaksi tidak akan tersinkron.',
-                    style: AppTypography.labelXs.copyWith(
-                      color: context.colors.textTertiary,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
                 ],
               ),
             ),

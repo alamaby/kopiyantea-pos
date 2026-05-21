@@ -10,6 +10,7 @@ import '../../../core/theme/typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_empty_state.dart';
+import '../../../core/widgets/undo_snackbar.dart';
 import '../../customers/customer_picker_sheet.dart';
 import '../cart_provider.dart';
 import '../cart_state.dart';
@@ -479,7 +480,7 @@ class _CartItemTile extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 20),
                 color: AppColors.danger,
-                onPressed: () => _confirmDelete(context),
+                onPressed: () => _deleteWithUndo(context),
                 tooltip: 'Hapus',
               ),
             ],
@@ -506,27 +507,19 @@ class _CartItemTile extends StatelessWidget {
     notifier.updateOptions(index, picked);
   }
 
-  Future<void> _confirmDelete(BuildContext context) async {
-    final name = item.branchProduct.customName ?? item.product.name;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Hapus item?'),
-        content: Text('"$name" akan dihapus dari keranjang.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Hapus'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed ?? false) notifier.removeItem(index);
+  /// ENH-003 — optimistic delete + 4s snackbar undo. Replaces the previous
+  /// confirm dialog: peak-hour cashiers iterate too fast for a modal.
+  void _deleteWithUndo(BuildContext context) {
+    final messenger = ScaffoldMessenger.of(context);
+    final removed = item;
+    final removedIndex = index;
+    final name = removed.branchProduct.customName ?? removed.product.name;
+    notifier.removeItem(removedIndex);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(buildUndoSnackBar(
+      message: '"$name" dihapus dari keranjang',
+      onUndo: () => notifier.restoreItem(removed, index: removedIndex),
+    ));
   }
 
   Future<void> _editNotes(BuildContext context) async {

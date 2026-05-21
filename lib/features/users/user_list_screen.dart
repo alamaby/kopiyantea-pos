@@ -16,6 +16,7 @@ import '../../core/theme/typography.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../core/widgets/undo_snackbar.dart';
 import 'user_providers.dart';
 
 /// FEAT-006 — owner-only list of users + pending invitations.
@@ -235,16 +236,55 @@ class _DismissibleInvitation extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final dao = ref.read(branchDaoProvider);
     final outboxDao = ref.read(outboxDaoProvider);
-    await dao.deletePendingInvitation(invitation.id);
+
+    final snapshot = invitation;
+    final deleteOutboxId = const Uuid().v7();
+
+    await dao.deletePendingInvitation(snapshot.id);
+    await outboxDao.enqueue(OutboxItemsCompanion.insert(
+      id: deleteOutboxId,
+      entityType: OutboxEntityType.pendingInvitation,
+      payload: jsonEncode({'id': snapshot.id, 'action': 'delete'}),
+      createdAt: DateTime.now(),
+    ));
+
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(buildUndoSnackBar(
+      message: 'Undangan untuk ${snapshot.email} dibatalkan',
+      onUndo: () => _undoCancelInvitation(ref, snapshot, deleteOutboxId),
+    ));
+  }
+
+  /// Re-insert local row + compensate outbox. The push handler
+  /// (`SyncRepository._pushPendingInvitation`) is symmetric: a present
+  /// local row → upsert, missing → delete. So enqueueing a new outbox
+  /// entry covers the race where the original DELETE already shipped to
+  /// the server — Supabase row will be re-created on next sync.
+  Future<void> _undoCancelInvitation(
+    WidgetRef ref,
+    PendingInvitationRow snap,
+    String deleteOutboxId,
+  ) async {
+    final dao = ref.read(branchDaoProvider);
+    final outboxDao = ref.read(outboxDaoProvider);
+
+    await dao.upsertPendingInvitation(PendingInvitationsCompanion.insert(
+      id: snap.id,
+      email: snap.email,
+      fullName: snap.fullName,
+      globalRole: snap.globalRole,
+      branchIdsCsv: Value(snap.branchIdsCsv),
+      invitedBy: Value(snap.invitedBy),
+      createdAt: snap.createdAt,
+    ));
+
+    await outboxDao.deleteById(deleteOutboxId);
     await outboxDao.enqueue(OutboxItemsCompanion.insert(
       id: const Uuid().v7(),
       entityType: OutboxEntityType.pendingInvitation,
-      payload: jsonEncode({'id': invitation.id, 'action': 'delete'}),
+      payload: jsonEncode({'id': snap.id}),
       createdAt: DateTime.now(),
     ));
-    messenger.showSnackBar(
-      SnackBar(content: Text('Undangan untuk ${invitation.email} dibatalkan')),
-    );
   }
 }
 

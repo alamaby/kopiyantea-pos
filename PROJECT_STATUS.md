@@ -572,6 +572,19 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 - [ ] Edge: ganti cabang aktif → badge re-fetch
 - [ ] Midnight rollover: set jam device ke 23:59 → tunggu ~1 menit → badge reset ke 0 tanpa restart
 
+### [ENH-003] Snackbar Undo: Cart Item & Cancel Invitation — **DONE DEV**
+**Implemented:**
+- `lib/core/widgets/undo_snackbar.dart` — `buildUndoSnackBar` factory (label "BATAL", floating, 4s) shared by both callsites
+- Cart: `CartItemTile._confirmDelete` → `_deleteWithUndo` — optimistic remove + snackbar; tap BATAL → `CartNotifier.restoreItem(item, index: removedIndex)` mengembalikan ke posisi semula
+- Invitation: `_DismissibleInvitation._cancelInvitation` snapshot row + capture outbox id pra-delete; new `_undoCancelInvitation` re-insert local + `outboxDao.deleteById(deleteOutboxId)` + enqueue ulang (push handler simetri → server row re-created bila DELETE sudah ter-sync)
+- `ScaffoldMessenger.hideCurrentSnackBar()` di kedua flow → no stacked snackbars saat hapus berturut-turut
+- AlertDialog "Hapus item?" untuk cart dihapus (tetap pakai konfirmasi swipe untuk undangan karena impact server)
+
+**Outstanding QA:**
+- [ ] `flutter analyze`
+- [ ] Smoke cart: tambah 2 item → hapus line 1 → langsung hilang + snackbar → BATAL → kembali di index 0; lalu hapus + tunggu 4 detik → permanen
+- [ ] Smoke invitation: owner → swipe → confirm → snackbar → BATAL → row balik di list; jalankan Sync Now sebelum BATAL → row tetap balik + outbox baru di-enqueue → sync lagi → server row re-created
+
 ### [ENH-007] Reprint Receipt — **DONE DEV**
 **Implemented:**
 - `TransactionDetailScreen._ActionsCard` dengan tombol "Cetak Ulang Struk"

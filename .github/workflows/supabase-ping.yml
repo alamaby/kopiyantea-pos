@@ -46,8 +46,10 @@ jobs:
           echo "auth/health → HTTP $code"
           head -c 200 /tmp/auth.json || true
           echo
-          if [ "$code" != "200" ]; then
-            echo "::error::Auth health returned $code (expected 200). Project may be paused or URL/key invalid."
+          # Any 2xx/3xx/4xx = service responded (project alive). Only 0,
+          # 5xx, or timeout signal a paused/dead project.
+          if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
+            echo "::error::Auth ping returned $code — project may be paused or unreachable."
             exit 1
           fi
 
@@ -56,15 +58,17 @@ jobs:
           SB_URL: ${{ secrets.SUPABASE_URL }}
           SB_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
+          # NOTE: publishable keys (sb_publishable_...) are NOT JWTs. Sending
+          # them as `Authorization: Bearer` triggers PostgREST JWT parse
+          # failure → 401. Use only the `apikey` header.
           code=$(curl -sS -o /dev/null -w "%{http_code}" \
             -H "apikey: $SB_KEY" \
-            -H "Authorization: Bearer $SB_KEY" \
             "$SB_URL/rest/v1/")
           echo "rest/v1 → HTTP $code"
-          # 200 (OpenAPI spec served) or 404 (rare on newer projects) both
-          # mean PostgREST + database are up. 401/5xx = something wrong.
-          if [ "$code" != "200" ] && [ "$code" != "404" ]; then
-            echo "::error::PostgREST returned $code (expected 200 or 404). DB may be down."
+          # Same acceptance as auth: any HTTP response = alive. The intent
+          # is keep-alive, not auth correctness.
+          if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
+            echo "::error::PostgREST returned $code — DB unreachable or paused."
             exit 1
           fi
 

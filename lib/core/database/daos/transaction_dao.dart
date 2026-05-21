@@ -40,6 +40,21 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(t) => OrderingTerm.asc(t.clientCreatedAt)]))
           .get();
 
+  /// ENH-002 — reactive variant of [getCompletedInRange]. Drives the
+  /// "Hari Ini" quick badge in Home/POS app bars; re-emits when a new
+  /// transaction is inserted (checkout) or a void row lands.
+  Stream<List<TransactionRow>> watchCompletedInRange({
+    required String branchId,
+    required DateTime start,
+    required DateTime end,
+  }) =>
+      (select(transactions)
+            ..where((t) =>
+                t.branchId.equals(branchId) &
+                t.status.equalsValue(TransactionStatus.completed) &
+                t.clientCreatedAt.isBetweenValues(start, end)))
+          .watch();
+
   /// Fetches items for a batch of transaction ids — used by the Reports
   /// aggregator to compute top sellers without a join.
   Future<List<TransactionItemRow>> getItemsForTransactionIds(

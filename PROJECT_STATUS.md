@@ -557,6 +557,21 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 - [ ] `dart run build_runner build --delete-conflicting-outputs` (Drift v5 + new `.g.dart` providers/dao)
 - [ ] Smoke: 3 transaksi cash → cek expected; void salah satu → cek refund row di breakdown; tutup kas dengan counted = expected → variance 0; counted < expected → "Kurang" badge
 
+### [ENH-002] Quick "Hari Ini" Badge — **DONE DEV**
+**Implemented:**
+- `TransactionDao.watchCompletedInRange` — reactive stream variant of `getCompletedInRange`
+- `today_badge_provider.dart` — `TodayBadgeStats` + `todayBadgeStatsProvider` (family by `branchId`); StreamProvider re-emits via Drift on checkout/void
+- Midnight auto-rollover: one-shot `Timer` to `nextMidnight + 1s` → `ref.invalidateSelf()`; `ref.onDispose(timer.cancel)` safeguard
+- `TodayQuickBadge` widget (`lib/features/reports/widgets/today_quick_badge.dart`) — `AppBadge` (tone accent, icon `today_outlined`) showing `<n> tx · Rp <revenue>` with compact rupiah (`rb`/`jt`); tap → `/more/reports`; hidden when no branch selected
+- Mounted di `PosScreen` AppBar (actions, kiri QRIS/Held) + `HomeScreen` AppBar
+
+**Outstanding QA:**
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (new `today_badge_provider.g.dart`)
+- [ ] `flutter analyze`
+- [ ] Smoke: login → Home + POS AppBar tampil `0 tx · Rp 0`; checkout cash 1 tx → kedua badge update reaktif; void tx → revenue & count turun; tap badge → buka Reports
+- [ ] Edge: ganti cabang aktif → badge re-fetch
+- [ ] Midnight rollover: set jam device ke 23:59 → tunggu ~1 menit → badge reset ke 0 tanpa restart
+
 ### [ENH-007] Reprint Receipt — **DONE DEV**
 **Implemented:**
 - `TransactionDetailScreen._ActionsCard` dengan tombol "Cetak Ulang Struk"

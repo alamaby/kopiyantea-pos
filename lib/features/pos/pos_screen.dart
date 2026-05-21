@@ -12,6 +12,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../reports/widgets/today_quick_badge.dart';
 import '../settings/branch_selection_provider.dart';
 import 'cart_provider.dart';
 import 'widgets/cart_panel.dart';
@@ -76,6 +77,8 @@ class PosScreen extends ConsumerWidget {
           orElse: () => const Text('Kasir'),
         ),
         actions: [
+          const TodayQuickBadge(),
+          const SizedBox(width: AppSpacing.xs),
           // FEAT-013 — quick QRIS access for walk-in customers who want to
           // scan before checkout (e.g. self-order).
           if (activeBranch != null &&

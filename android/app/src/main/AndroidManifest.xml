@@ -52,6 +52,13 @@
                       android:host="login-callback"/>
             </intent-filter>
         </activity>
+        <!-- FEAT-012b — image_cropper UCropActivity. Required for the
+             post-pick crop UI to launch on Android. -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

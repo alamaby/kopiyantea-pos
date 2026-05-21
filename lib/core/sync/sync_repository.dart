@@ -130,6 +130,25 @@ class SyncRepository {
     var upserted = 0;
     var errors = 0;
 
+    // ── branches (re-pull for the user's accessible branches) ──
+    // Without this, tax-rate / QRIS-image edits done on another device
+    // won't reach this one until the user signs out + back in. Branches
+    // the user already has access to are pulled here on every sync.
+    try {
+      final dao = _ref.read(branchDaoProvider);
+      final rows = await sb
+          .from('branches')
+          .select()
+          .inFilter('id', branchIds);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await dao.upsertBranch(branchFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull branches failed', error: e);
+      errors++;
+    }
+
     // ── products (chain-wide) ──
     try {
       final rows = await sb.from('products').select();

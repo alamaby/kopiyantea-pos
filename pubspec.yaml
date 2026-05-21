@@ -51,6 +51,9 @@ dependencies:
   image_picker: ^1.1.2
   flutter_image_compress: ^2.3.0
   cached_network_image: ^3.4.0
+  # FEAT-012b — post-pick crop step for product photos (and any future
+  # image use that needs aspect-ratio control).
+  image_cropper: ^8.0.2
   # FEAT-014 — decode logo bytes for ESC/POS print (esc_pos_utils_plus
   # accepts `image.Image`). `http` for direct fetch of the Supabase
   # storage public URL.

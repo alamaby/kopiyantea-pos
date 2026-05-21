@@ -1,7 +1,9 @@
 import 'dart:typed_data';
+import 'dart:ui' show Color;
 
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,10 +13,25 @@ import '../utils/result.dart';
 
 enum ImageSource_ { gallery, camera }
 
+/// FEAT-012b — crop aspect ratio preset. Use [square] for product photos
+/// so MenuGrid thumbnails align; [free] for logo/QRIS where the source
+/// aspect is meaningful.
+enum CropAspect {
+  /// No crop step — pick → compress → upload.
+  none,
+
+  /// Force 1:1.
+  square,
+
+  /// Allow any aspect — user drags freely.
+  free,
+}
+
 enum ImageUploadError {
   cancelled,
   permissionDenied,
   pickFailed,
+  cropCancelled,
   compressFailed,
   uploadFailed,
   notAuthenticated,
@@ -47,15 +64,20 @@ class ImageUploadService {
     }
   }
 
-  /// Picks + compresses + uploads. Returns the public URL on success.
+  /// Picks + (optionally crops) + compresses + uploads. Returns the
+  /// public URL on success.
   ///
   /// [bucket] = Supabase Storage bucket name.
   /// [pathPrefix] = folder within the bucket, e.g. `products/` — the file
   /// will be saved as `{pathPrefix}{uuidv7}.jpg`.
+  /// [crop] = if not [CropAspect.none], inserts a crop step between pick
+  /// and compress. User can pinch/drag to frame the subject. Cancelling
+  /// the crop returns [ImageUploadError.cropCancelled].
   Future<Result<String, ImageUploadError>> pickAndUpload({
     required ImageSource_ source,
     required String bucket,
     required String pathPrefix,
+    CropAspect crop = CropAspect.none,
   }) async {
     final sb = _sb;
     if (sb == null) return const Err(ImageUploadError.notAuthenticated);
@@ -78,11 +100,48 @@ class ImageUploadService {
     }
     if (picked == null) return const Err(ImageUploadError.cancelled);
 
+    // Crop (optional).
+    String pathForCompress = picked.path;
+    if (crop != CropAspect.none) {
+      try {
+        final cropped = await ImageCropper().cropImage(
+          sourcePath: picked.path,
+          aspectRatio: crop == CropAspect.square
+              ? const CropAspectRatio(ratioX: 1, ratioY: 1)
+              : null, // null = free aspect
+          compressFormat: ImageCompressFormat.jpg,
+          compressQuality: 95, // we re-compress below; keep crop output high
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Atur Foto',
+              toolbarColor: const Color(0xFF0F766E), // brand teal
+              toolbarWidgetColor: const Color(0xFFFFFFFF),
+              initAspectRatio: CropAspectRatioPreset.original,
+              lockAspectRatio: crop == CropAspect.square,
+              hideBottomControls: crop == CropAspect.square,
+            ),
+            IOSUiSettings(
+              title: 'Atur Foto',
+              aspectRatioLockEnabled: crop == CropAspect.square,
+              resetAspectRatioEnabled: crop == CropAspect.free,
+            ),
+          ],
+        );
+        if (cropped == null) {
+          return const Err(ImageUploadError.cropCancelled);
+        }
+        pathForCompress = cropped.path;
+      } catch (e) {
+        _log.w('[Image] crop failed', error: e);
+        return const Err(ImageUploadError.pickFailed);
+      }
+    }
+
     // Compress.
     Uint8List? compressed;
     try {
       compressed = await FlutterImageCompress.compressWithFile(
-        picked.path,
+        pathForCompress,
         minWidth: 1024,
         minHeight: 1024,
         quality: 80,

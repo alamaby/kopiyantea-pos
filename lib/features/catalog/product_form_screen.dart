@@ -224,6 +224,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       source: source,
       bucket: ImageBuckets.products,
       pathPrefix: 'products/',
+      // FEAT-012b — force 1:1 crop so MenuGrid square thumbnails frame the
+      // food/drink subject without auto-cropping random parts.
+      crop: CropAspect.square,
     );
     if (!mounted) return;
     setState(() => _uploadingPhoto = false);
@@ -235,7 +238,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           await svc.deleteByUrl(old, bucket: ImageBuckets.products);
         }
       case Err(:final error):
-        if (error == ImageUploadError.cancelled) return;
+        if (error == ImageUploadError.cancelled ||
+            error == ImageUploadError.cropCancelled) return;
         messenger.showSnackBar(
           SnackBar(content: Text('Gagal upload: ${error.name}')),
         );

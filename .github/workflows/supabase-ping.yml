@@ -1,0 +1,72 @@
+name: Supabase Keep-Alive
+
+# Supabase free tier auto-pauses a project after 7 days of zero API
+# requests. A daily ping touches the auth service AND PostgREST so both
+# stay warm. The job is intentionally tiny — sub-second curl, almost no
+# CI minutes consumed.
+#
+# Required secrets (Settings → Secrets and variables → Actions):
+# - SUPABASE_URL              e.g. https://abcde.supabase.co
+# - SUPABASE_PUBLISHABLE_KEY  sb_publishable_... (or legacy anon JWT)
+#
+# Cron is UTC. 03:17 UTC ≈ 10:17 WIB. The odd-minute offset avoids the
+# top-of-hour rush where GitHub delays scheduled jobs the most.
+#
+# GitHub also disables cron on repos with no commit activity for 60 days
+# — this workflow's own daily run does NOT count as activity, so push at
+# least one commit every couple months to keep it scheduled.
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Validate secrets present
+        run: |
+          if [ -z "${{ secrets.SUPABASE_URL }}" ] || \
+             [ -z "${{ secrets.SUPABASE_PUBLISHABLE_KEY }}" ]; then
+            echo "::error::SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY secret is missing."
+            exit 1
+          fi
+
+      - name: Ping auth service
+        env:
+          SB_URL: ${{ secrets.SUPABASE_URL }}
+          SB_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          code=$(curl -sS -o /tmp/auth.json -w "%{http_code}" \
+            -H "apikey: $SB_KEY" \
+            "$SB_URL/auth/v1/health")
+          echo "auth/health → HTTP $code"
+          head -c 200 /tmp/auth.json || true
+          echo
+          if [ "$code" != "200" ]; then
+            echo "::error::Auth health returned $code (expected 200). Project may be paused or URL/key invalid."
+            exit 1
+          fi
+
+      - name: Ping PostgREST (warms the database)
+        env:
+          SB_URL: ${{ secrets.SUPABASE_URL }}
+          SB_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SB_KEY" \
+            -H "Authorization: Bearer $SB_KEY" \
+            "$SB_URL/rest/v1/")
+          echo "rest/v1 → HTTP $code"
+          # 200 (OpenAPI spec served) or 404 (rare on newer projects) both
+          # mean PostgREST + database are up. 401/5xx = something wrong.
+          if [ "$code" != "200" ] && [ "$code" != "404" ]; then
+            echo "::error::PostgREST returned $code (expected 200 or 404). DB may be down."
+            exit 1
+          fi
+
+      - name: Done
+        run: echo "Supabase project is alive — ping completed at $(date -u +'%Y-%m-%dT%H:%M:%SZ')."

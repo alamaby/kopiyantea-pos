@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -487,6 +488,27 @@ class _MasterCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
+          if (product.imageUrl != null && product.imageUrl!.isNotEmpty) ...[
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: ClipRRect(
+                borderRadius: AppRadius.radiusMd,
+                child: CachedNetworkImage(
+                  imageUrl: product.imageUrl!,
+                  fit: BoxFit.cover,
+                  placeholder: (_, __) => Container(
+                    color: context.colors.surfaceAlt,
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: context.colors.surfaceAlt,
+                    child: Icon(Icons.broken_image_outlined,
+                        color: context.colors.textTertiary),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           Text(product.name, style: AppTypography.headlineMd),
           const SizedBox(height: AppSpacing.xs),
           Row(

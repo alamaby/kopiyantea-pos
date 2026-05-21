@@ -57,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -85,6 +85,20 @@ class AppDatabase extends _$AppDatabase {
           if (from < 5) {
             // ENH-001 — local-only shift closings.
             await m.createTable(shiftClosings);
+          }
+          if (from < 6) {
+            // FEAT-013 — add qris_image_url column to branches.
+            await m.addColumn(branches, branches.qrisImageUrl);
+          }
+          if (from < 7) {
+            // FEAT-014 — receipt template config (logo position field).
+            await m.addColumn(
+                receiptSettings, receiptSettings.logoPosition);
+          }
+          if (from < 8) {
+            // FEAT-014b — opt-in cashier name on receipt.
+            await m.addColumn(
+                receiptSettings, receiptSettings.showCashierName);
           }
         },
         beforeOpen: (_) async {

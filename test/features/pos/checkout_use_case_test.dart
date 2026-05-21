@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kopiyantea_pos/core/database/app_database.dart';
 import 'package:kopiyantea_pos/core/domain/enums.dart';

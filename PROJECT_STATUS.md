@@ -376,6 +376,81 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 
 ---
 
+## Receipt Template (2026-05-20)
+
+### [FEAT-014] Receipt Template Configuration — **DONE DEV**
+**Implemented:**
+- Drift v7: `receipt_settings.logoPosition` column ('top'/'bottom') + non-destructive migration
+- `ImageBuckets.logos` = `receipt-logos` (Supabase Storage bucket)
+- `pubspec.yaml` — `image` (decode), `http` (fetch logo bytes for printer)
+- `ReceiptPayload` — `logoBytes` + `logoPosition` fields
+- `EscPosReceiptBuilder._renderLogo` — decode + resize to paper width (max 384px untuk 58mm, 576px untuk 80mm) + raster output via `g.image()`. Logo rendered di top atau bottom sesuai setting. Decode error tidak gagal job, struk tetap cetak tanpa logo.
+- `PrintReceiptUseCase` — fetch `ReceiptSettingRow` for branch, http-download logo bytes, in-memory cache per URL untuk avoid re-download saat reprint
+- `ReceiptSettingsScreen` (`/more/settings/receipt`) — per branch: header text, footer text, logo upload + position toggle (Atas/Bawah) + show/hide switch, paper width (58/80mm), save
+- Owner-gated link "Tampilan Struk" di Settings
+- Supabase migration `20260520150002_receipt_logo.sql` — column + bucket + RLS
+- `sync_dtos.receiptSettingFromJson` — include `logo_position`
+
+**Format logo yang harus disiapkan oleh owner:**
+- PNG hitam-putih murni (1-bit). Color akan di-dither otomatis di printer
+- Background putih solid (jangan transparan)
+- Max width 384px (58mm) atau 576px (80mm); auto-downsized kalau lebih besar
+- Max height ~200px ideal
+- File size < 100 KB
+- Tip: convert via `Image → Mode → Bitmap → 50% threshold` di GIMP/PS untuk hasil tajam
+
+**Outstanding QA:**
+- [ ] `flutter pub get` (image + http baru — sebagian besar mungkin sudah transitive)
+- [ ] Apply Supabase migration (bucket + column)
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (schema v7)
+- [ ] Smoke: owner upload logo + atur posisi top → checkout → print → logo muncul di atas branch name; ganti ke bottom → print → logo muncul setelah footer
+- [ ] Smoke: edit footer "Barang yang sudah dibeli tidak dapat ditukar" → print → footer muncul
+- [ ] Edge: matikan show_logo → print → logo tidak muncul walau URL ada
+- [ ] Edge: offline mode + cache kosong → print → logo skip, struk tetap keluar tanpa error
+- [ ] Test multi-cabang: setting cabang A ≠ cabang B
+
+---
+
+## Images Sprint (2026-05-20)
+
+### [FEAT-012] Product Photo Upload — **DONE DEV**
+**Implemented:**
+- `pubspec.yaml` — `image_picker`, `flutter_image_compress`, `cached_network_image`
+- `lib/core/storage/image_upload_service.dart` — pick (galeri/kamera) → compress (max 1024px JPEG q=80) → upload Supabase Storage public bucket → return public URL. Cleanup `deleteByUrl` for orphan removal.
+- `ImageBuckets.products` = `product-images`
+- `ProductFormScreen` — `_PhotoSection` di atas form: 16:9 preview, tap = picker sheet (galeri/kamera), tombol Ganti Foto + Hapus. Replace old image otomatis cleanup di Supabase.
+- `ProductFormScreen._save` — enqueue outbox `product` push (sebelumnya edit produk tidak push — gap pre-existing diperbaiki di sini)
+- `MenuGrid` — thumbnail 1:1 dengan `CachedNetworkImage`, placeholder kopi icon kalau kosong/error; discount badge overlay
+- `ProductDetailScreen._MasterCard` — hero image 16:9
+- Supabase migration `20260520150001_storage_and_images.sql` — bucket creation + RLS owner-write public-read
+
+**Outstanding QA:**
+- [ ] `flutter pub get` (3 paket baru)
+- [ ] Apply Supabase migration (penting untuk buat bucket + RLS)
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (schema v6 + DTOs)
+- [ ] Smoke: tambah produk → upload foto → save → cek MenuGrid muncul thumbnail; ganti foto → cek storage tidak ada orphan; offline mode → foto pakai cache CDN
+- [ ] Verify RLS: kasir login coba upload → ditolak (cek di Supabase logs)
+
+### [FEAT-013] Static QRIS per Branch — **DONE DEV**
+**Implemented:**
+- Drift v6: `branches.qrisImageUrl` column + non-destructive migration
+- `sync_dtos.dart` — branch push/pull DTO menyertakan `qris_image_url`
+- `ImageBuckets.qris` = `qris-images`
+- `QrisSettingsScreen` (`/more/settings/qris`) — list cabang dengan preview QR, Galeri/Kamera buttons, Hapus QRIS. Save = update branch + outbox push.
+- `QrisDisplaySheet` (`features/pos/widgets/qris_display.dart`) — fullscreen modal dengan QR + nominal optional + branch name. Mode `onConfirmPaid` (checkout) atau preview-only (POS AppBar).
+- POS AppBar — IconButton QR quick-access (hanya muncul saat branch punya qrisImageUrl)
+- `CheckoutSheet` — saat metode = QRIS, tampilkan `_QrisSection` card dengan tombol "Tampilkan QRIS". Klik → modal QR + tombol "Pembayaran Diterima" → langsung submit checkout. Fallback hint kalau branch belum upload QR.
+- Settings OwnerSection — entry "QRIS Statis"
+- Supabase migration `20260520150001_storage_and_images.sql` — `qris_image_url` column + bucket + RLS
+
+**Outstanding QA:**
+- [ ] Apply migration di Supabase + verifikasi bucket dibuat
+- [ ] Smoke: owner upload QRIS → cek render di POS AppBar; ganti metode jadi QRIS di checkout → modal tampil + nominal benar; tap "Pembayaran Diterima" → tx tersimpan
+- [ ] Smoke: cabang tanpa QR → AppBar button tidak muncul; checkout QRIS pilih → hint "QRIS belum tersedia"
+- [ ] Offline mode: pertama upload perlu online; berikutnya muncul dari cache (`cached_network_image`)
+
+---
+
 ## Enhancements Sprint (2026-05-20)
 
 ### [ENH-001] Tutup Kas / Z-report — **DONE DEV**

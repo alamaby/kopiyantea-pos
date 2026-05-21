@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,7 +48,7 @@ class MenuGrid extends ConsumerWidget {
             maxCrossAxisExtent: 200,
             mainAxisSpacing: AppSpacing.sm,
             crossAxisSpacing: AppSpacing.sm,
-            childAspectRatio: 0.82,
+            childAspectRatio: 0.7,
           ),
           itemCount: products.length,
           itemBuilder: (_, i) => _MenuTile(item: products[i]),
@@ -122,15 +123,57 @@ class _MenuTile extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (discountActive)
-                AppBadge(
-                  label: '-${bp.discountPercentage.toStringAsFixed(0)}%',
-                  icon: Icons.local_offer_outlined,
-                  tone: AppBadgeTone.accent,
-                )
-              else
-                const SizedBox(height: 22),
-              const Spacer(),
+              // FEAT-012 — product photo thumbnail. Flex-fills the space
+              // above name/category/price so total tile height matches the
+              // grid's childAspectRatio without overflowing.
+              Expanded(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: AppRadius.radiusMd,
+                        child: product.imageUrl == null ||
+                                product.imageUrl!.isEmpty
+                            ? Container(
+                                color: context.colors.surfaceAlt,
+                                child: Icon(
+                                  Icons.coffee_outlined,
+                                  color: context.colors.textTertiary,
+                                  size: 32,
+                                ),
+                              )
+                            : CachedNetworkImage(
+                                imageUrl: product.imageUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Container(
+                                  color: context.colors.surfaceAlt,
+                                ),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: context.colors.surfaceAlt,
+                                  child: Icon(
+                                    Icons.coffee_outlined,
+                                    color: context.colors.textTertiary,
+                                    size: 32,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
+                    if (discountActive)
+                      Positioned(
+                        top: 4,
+                        left: 4,
+                        child: AppBadge(
+                          label:
+                              '-${bp.discountPercentage.toStringAsFixed(0)}%',
+                          icon: Icons.local_offer_outlined,
+                          tone: AppBadgeTone.accent,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 bp.customName ?? product.name,
                 style: AppTypography.titleMd,

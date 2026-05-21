@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../utils/result.dart';
 
 /// One line on the printed receipt.
@@ -43,9 +45,12 @@ class ReceiptPayload {
     this.paymentReceived,
     this.paymentChange,
     this.customerName,
+    this.cashierName,
     this.headerText,
     this.footerText,
     this.paperWidthMm = 58,
+    this.logoBytes,
+    this.logoPosition = 'top',
   });
 
   final String transactionId;
@@ -63,9 +68,20 @@ class ReceiptPayload {
   final double? paymentReceived;
   final double? paymentChange;
   final String? customerName;
+  /// FEAT-014b — staff who processed this tx. Null when the receipt
+  /// setting `showCashierName` is off, or when the lookup failed.
+  final String? cashierName;
   final String? headerText;
   final String? footerText;
   final int paperWidthMm; // 58 or 80
+
+  /// FEAT-014 — raw PNG/JPEG bytes of the branch's receipt logo. Null when
+  /// branch hasn't uploaded one or `showLogo` is off. Decoding happens in
+  /// the ESC/POS builder.
+  final Uint8List? logoBytes;
+
+  /// FEAT-014 — 'top' (above header text) or 'bottom' (below footer).
+  final String logoPosition;
 }
 
 class PrinterDevice {

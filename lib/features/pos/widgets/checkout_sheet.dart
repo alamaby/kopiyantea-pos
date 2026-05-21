@@ -12,6 +12,7 @@ import '../../../core/utils/result.dart';
 import '../../../core/widgets/app_button.dart';
 import '../cart_provider.dart';
 import '../checkout_use_case.dart';
+import 'qris_display.dart';
 import 'receipt_summary_sheet.dart';
 
 class CheckoutSheet extends ConsumerStatefulWidget {
@@ -88,6 +89,13 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
                 if (!isCash) _receivedCtrl.clear();
               }),
             ),
+            if (_method == PaymentMethod.qris) ...[
+              const SizedBox(height: AppSpacing.xl),
+              _QrisSection(
+                total: totals.total,
+                onConfirm: () => _submit(totals.total, null),
+              ),
+            ],
             if (isCash) ...[
               const SizedBox(height: AppSpacing.xl),
               _SectionTitle('Diterima'),
@@ -216,6 +224,74 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
 }
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────
+
+/// FEAT-013 — QRIS branch shortcut at checkout. Shows a "Tampilkan QRIS"
+/// CTA that opens the fullscreen QR sheet; tapping "Pembayaran Diterima"
+/// inside that sheet fires [onConfirm] to commit the transaction. Falls
+/// back to a hint when the branch has no QR uploaded.
+class _QrisSection extends ConsumerWidget {
+  const _QrisSection({required this.total, required this.onConfirm});
+  final double total;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cart = ref.watch(cartNotifierProvider);
+    final branch = cart.branch;
+    final hasQr =
+        branch?.qrisImageUrl != null && branch!.qrisImageUrl!.isNotEmpty;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.primarySurface,
+        borderRadius: AppRadius.radiusMd,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.qr_code_2_outlined,
+                  color: AppColors.primaryDark),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Pembayaran QRIS',
+                  style: AppTypography.titleMd
+                      .copyWith(color: AppColors.primaryDark)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            hasQr
+                ? 'Tampilkan QR di bawah ke customer untuk discan. '
+                    'Setelah pembayaran terverifikasi di m-banking, '
+                    'tap "Pembayaran Diterima".'
+                : 'Cabang ini belum upload QRIS. Owner perlu mengaturnya '
+                    'di Pengaturan → QRIS Statis.',
+            style: AppTypography.bodySm
+                .copyWith(color: AppColors.primaryDark),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppButton(
+            label: hasQr ? 'Tampilkan QRIS' : 'QRIS Belum Tersedia',
+            icon: Icons.qr_code_2_outlined,
+            onPressed: !hasQr || branch == null
+                ? null
+                : () => QrisDisplaySheet.show(
+                      context,
+                      branch: branch,
+                      amount: total,
+                      onConfirmPaid: () {
+                        Navigator.of(context).pop();
+                        onConfirm();
+                      },
+                    ),
+            fullWidth: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _TotalDisplay extends StatelessWidget {
   const _TotalDisplay({required this.total});

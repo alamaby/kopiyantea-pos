@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,9 +9,13 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
+import '../../core/domain/enums.dart';
+import '../../core/storage/image_upload_service.dart';
 import '../../core/theme/colors.dart';
+import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/result.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
@@ -38,6 +45,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   bool _isLoading = false;
   bool _isSaving = false;
   bool _isActive = true;
+  // FEAT-012 — uploaded photo URL. Null means no image. Replaced wholesale
+  // by the photo picker; old image (if any) is cleaned from Supabase
+  // Storage best-effort on _save.
+  String? _imageUrl;
+  bool _uploadingPhoto = false;
 
   String? _errorName;
   String? _errorPrice;
@@ -73,6 +85,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         _basePriceCtrl.text = p.basePrice.toStringAsFixed(0);
         _skuCtrl.text = p.sku ?? '';
         _isActive = p.isActive;
+        _imageUrl = p.imageUrl;
       }
     });
   }
@@ -123,6 +136,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     final now = DateTime.now();
     final catalogDao = ref.read(catalogDaoProvider);
+    final outboxDao = ref.read(outboxDaoProvider);
+    String savedProductId;
     if (_existing == null) {
       // Create master + propagate to all active branches.
       final id = const Uuid().v7();
@@ -132,6 +147,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         category: Value(category),
         basePrice: price,
         sku: Value(sku),
+        imageUrl: Value(_imageUrl),
         isActive: Value(_isActive),
         createdAt: now,
         updatedAt: now,
@@ -146,6 +162,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ),
         );
       }
+      savedProductId = id;
     } else {
       await catalogDao.updateProduct(
         _existing!.id,
@@ -154,14 +171,84 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           category: Value(category),
           basePrice: Value(price),
           sku: Value(sku),
+          imageUrl: Value(_imageUrl),
           isActive: Value(_isActive),
           updatedAt: Value(now),
         ),
       );
+      savedProductId = _existing!.id;
     }
+
+    // FEAT-012 — enqueue product push so the new imageUrl + master edits
+    // propagate to Supabase. Existing edit flow didn't push (pre-existing
+    // gap), but image changes specifically need to sync so other devices
+    // can render the photo via cached_network_image.
+    await outboxDao.enqueue(OutboxItemsCompanion.insert(
+      id: const Uuid().v7(),
+      entityType: OutboxEntityType.product,
+      payload: jsonEncode({'id': savedProductId}),
+      createdAt: now,
+    ));
 
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  /// FEAT-012 — pick + compress + upload + replace local URL.
+  Future<void> _pickPhoto() async {
+    final source = await showModalBottomSheet<ImageSource_>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Pilih dari Galeri'),
+              onTap: () => Navigator.pop(ctx, ImageSource_.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Ambil dari Kamera'),
+              onTap: () => Navigator.pop(ctx, ImageSource_.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final svc = ref.read(imageUploadServiceProvider);
+    setState(() => _uploadingPhoto = true);
+    final result = await svc.pickAndUpload(
+      source: source,
+      bucket: ImageBuckets.products,
+      pathPrefix: 'products/',
+    );
+    if (!mounted) return;
+    setState(() => _uploadingPhoto = false);
+    switch (result) {
+      case Ok(:final value):
+        final old = _imageUrl;
+        setState(() => _imageUrl = value);
+        if (old != null && old.isNotEmpty) {
+          await svc.deleteByUrl(old, bucket: ImageBuckets.products);
+        }
+      case Err(:final error):
+        if (error == ImageUploadError.cancelled) return;
+        messenger.showSnackBar(
+          SnackBar(content: Text('Gagal upload: ${error.name}')),
+        );
+    }
+  }
+
+  Future<void> _removePhoto() async {
+    final svc = ref.read(imageUploadServiceProvider);
+    final old = _imageUrl;
+    setState(() => _imageUrl = null);
+    if (old != null && old.isNotEmpty) {
+      await svc.deleteByUrl(old, bucket: ImageBuckets.products);
+    }
   }
 
   @override
@@ -189,6 +276,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
+          _PhotoSection(
+            imageUrl: _imageUrl,
+            uploading: _uploadingPhoto,
+            onPick: _pickPhoto,
+            onRemove: _imageUrl == null ? null : _removePhoto,
+          ),
+          const SizedBox(height: AppSpacing.lg),
           _Field(
             label: 'Nama',
             controller: _nameCtrl,
@@ -272,6 +366,105 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// FEAT-012 — product photo preview + actions.
+class _PhotoSection extends StatelessWidget {
+  const _PhotoSection({
+    required this.imageUrl,
+    required this.uploading,
+    required this.onPick,
+    this.onRemove,
+  });
+
+  final String? imageUrl;
+  final bool uploading;
+  final VoidCallback onPick;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'FOTO PRODUK',
+          style: AppTypography.labelSm
+              .copyWith(color: context.colors.textSecondary),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        AspectRatio(
+          aspectRatio: 16 / 9,
+          child: GestureDetector(
+            onTap: uploading ? null : onPick,
+            child: Container(
+              decoration: BoxDecoration(
+                color: context.colors.surfaceAlt,
+                borderRadius: AppRadius.radiusMd,
+                border: Border.all(
+                  color: context.colors.border,
+                ),
+              ),
+              child: uploading
+                  ? const Center(child: AppLoadingIndicator())
+                  : hasImage
+                      ? ClipRRect(
+                          borderRadius: AppRadius.radiusMd,
+                          child: CachedNetworkImage(
+                            imageUrl: imageUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: (_, __) =>
+                                const Center(child: AppLoadingIndicator()),
+                            errorWidget: (_, __, ___) => const Center(
+                              child: Icon(Icons.broken_image_outlined,
+                                  color: AppColors.danger, size: 32),
+                            ),
+                          ),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.add_photo_alternate_outlined,
+                                size: 36,
+                                color: context.colors.textTertiary),
+                            const SizedBox(height: AppSpacing.xs),
+                            Text(
+                              'Tap untuk tambah foto',
+                              style: AppTypography.bodySm.copyWith(
+                                color: context.colors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+            ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Row(
+          children: [
+            Expanded(
+              child: AppButton(
+                label: hasImage ? 'Ganti Foto' : 'Pilih Foto',
+                icon: Icons.image_outlined,
+                variant: AppButtonVariant.secondary,
+                onPressed: uploading ? null : onPick,
+              ),
+            ),
+            if (hasImage) ...[
+              const SizedBox(width: AppSpacing.sm),
+              IconButton(
+                onPressed: uploading ? null : onRemove,
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Hapus foto',
+                color: AppColors.danger,
+              ),
+            ],
+          ],
+        ),
+      ],
     );
   }
 }

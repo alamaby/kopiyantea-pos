@@ -99,6 +99,20 @@ class _OwnerSection extends StatelessWidget {
             subtitle: 'Tarif & label per cabang (PB1/PPN)',
             route: '/more/settings/tax',
           ),
+          const Divider(height: 1),
+          _OwnerTile(
+            icon: Icons.qr_code_2_outlined,
+            title: 'QRIS Statis',
+            subtitle: 'Unggah gambar QRIS per cabang',
+            route: '/more/settings/qris',
+          ),
+          const Divider(height: 1),
+          _OwnerTile(
+            icon: Icons.receipt_long_outlined,
+            title: 'Tampilan Struk',
+            subtitle: 'Logo, header, footer per cabang',
+            route: '/more/settings/receipt',
+          ),
         ],
       ),
     );

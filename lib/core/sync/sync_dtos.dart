@@ -90,6 +90,7 @@ extension BranchSyncDto on BranchRow {
         'tax_label': taxLabel,
         'tax_inclusive': taxInclusive,
         'failed_login_lockout_threshold': failedLoginLockoutThreshold,
+        'qris_image_url': qrisImageUrl,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -276,6 +277,7 @@ BranchesCompanion branchFromJson(Map<String, dynamic> json) =>
       taxInclusive: Value(json['tax_inclusive'] as bool? ?? false),
       failedLoginLockoutThreshold:
           Value(json['failed_login_lockout_threshold'] as int? ?? 5),
+      qrisImageUrl: Value(json['qris_image_url'] as String?),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -411,8 +413,10 @@ ReceiptSettingsCompanion receiptSettingFromJson(Map<String, dynamic> json) =>
       headerText: Value(json['header_text'] as String?),
       footerText: Value(json['footer_text'] as String?),
       logoUrl: Value(json['logo_url'] as String?),
+      logoPosition: Value(json['logo_position'] as String? ?? 'top'),
       paperWidthMm: Value(json['paper_width_mm'] as int? ?? 58),
       showLogo: Value(json['show_logo'] as bool? ?? false),
+      showCashierName: Value(json['show_cashier_name'] as bool? ?? true),
       locale: Value(json['locale'] as String? ?? 'id_ID'),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );

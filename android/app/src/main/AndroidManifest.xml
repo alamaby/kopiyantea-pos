@@ -16,7 +16,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
 
     <application
-        android:label="kopiyantea_pos"
+        android:label="Kopiyantea POS"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

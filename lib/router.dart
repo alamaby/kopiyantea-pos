@@ -24,6 +24,8 @@ import 'features/modifiers/product_options_screen.dart';
 import 'features/settings/outbox_queue_screen.dart';
 import 'features/shift/shift_closing_screen.dart';
 import 'features/settings/printer_settings_screen.dart';
+import 'features/settings/qris_settings_screen.dart';
+import 'features/settings/receipt_settings_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/settings/tax_settings_screen.dart';
 import 'features/users/user_form_screen.dart';
@@ -222,6 +224,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/settings/tax',
         name: 'taxSettings',
         builder: (_, __) => const TaxSettingsScreen(),
+      ),
+      // FEAT-013 — per-branch static QRIS upload (owner-gated).
+      GoRoute(
+        path: '/more/settings/qris',
+        name: 'qrisSettings',
+        builder: (_, __) => const QrisSettingsScreen(),
+      ),
+      // FEAT-014 — receipt template (header/footer/logo) per branch.
+      GoRoute(
+        path: '/more/settings/receipt',
+        name: 'receiptSettings',
+        builder: (_, __) => const ReceiptSettingsScreen(),
       ),
       // FEAT-006 — user management.
       GoRoute(

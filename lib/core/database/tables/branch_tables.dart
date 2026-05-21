@@ -17,6 +17,10 @@ class Branches extends Table {
       boolean().withDefault(const Constant(false))();
   IntColumn get failedLoginLockoutThreshold =>
       integer().withDefault(const Constant(5))();
+  /// FEAT-013 — public URL of the branch's static QRIS image in Supabase
+  /// Storage (`qris-images` bucket). Shown at checkout when payment method
+  /// is QRIS, and via a quick-access button on the POS AppBar.
+  TextColumn get qrisImageUrl => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 

@@ -47,6 +47,16 @@ dependencies:
   esc_pos_utils_plus: ^2.0.4
   permission_handler: ^11.3.1
 
+  # Images — FEAT-012 product photos + FEAT-013 static QRIS
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
+  cached_network_image: ^3.4.0
+  # FEAT-014 — decode logo bytes for ESC/POS print (esc_pos_utils_plus
+  # accepts `image.Image`). `http` for direct fetch of the Supabase
+  # storage public URL.
+  image: ^4.2.0
+  http: ^1.2.2
+
   # Background — workmanager added in Phase 6 (deferred; 0.5.2 is broken on
   # modern Flutter embedding, awaiting 0.6.x or upstream fix).
 
@@ -81,6 +91,20 @@ dev_dependencies:
   drift_dev: '>=2.20.0 <2.21.0'
   riverpod_generator: ^2.4.0
   envied_generator: ^0.5.4+1
+
+  # Launcher icon generator
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: "ic_launcher"        # writes to android/app/src/main/res/mipmap-*/ic_launcher.png
+  ios: true
+  image_path: "assets/images/app_logo.png"
+  remove_alpha_ios: true        # iOS requires opaque icons
+  # Adaptive icons (Android 8+) — generates foreground + background.
+  # `adaptive_icon_background` accepts a color hex or path to an image.
+  adaptive_icon_background: "#0F766E"   # brand teal (matches AppColors.primaryDark)
+  adaptive_icon_foreground: "assets/images/app_logo.png"
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true

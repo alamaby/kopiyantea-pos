@@ -17,15 +17,20 @@ import 'cart_provider.dart';
 import 'widgets/cart_panel.dart';
 import 'widgets/held_orders_sheet.dart';
 import 'widgets/menu_grid.dart';
+import 'widgets/qris_display.dart';
 
 /// Returns true if the cart's cached branch row matches the active one on
-/// every field that affects checkout totals — so we know whether to re-sync.
+/// every field that affects checkout totals OR payment UI — so we know
+/// whether to re-sync. Includes `qrisImageUrl` (FEAT-013) so the checkout
+/// QRIS section picks up newly-uploaded QR images without needing the
+/// cashier to switch branches or clear the cart.
 bool _branchSyncedForTotals(BranchRow? cached, BranchRow active) {
   if (cached == null) return false;
   return cached.id == active.id &&
       cached.taxPercentage == active.taxPercentage &&
       cached.taxLabel == active.taxLabel &&
-      cached.taxInclusive == active.taxInclusive;
+      cached.taxInclusive == active.taxInclusive &&
+      cached.qrisImageUrl == active.qrisImageUrl;
 }
 
 class PosScreen extends ConsumerWidget {
@@ -71,6 +76,19 @@ class PosScreen extends ConsumerWidget {
           orElse: () => const Text('Kasir'),
         ),
         actions: [
+          // FEAT-013 — quick QRIS access for walk-in customers who want to
+          // scan before checkout (e.g. self-order).
+          if (activeBranch != null &&
+              activeBranch.qrisImageUrl != null &&
+              activeBranch.qrisImageUrl!.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.qr_code_2_outlined),
+              tooltip: 'QRIS',
+              onPressed: () => QrisDisplaySheet.show(
+                context,
+                branch: activeBranch,
+              ),
+            ),
           if (activeBranch != null)
             HeldOrdersAction(branchId: activeBranch.id),
         ],

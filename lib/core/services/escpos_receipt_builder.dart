@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
+import 'package:image/image.dart' as img;
 
 import '../utils/formatters.dart';
 import 'printer_service.dart';
@@ -25,6 +28,12 @@ class EscPosReceiptBuilder {
     // `var` because `bytes += ...` desugars to `bytes = bytes + ...` —
     // List `+` returns a new list, requiring reassignment.
     var bytes = <int>[];
+
+    // ── Logo (top) ──
+    if (p.logoBytes != null && p.logoPosition == 'top') {
+      final logoCmd = _renderLogo(g, p.logoBytes!, p.paperWidthMm);
+      if (logoCmd != null) bytes += logoCmd;
+    }
 
     // ── Header ──
     bytes += g.text(
@@ -74,6 +83,16 @@ class EscPosReceiptBuilder {
         PosColumn(
           text: p.customerName!,
           width: 8,
+          styles: const PosStyles(align: PosAlign.right),
+        ),
+      ]);
+    }
+    if (p.cashierName != null && p.cashierName!.isNotEmpty) {
+      bytes += g.row([
+        PosColumn(text: 'Kasir:', width: 3),
+        PosColumn(
+          text: p.cashierName!,
+          width: 9,
           styles: const PosStyles(align: PosAlign.right),
         ),
       ]);
@@ -153,10 +172,41 @@ class EscPosReceiptBuilder {
       bytes += g.text(p.footerText!,
           styles: const PosStyles(align: PosAlign.center));
     }
+
+    // ── Logo (bottom) ──
+    if (p.logoBytes != null && p.logoPosition == 'bottom') {
+      bytes += g.feed(1);
+      final logoCmd = _renderLogo(g, p.logoBytes!, p.paperWidthMm);
+      if (logoCmd != null) bytes += logoCmd;
+    }
+
     bytes += g.feed(2);
     bytes += g.cut();
 
     return bytes;
+  }
+
+  /// Decode + downscale + push as raster image. Returns null when bytes
+  /// can't be decoded (corrupt file) so the receipt still prints without
+  /// the logo instead of failing the whole job.
+  static List<int>? _renderLogo(
+    Generator g,
+    Uint8List bytes,
+    int paperWidthMm,
+  ) {
+    try {
+      final decoded = img.decodeImage(bytes);
+      if (decoded == null) return null;
+      // 58mm ≈ 384px printable, 80mm ≈ 576px. Downscale if wider so we
+      // don't truncate / waste paper. Preserve aspect.
+      final maxWidth = paperWidthMm == 80 ? 576 : 384;
+      final resized = decoded.width > maxWidth
+          ? img.copyResize(decoded, width: maxWidth)
+          : decoded;
+      return g.image(resized);
+    } catch (_) {
+      return null;
+    }
   }
 
   static List<int> _kv(Generator g, String label, String value) =>

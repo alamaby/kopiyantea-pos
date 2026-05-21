@@ -19,6 +19,8 @@ enum CheckoutError {
   noBranch,
   emptyCart,
   invalidPayment,
+  /// FEAT-015 — Transfer chosen but no bank account selected.
+  bankAccountMissing,
   databaseError,
 }
 
@@ -78,6 +80,11 @@ class CheckoutUseCase {
     final isCash = paymentMethod == PaymentMethod.cash;
     if (isCash && (paymentReceived == null || paymentReceived < totals.total)) {
       return const Err(CheckoutError.invalidPayment);
+    }
+
+    // FEAT-015 — Transfer requires a bank account.
+    if (paymentMethod == PaymentMethod.transfer && cart.bankAccount == null) {
+      return const Err(CheckoutError.bankAccountMissing);
     }
 
     final txId = uuid.v7();
@@ -184,6 +191,10 @@ class CheckoutUseCase {
     double? paymentChange,
     required DateTime now,
   }) {
+    final ba = cart.bankAccount;
+    final bankSnapshot = ba == null
+        ? null
+        : '${ba.bankName} ${ba.accountNumber} - ${ba.accountHolder}';
     return TransactionsCompanion.insert(
       id: txId,
       branchId: branch.id,
@@ -200,6 +211,8 @@ class CheckoutUseCase {
       paymentReceived: Value(paymentReceived),
       paymentChange: Value(paymentChange),
       status: TransactionStatus.completed,
+      bankAccountId: Value(ba?.id),
+      bankAccountSnapshot: Value(bankSnapshot),
       clientCreatedAt: now,
     );
   }

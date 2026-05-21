@@ -32,6 +32,8 @@ extension TransactionSyncDto on TransactionRow {
         'status': status.name,
         'voided_by_transaction_id': voidedByTransactionId,
         'void_reason': voidReason,
+        'bank_account_id': bankAccountId,
+        'bank_account_snapshot': bankAccountSnapshot,
         'client_created_at': clientCreatedAt.toIso8601String(),
         // server_received_at is set by Supabase trigger
       };
@@ -215,6 +217,31 @@ extension ProductRecipeSyncDto on ProductRecipeRow {
       };
 }
 
+extension BankAccountSyncDto on BankAccountRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'bank_name': bankName,
+        'account_number': accountNumber,
+        'account_holder': accountHolder,
+        'display_order': displayOrder,
+        'is_active': isActive,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+}
+
+BankAccountsCompanion bankAccountFromJson(Map<String, dynamic> json) =>
+    BankAccountsCompanion.insert(
+      id: json['id'] as String,
+      bankName: json['bank_name'] as String,
+      accountNumber: json['account_number'] as String,
+      accountHolder: json['account_holder'] as String,
+      displayOrder: Value(json['display_order'] as int? ?? 0),
+      isActive: Value(json['is_active'] as bool? ?? true),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+
 // ── Pull DTOs (JSON → Drift Companion) ────────────────────────────────────────
 
 T _enumByName<T extends Enum>(List<T> values, String name) =>
@@ -370,6 +397,8 @@ TransactionsCompanion transactionFromJson(Map<String, dynamic> json) =>
       voidedByTransactionId:
           Value(json['voided_by_transaction_id'] as String?),
       voidReason: Value(json['void_reason'] as String?),
+      bankAccountId: Value(json['bank_account_id'] as String?),
+      bankAccountSnapshot: Value(json['bank_account_snapshot'] as String?),
       clientCreatedAt: DateTime.parse(json['client_created_at'] as String),
       serverReceivedAt: Value(_maybeDate(json['server_received_at'])),
     );

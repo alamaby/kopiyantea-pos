@@ -221,6 +221,19 @@ class SyncRepository {
       errors++;
     }
 
+    // ── bank_accounts (FEAT-015, global) ──
+    try {
+      final rows = await sb.from('bank_accounts').select();
+      final dao = _ref.read(bankAccountDaoProvider);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await dao.upsert(bankAccountFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull bank_accounts failed', error: e);
+      errors++;
+    }
+
     _log.i('[Sync] master pull — $upserted upserted, $errors errors');
     return (upserted: upserted, errors: errors);
   }
@@ -387,6 +400,8 @@ class SyncRepository {
             await _pushBranchProduct(payload);
           case OutboxEntityType.productRecipe:
             await _pushProductRecipe(id!);
+          case OutboxEntityType.bankAccount:
+            await _pushBankAccount(id!);
           case OutboxEntityType.transactionItem:
             // Children of a transaction; rides on parent push.
             break;
@@ -616,6 +631,19 @@ class SyncRepository {
       row.toSupabaseJson(),
       onConflict: 'product_id,branch_id',
     );
+  }
+
+  /// FEAT-015 — global bank accounts. Owner-write, all-read (handled by
+  /// Supabase RLS). Local-delete propagates as server DELETE so removing
+  /// a rekening cleans up cross-device.
+  Future<void> _pushBankAccount(String id) async {
+    final sb = _sb!;
+    final row = await _ref.read(bankAccountDaoProvider).getById(id);
+    if (row == null) {
+      await sb.from('bank_accounts').delete().eq('id', id);
+      return;
+    }
+    await sb.from('bank_accounts').upsert(row.toSupabaseJson());
   }
 
   Future<void> _pushProductRecipe(String recipeId) async {

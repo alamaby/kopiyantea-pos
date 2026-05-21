@@ -113,6 +113,13 @@ class _OwnerSection extends StatelessWidget {
             subtitle: 'Logo, header, footer per cabang',
             route: '/more/settings/receipt',
           ),
+          const Divider(height: 1),
+          _OwnerTile(
+            icon: Icons.account_balance_outlined,
+            title: 'Rekening Bank',
+            subtitle: 'Daftar rekening untuk pembayaran transfer',
+            route: '/more/settings/bank-accounts',
+          ),
         ],
       ),
     );

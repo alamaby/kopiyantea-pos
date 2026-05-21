@@ -155,6 +155,13 @@ class EscPosReceiptBuilder {
 
     // ── Payment ──
     bytes += _kv(g, 'Bayar', p.paymentMethodLabel);
+    if (p.bankAccountSnapshot != null && p.bankAccountSnapshot!.isNotEmpty) {
+      // FEAT-015 — show destination rekening below "Bayar: Transfer".
+      // Snapshot may be long ("BCA 1234567890 - John Doe"), so render on
+      // its own line rather than as a key/value row to avoid truncation.
+      bytes += g.text('  ${p.bankAccountSnapshot!}',
+          styles: const PosStyles(fontType: PosFontType.fontB));
+    }
     if (p.paymentReceived != null) {
       bytes += _kv(g, 'Diterima', formatRupiah(p.paymentReceived!));
     }

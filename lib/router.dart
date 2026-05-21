@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'core/widgets/adaptive_shell.dart';
 import 'features/auth/auth_provider.dart';
 import 'features/auth/login_screen.dart';
+import 'features/bank_accounts/bank_accounts_screen.dart';
 import 'features/catalog/catalog_screen.dart';
 import 'features/catalog/product_detail_screen.dart';
 import 'features/catalog/product_form_screen.dart';
@@ -236,6 +237,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/settings/receipt',
         name: 'receiptSettings',
         builder: (_, __) => const ReceiptSettingsScreen(),
+      ),
+      // FEAT-015 — global bank accounts for transfer payment.
+      GoRoute(
+        path: '/more/settings/bank-accounts',
+        name: 'bankAccounts',
+        builder: (_, __) => const BankAccountsScreen(),
       ),
       // FEAT-006 — user management.
       GoRoute(

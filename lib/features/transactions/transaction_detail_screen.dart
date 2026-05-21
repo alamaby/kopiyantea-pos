@@ -552,6 +552,9 @@ class _PaymentCard extends StatelessWidget {
           const _SectionLabel('Pembayaran'),
           const SizedBox(height: AppSpacing.sm),
           _KV(label: 'Metode', value: paymentMethodLabel(tx.paymentMethod)),
+          if (tx.bankAccountSnapshot != null &&
+              tx.bankAccountSnapshot!.isNotEmpty)
+            _KV(label: 'Rekening', value: tx.bankAccountSnapshot!),
           if (tx.paymentReceived != null)
             _KV(label: 'Diterima', value: formatRupiah(tx.paymentReceived!)),
           if (tx.paymentChange != null && tx.paymentChange! > 0)

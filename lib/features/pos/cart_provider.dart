@@ -18,6 +18,11 @@ class CartNotifier extends _$CartNotifier {
   void setCustomer(CustomerRow? customer) =>
       state = state.copyWith(customer: customer);
 
+  /// FEAT-015 — set the bank account chosen for Transfer payment. Pass
+  /// null to clear (e.g. when user switches payment method back to Cash).
+  void setBankAccount(BankAccountRow? account) =>
+      state = state.copyWith(bankAccount: account);
+
   // ── Items ───────────────────────────────────────────────────────────────────
 
   void addItem({

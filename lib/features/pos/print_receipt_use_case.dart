@@ -96,6 +96,7 @@ class PrintReceiptUseCase {
       paperWidthMm: setting?.paperWidthMm ?? 58,
       logoBytes: logoBytes,
       logoPosition: setting?.logoPosition ?? 'top',
+      bankAccountSnapshot: tx.bankAccountSnapshot,
     );
 
     final printer = _ref.read(printerServiceProvider);

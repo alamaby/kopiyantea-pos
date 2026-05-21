@@ -52,6 +52,7 @@ class DailyReport {
     required this.transactionCount,
     required this.totalRevenue,
     required this.byPayment,
+    required this.byBankAccount,
     required this.topItems,
   });
 
@@ -60,6 +61,10 @@ class DailyReport {
   final int transactionCount;
   final double totalRevenue;
   final Map<PaymentMethod, PaymentStats> byPayment;
+  /// FEAT-015 — breakdown of `PaymentMethod.transfer` revenue per
+  /// destination bank account. Keyed by snapshot string (e.g.
+  /// "BCA 1234567890 - John") for stability across owner edits.
+  final Map<String, PaymentStats> byBankAccount;
   final List<TopItem> topItems;
 
   double get averageOrderValue =>
@@ -95,6 +100,7 @@ DailyReport buildReport({
   required List<TransactionItemRow> items,
 }) {
   final byPayment = <PaymentMethod, PaymentStats>{};
+  final byBankAccount = <String, PaymentStats>{};
   var totalRevenue = 0.0;
 
   for (final tx in transactions) {
@@ -104,6 +110,15 @@ DailyReport buildReport({
       count: (existing?.count ?? 0) + 1,
       revenue: (existing?.revenue ?? 0) + tx.total,
     );
+    // FEAT-015 — bucket transfers by destination bank.
+    if (tx.paymentMethod == PaymentMethod.transfer) {
+      final key = tx.bankAccountSnapshot ?? 'Tanpa rekening';
+      final existingBank = byBankAccount[key];
+      byBankAccount[key] = PaymentStats(
+        count: (existingBank?.count ?? 0) + 1,
+        revenue: (existingBank?.revenue ?? 0) + tx.total,
+      );
+    }
   }
 
   // Aggregate items by product
@@ -134,6 +149,7 @@ DailyReport buildReport({
     transactionCount: transactions.length,
     totalRevenue: totalRevenue,
     byPayment: byPayment,
+    byBankAccount: byBankAccount,
     topItems: topItems.take(5).toList(),
   );
 }

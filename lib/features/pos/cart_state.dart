@@ -59,5 +59,10 @@ class CartState with _$CartState {
     @Default(0.0) double manualDiscountAmount,
     BranchRow? branch,
     CustomerRow? customer,
+    /// FEAT-015 — bank account selected at checkout when paying via
+    /// Transfer. Carried in cart state (vs as a local CheckoutSheet var)
+    /// so it survives sheet dismiss/re-open and so totals UI can display
+    /// it. Cleared on `clear()` like everything else.
+    BankAccountRow? bankAccount,
   }) = _CartState;
 }

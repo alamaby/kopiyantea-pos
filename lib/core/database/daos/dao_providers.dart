@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../database_provider.dart';
+import 'bank_account_dao.dart';
 import 'branch_dao.dart';
 import 'catalog_dao.dart';
 import 'customer_dao.dart';
@@ -49,4 +50,8 @@ final heldOrderDaoProvider = Provider<HeldOrderDao>(
 
 final shiftClosingDaoProvider = Provider<ShiftClosingDao>(
   (ref) => ShiftClosingDao(ref.watch(databaseProvider)),
+);
+
+final bankAccountDaoProvider = Provider<BankAccountDao>(
+  (ref) => BankAccountDao(ref.watch(databaseProvider)),
 );

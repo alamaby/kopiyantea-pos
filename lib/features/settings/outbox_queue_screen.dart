@@ -303,6 +303,7 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.product => 'Produk',
         OutboxEntityType.branchProduct => 'Override Cabang',
         OutboxEntityType.productRecipe => 'Resep',
+        OutboxEntityType.bankAccount => 'Rekening Bank',
       };
 
   static IconData _iconFor(OutboxEntityType t) => switch (t) {
@@ -321,6 +322,7 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.product => Icons.coffee_outlined,
         OutboxEntityType.branchProduct => Icons.storefront_outlined,
         OutboxEntityType.productRecipe => Icons.menu_book_outlined,
+        OutboxEntityType.bankAccount => Icons.account_balance_outlined,
       };
 
   static String _payloadPreview(OutboxItemRow row) {

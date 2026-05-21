@@ -84,6 +84,10 @@ class ReportsScreen extends ConsumerWidget {
                       _RevenueCard(report: report),
                       const SizedBox(height: AppSpacing.lg),
                       _PaymentCard(report: report),
+                      if (report.byBankAccount.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        _BankAccountCard(report: report),
+                      ],
                       const SizedBox(height: AppSpacing.lg),
                       _TopItemsCard(items: report.topItems),
                     ],
@@ -234,6 +238,92 @@ class _PaymentCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+// ── Bank-account breakdown (FEAT-015) ────────────────────────────────────────
+
+class _BankAccountCard extends StatelessWidget {
+  const _BankAccountCard({required this.report});
+  final DailyReport report;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = report.byBankAccount.entries.toList()
+      ..sort((a, b) => b.value.revenue.compareTo(a.value.revenue));
+    final transferTotal = entries.fold<double>(
+      0,
+      (sum, e) => sum + e.value.revenue,
+    );
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SectionLabel('Transfer per Rekening'),
+          const SizedBox(height: AppSpacing.md),
+          for (var i = 0; i < entries.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppSpacing.md),
+            _BankAccountRow(
+              snapshot: entries[i].key,
+              stats: entries[i].value,
+              total: transferTotal,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BankAccountRow extends StatelessWidget {
+  const _BankAccountRow({
+    required this.snapshot,
+    required this.stats,
+    required this.total,
+  });
+  final String snapshot;
+  final PaymentStats stats;
+  final double total;
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = total > 0 ? stats.revenue / total : 0.0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(snapshot,
+                  style: AppTypography.bodyMd,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Text(
+              '${stats.count} tx',
+              style: AppTypography.labelSm
+                  .copyWith(color: context.colors.textSecondary),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Text(formatRupiah(stats.revenue),
+                style: AppTypography.titleMd),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 6,
+            backgroundColor: context.colors.surfaceAlt,
+            valueColor:
+                const AlwaysStoppedAnimation<Color>(AppColors.accent),
+          ),
+        ),
+      ],
     );
   }
 }

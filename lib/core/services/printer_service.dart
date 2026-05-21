@@ -51,6 +51,7 @@ class ReceiptPayload {
     this.paperWidthMm = 58,
     this.logoBytes,
     this.logoPosition = 'top',
+    this.bankAccountSnapshot,
   });
 
   final String transactionId;
@@ -71,6 +72,10 @@ class ReceiptPayload {
   /// FEAT-014b — staff who processed this tx. Null when the receipt
   /// setting `showCashierName` is off, or when the lookup failed.
   final String? cashierName;
+  /// FEAT-015 — destination bank account for transfer payments. Printed
+  /// on the next line after "Bayar: Transfer" so the receipt records
+  /// exactly which rekening received the money.
+  final String? bankAccountSnapshot;
   final String? headerText;
   final String? footerText;
   final int paperWidthMm; // 58 or 80

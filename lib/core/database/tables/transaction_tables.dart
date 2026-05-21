@@ -42,6 +42,14 @@ class Transactions extends Table {
       )();
   TextColumn get voidedByTransactionId => text().nullable()();
   TextColumn get voidReason => text().nullable()();
+  /// FEAT-015 — bank account chosen at checkout when paymentMethod=transfer.
+  /// Null for cash/QRIS/etc. Foreign key without DB-level constraint so
+  /// owner deleting a bank account doesn't break historical transactions.
+  TextColumn get bankAccountId => text().nullable()();
+  /// FEAT-015 — immutable snapshot ("BCA 1234567890 - John Doe") so
+  /// receipts + reports stay accurate even if bank account is later edited
+  /// or deleted. Always set in tandem with `bankAccountId`.
+  TextColumn get bankAccountSnapshot => text().nullable()();
   DateTimeColumn get clientCreatedAt => dateTime()();
   DateTimeColumn get serverReceivedAt => dateTime().nullable()();
 

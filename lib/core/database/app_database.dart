@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 // Enum types must be visible here so app_database.g.dart can reference them.
 import '../domain/enums.dart';
+import 'tables/bank_account_table.dart';
 import 'tables/branch_tables.dart';
 import 'tables/catalog_tables.dart';
 import 'tables/customer_tables.dart';
@@ -50,6 +51,8 @@ part 'app_database.g.dart';
     HeldOrders,
     // ENH-001 — daily cash reconciliation log (added at schemaVersion 5)
     ShiftClosings,
+    // FEAT-015 — global bank accounts for transfer payment (schemaVersion 9)
+    BankAccounts,
   ],
   // DAOs removed from annotation — instantiated as lazy getters below.
 )
@@ -57,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -99,6 +102,13 @@ class AppDatabase extends _$AppDatabase {
             // FEAT-014b — opt-in cashier name on receipt.
             await m.addColumn(
                 receiptSettings, receiptSettings.showCashierName);
+          }
+          if (from < 9) {
+            // FEAT-015 — global bank accounts + transaction FK + snapshot.
+            await m.createTable(bankAccounts);
+            await m.addColumn(transactions, transactions.bankAccountId);
+            await m.addColumn(
+                transactions, transactions.bankAccountSnapshot);
           }
         },
         beforeOpen: (_) async {

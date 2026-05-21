@@ -376,6 +376,42 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 
 ---
 
+## Bank Accounts (2026-05-20)
+
+### [FEAT-015] Global Bank Transfer Accounts — **DONE DEV**
+**Implemented:**
+- Drift v9: new `BankAccounts` table (id, bankName, accountNumber, accountHolder, displayOrder, isActive, createdAt, updatedAt) — chain-wide, single-tenant scope
+- `Transactions` additions: `bankAccountId` (nullable FK) + `bankAccountSnapshot` (immutable display string for receipt/report survivability)
+- `BankAccountDao` + `bankAccountDaoProvider`
+- `bank_account_providers.dart` — `allBankAccountsProvider` (admin), `activeBankAccountsProvider` (checkout), `formatBankAccountSnapshot()`
+- `BankAccountsScreen` (`/more/settings/bank-accounts`) — owner-only CRUD list + bottom-sheet form (bankName/accountNumber/accountHolder/displayOrder/isActive), per-row Edit/Toggle/Delete
+- `BankAccountPickerSheet` — bottom sheet untuk checkout, list active accounts
+- `CartState.bankAccount` + `CartNotifier.setBankAccount`
+- `CheckoutSheet._BankAccountSection` — muncul saat metode=Transfer, tampilkan rekening terpilih atau prompt "Pilih Rekening", tombol Ganti
+- Konfirmasi button blocked sampai bank account terpilih (Transfer)
+- `CheckoutUseCase` — write `bankAccountId` + `bankAccountSnapshot` ke `Transactions`, `CheckoutError.bankAccountMissing` baru
+- `ReceiptPayload.bankAccountSnapshot` + EscPosReceiptBuilder cetak "  BCA 1234567890 - John Doe" di bawah "Bayar: Transfer"
+- `TransactionDetailScreen._PaymentCard` — "Rekening" row di bawah "Metode"
+- `Reports`: `DailyReport.byBankAccount` (Map<snapshot, PaymentStats>) — pure aggregator; `_BankAccountCard` di ReportsScreen menampilkan Transfer per Rekening dengan progress bar accent (hanya muncul saat ada transfer)
+- Outbox: `OutboxEntityType.bankAccount` + `SyncRepository._pushBankAccount` (handle delete via missing local → server DELETE)
+- Master pull: `SyncRepository.pullMasterData` ikut sync `bank_accounts`
+- Sync DTOs: `BankAccountSyncDto` (push) + `bankAccountFromJson` (pull); `transactionFromJson` + `TransactionSyncDto` include `bank_account_id` + `bank_account_snapshot`
+- Settings owner tile "Rekening Bank"
+- Supabase migration `20260520150004_bank_accounts.sql` — table + RLS (owner-write, authenticated-read) + transactions columns + index
+
+**Outstanding QA:**
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (schema v9 + new DAO + new providers)
+- [ ] Apply Supabase migration
+- [ ] Smoke: owner tambah 2 rekening (BCA + Mandiri) → kasir login → checkout method=Transfer → tombol "Pilih Rekening" → picker tampil 2 rekening → pilih → konfirmasi → transaksi tersimpan dengan FK + snapshot
+- [ ] Smoke: print struk → muncul "Bayar Transfer / BCA 1234567890 - John"
+- [ ] Smoke: detail transaksi → Payment Card menampilkan "Rekening: BCA ..."
+- [ ] Smoke: 3 transaksi transfer (2 BCA, 1 Mandiri) → buka Laporan → muncul "Transfer per Rekening" card dengan breakdown
+- [ ] Edge: owner hapus rekening → transaksi lama tetap menampilkan snapshot; picker tidak menampilkan rekening yang dihapus untuk transaksi baru
+- [ ] Edge: kasir pilih method=Transfer tanpa pilih rekening → tombol Konfirmasi disabled; force tap (kalau dari testing override) → use case return `bankAccountMissing`
+- [ ] Edge: cabang berbeda → rekening tetap sama (global, bukan per-cabang)
+
+---
+
 ## Receipt Template (2026-05-20)
 
 ### [FEAT-014] Receipt Template Configuration — **DONE DEV**

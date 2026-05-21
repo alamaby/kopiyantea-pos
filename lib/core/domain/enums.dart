@@ -39,4 +39,6 @@ enum OutboxEntityType {
   product,
   branchProduct,
   productRecipe,
+  // FEAT-015 — global bank accounts for transfer payment.
+  bankAccount,
 }

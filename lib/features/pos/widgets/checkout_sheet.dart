@@ -10,6 +10,7 @@ import '../../../core/theme/typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/utils/result.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../bank_accounts/bank_account_picker_sheet.dart';
 import '../cart_provider.dart';
 import '../checkout_use_case.dart';
 import 'qris_display.dart';
@@ -48,8 +49,13 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
     final received = double.tryParse(_receivedCtrl.text) ?? 0;
     final change = received - totals.total;
     final isCash = _method == PaymentMethod.cash;
+    final isTransfer = _method == PaymentMethod.transfer;
+    // FEAT-015 — block submit until bank account chosen.
+    final hasBankAccount =
+        ref.watch(cartNotifierProvider.select((c) => c.bankAccount != null));
     final canSubmit = !_isSubmitting &&
         (!isCash || received >= totals.total) &&
+        (!isTransfer || hasBankAccount) &&
         totals.total > 0;
 
     return SafeArea(
@@ -95,6 +101,10 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
                 total: totals.total,
                 onConfirm: () => _submit(totals.total, null),
               ),
+            ],
+            if (_method == PaymentMethod.transfer) ...[
+              const SizedBox(height: AppSpacing.xl),
+              const _BankAccountSection(),
             ],
             if (isCash) ...[
               const SizedBox(height: AppSpacing.xl),
@@ -218,9 +228,97 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
         CheckoutError.noBranch => 'Pilih cabang terlebih dahulu',
         CheckoutError.emptyCart => 'Keranjang kosong',
         CheckoutError.invalidPayment => 'Pembayaran tidak mencukupi',
+        CheckoutError.bankAccountMissing =>
+          'Pilih rekening tujuan transfer dulu',
         CheckoutError.databaseError =>
           'Gagal menyimpan transaksi. Coba lagi.',
       };
+}
+
+/// FEAT-015 — Transfer payment: cashier picks one of owner's bank accounts.
+/// The selection is stored in CartState so it persists if the sheet is
+/// dismissed and reopened.
+class _BankAccountSection extends ConsumerWidget {
+  const _BankAccountSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cart = ref.watch(cartNotifierProvider);
+    final selected = cart.bankAccount;
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.primarySurface,
+        borderRadius: AppRadius.radiusMd,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.account_balance_outlined,
+                  color: AppColors.primaryDark),
+              const SizedBox(width: AppSpacing.sm),
+              Text('Rekening Tujuan',
+                  style: AppTypography.titleMd
+                      .copyWith(color: AppColors.primaryDark)),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          if (selected == null)
+            Text(
+              'Pilih rekening yang akan menerima transfer. '
+              'Owner mengatur daftar rekening di Pengaturan → Rekening Bank.',
+              style: AppTypography.bodySm
+                  .copyWith(color: AppColors.primaryDark),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: context.colors.surface,
+                borderRadius: AppRadius.radiusSm,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(selected.bankName, style: AppTypography.titleMd),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    selected.accountNumber,
+                    style: AppTypography.bodyMd.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  Text(
+                    'a.n. ${selected.accountHolder}',
+                    style: AppTypography.bodySm
+                        .copyWith(color: context.colors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: AppSpacing.md),
+          AppButton(
+            label: selected == null ? 'Pilih Rekening' : 'Ganti Rekening',
+            icon: Icons.swap_horiz_outlined,
+            variant: AppButtonVariant.secondary,
+            onPressed: () async {
+              final picked = await BankAccountPickerSheet.show(
+                context,
+                selectedId: selected?.id,
+              );
+              if (picked != null) {
+                ref.read(cartNotifierProvider.notifier)
+                    .setBankAccount(picked);
+              }
+            },
+            fullWidth: true,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────

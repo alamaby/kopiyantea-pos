@@ -68,4 +68,23 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
     await into(transactions).insert(txCompanion);
     await batch((b) => b.insertAll(transactionItems, itemCompanions));
   }
+
+  /// ENH-008 — find the void row that references [originalId]. Append-only
+  /// per ADR-0007: voiding inserts a NEW transaction (status=voided,
+  /// voidedByTransactionId=originalId, mirrored-negative totals) rather than
+  /// updating the original. UI uses this to mark originals as voided + to
+  /// hide the "Batalkan" button after the fact.
+  Future<TransactionRow?> getVoidForTransaction(String originalId) =>
+      (select(transactions)
+            ..where((t) =>
+                t.voidedByTransactionId.equals(originalId) &
+                t.status.equalsValue(TransactionStatus.voided)))
+          .getSingleOrNull();
+
+  Stream<TransactionRow?> watchVoidForTransaction(String originalId) =>
+      (select(transactions)
+            ..where((t) =>
+                t.voidedByTransactionId.equals(originalId) &
+                t.status.equalsValue(TransactionStatus.voided)))
+          .watchSingleOrNull();
 }

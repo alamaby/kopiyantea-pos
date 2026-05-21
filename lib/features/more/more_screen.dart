@@ -24,6 +24,11 @@ class MoreScreen extends StatelessWidget {
       route: '/more/reports',
     ),
     _MoreItem(
+      label: 'Tutup Kas',
+      icon: Icons.point_of_sale_outlined,
+      route: '/more/reports/closing',
+    ),
+    _MoreItem(
       label: 'Pengaturan',
       icon: Icons.settings_outlined,
       route: '/more/settings',

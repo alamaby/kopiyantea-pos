@@ -15,6 +15,7 @@ import 'tables/inventory_tables.dart';
 import 'tables/option_tables.dart';
 import 'tables/outbox_table.dart';
 import 'tables/settings_tables.dart';
+import 'tables/shift_closing_table.dart';
 import 'tables/transaction_tables.dart';
 
 // DAOs are NOT imported here — that would create a circular dependency
@@ -47,6 +48,8 @@ part 'app_database.g.dart';
     PendingInvitations,
     // FEAT-009 — held orders / open bill (added at schemaVersion 4)
     HeldOrders,
+    // ENH-001 — daily cash reconciliation log (added at schemaVersion 5)
+    ShiftClosings,
   ],
   // DAOs removed from annotation — instantiated as lazy getters below.
 )
@@ -54,7 +57,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -78,6 +81,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             // FEAT-009 — local-only held orders.
             await m.createTable(heldOrders);
+          }
+          if (from < 5) {
+            // ENH-001 — local-only shift closings.
+            await m.createTable(shiftClosings);
           }
         },
         beforeOpen: (_) async {

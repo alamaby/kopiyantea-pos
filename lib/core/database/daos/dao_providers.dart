@@ -8,6 +8,7 @@ import 'held_order_dao.dart';
 import 'inventory_dao.dart';
 import 'option_dao.dart';
 import 'outbox_dao.dart';
+import 'shift_closing_dao.dart';
 import 'transaction_dao.dart';
 
 /// DAO instances are exposed via Riverpod (not via getters on [AppDatabase])
@@ -44,4 +45,8 @@ final optionDaoProvider = Provider<OptionDao>(
 
 final heldOrderDaoProvider = Provider<HeldOrderDao>(
   (ref) => HeldOrderDao(ref.watch(databaseProvider)),
+);
+
+final shiftClosingDaoProvider = Provider<ShiftClosingDao>(
+  (ref) => ShiftClosingDao(ref.watch(databaseProvider)),
 );

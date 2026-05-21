@@ -22,6 +22,7 @@ import 'features/modifiers/option_group_form_screen.dart';
 import 'features/modifiers/option_groups_screen.dart';
 import 'features/modifiers/product_options_screen.dart';
 import 'features/settings/outbox_queue_screen.dart';
+import 'features/shift/shift_closing_screen.dart';
 import 'features/settings/printer_settings_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/settings/tax_settings_screen.dart';
@@ -193,6 +194,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/reports',
         name: 'reports',
         builder: (_, __) => const ReportsScreen(),
+      ),
+      // ENH-001 — daily cash reconciliation.
+      GoRoute(
+        path: '/more/reports/closing',
+        name: 'shiftClosing',
+        builder: (_, __) => const ShiftClosingScreen(),
       ),
       GoRoute(
         path: '/more/settings',

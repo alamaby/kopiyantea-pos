@@ -376,6 +376,75 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 
 ---
 
+## Enhancements Sprint (2026-05-20)
+
+### [ENH-001] Tutup Kas / Z-report — **DONE DEV**
+**Implemented (local-only):**
+- Drift v5: `ShiftClosings` table + non-destructive migration
+- `ShiftClosingDao` (`watchForBranch`, `insert`, `getLatestForBranch`)
+- `shift_closing_providers.dart` — `todayCashSummaryProvider` (sum of today's cash txs, refunds netted via void rows), `shiftClosingHistoryProvider`
+- `ShiftClosingScreen` (`/more/reports/closing`) — Header (cabang + tanggal), input float, expected cash readout, input counted cash, real-time variance card (pas/kurang/lebih dengan icon+warna), notes, riwayat 30 closing terakhir
+- MoreScreen entry "Tutup Kas"
+
+**Deferred:** Supabase sync (`shift_closings` table + RLS + push fn). Local-only is acceptable untuk audit log per device shift.
+
+**Outstanding QA:**
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (Drift v5 + new `.g.dart` providers/dao)
+- [ ] Smoke: 3 transaksi cash → cek expected; void salah satu → cek refund row di breakdown; tutup kas dengan counted = expected → variance 0; counted < expected → "Kurang" badge
+
+### [ENH-007] Reprint Receipt — **DONE DEV**
+**Implemented:**
+- `TransactionDetailScreen._ActionsCard` dengan tombol "Cetak Ulang Struk"
+- Reuses `PrintReceiptUseCase` (sudah ada — pure)
+- Snackbar feedback + error handling
+
+**Outstanding QA:**
+- [ ] Smoke: detail transaksi → tap "Cetak Ulang" → struk keluar dari printer Bluetooth
+
+### [ENH-008] Void / Refund Transaction — **DONE DEV**
+**Implemented (append-only per ADR-0007):**
+- `TransactionDao.getVoidForTransaction` + `watchVoidForTransaction` — find void row referencing the original
+- `VoidTransactionUseCase` — atomic write:
+  - New tx with `status=voided`, `voidedByTransactionId=original`, mirrored-negative subtotal/discount/tax/total/payment
+  - Mirror items with negative qty/subtotal
+  - Reverse inventory_movements (`MovementType.adjustment`, opposite sign of original) → cached_stock recovers
+  - Outbox push as `transaction` entity (reuses existing `_pushTransaction` which includes linked movements)
+- `voidForTransactionProvider` (reactive) drives the banner state
+- TransactionDetailScreen `_ActionsCard`:
+  - Manager+ only ("Batalkan Transaksi" hidden untuk kasir)
+  - Reason input (opsional) di confirm dialog
+  - "Sudah dibatalkan" banner setelah void selesai (button hilang)
+- Errors: `notFound`, `alreadyVoided`, `notVoidable`, `databaseError`
+
+**Outstanding QA:**
+- [ ] Run build_runner (new `void_transaction_use_case.g.dart` + DAO regen)
+- [ ] Smoke: kasir login → tombol Batalkan tidak muncul; owner/manager login → batalkan tx → cek stok bahan kembali, list transaksi muncul void row, original detail tampil banner; sync → cek server menerima void tx
+- [ ] Edge: dobel-tap "Batalkan" → use case detect `alreadyVoided` → error gracefully
+
+### [ENH-013] Modifier Pricing Unit Tests — **DONE DEV**
+**Implemented:** `test/features/pos/cart_modifier_pricing_test.dart` — 14 cases covering:
+- `optionDelta` (sum across groups, zero deltas, mixed)
+- `effectiveUnitPrice` (no opts, with delta, post-discount snapshot + delta)
+- `lineSubtotal` (qty × effectivePrice, qty=0, large qty precision)
+- option-set equality stability (sort-by-id contract for merge key)
+
+**Outstanding QA:**
+- [ ] `flutter test test/features/pos/cart_modifier_pricing_test.dart` — should pass green
+
+### [ENH-015] Checkout Integration Test — **DONE DEV**
+**Implemented:** `test/features/pos/checkout_use_case_test.dart` — 5 integration cases using in-memory Drift:
+- Happy path: tx + items + movements + outbox + cached_stock all consistent
+- Empty cart → `emptyCart` error, nothing written
+- Insufficient cash → `invalidPayment` error, atomic rollback (no movements, no outbox, stock unchanged)
+- Non-cash (QRIS) → no paymentReceived needed
+- Multi-qty → cached_stock delta aggregated correctly
+
+**Outstanding QA:**
+- [ ] `flutter test test/features/pos/checkout_use_case_test.dart` — should pass green
+- Note: Drift in-memory test requires sqlite native lib — should work on dev machine via `sqlite3_flutter_libs`. If CI fails, add `sqlite3` bundled native.
+
+---
+
 ### [FEAT-007] Remember Me at Login — **DONE DEV** (2026-05-20)
 **Implemented:**
 - `AppSettings.rememberMe` (default true) + `lastLoginEmail` di `settings_provider.dart`

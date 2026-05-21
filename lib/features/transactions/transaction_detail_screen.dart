@@ -10,10 +10,15 @@ import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/labels.dart';
 import '../../core/widgets/app_badge.dart';
+import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../core/utils/result.dart';
+import '../auth/auth_provider.dart';
 import '../customers/customer_providers.dart';
+import '../pos/print_receipt_use_case.dart';
 import 'transaction_providers.dart';
+import 'void_transaction_use_case.dart';
 
 class TransactionDetailScreen extends ConsumerWidget {
   const TransactionDetailScreen({required this.transactionId, super.key});
@@ -83,8 +88,177 @@ class _DetailBody extends ConsumerWidget {
         _TotalsCard(tx: tx),
         const SizedBox(height: AppSpacing.lg),
         _PaymentCard(tx: tx),
+        const SizedBox(height: AppSpacing.lg),
+        _ActionsCard(tx: tx, voided: voided),
       ],
     );
+  }
+}
+
+// ── Actions (ENH-007 Reprint + ENH-008 Void) ─────────────────────────────────
+
+class _ActionsCard extends ConsumerWidget {
+  const _ActionsCard({required this.tx, required this.voided});
+  final TransactionRow tx;
+
+  /// True when *this* row is itself the void row. We hide both reprint and
+  /// "Batalkan" on void rows — original is the user-facing record.
+  final bool voided;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (voided) {
+      // It's a void row — nothing to act on.
+      return const SizedBox.shrink();
+    }
+    final voidAsync = ref.watch(voidForTransactionProvider(tx.id));
+    final alreadyVoided = voidAsync.maybeWhen(
+      data: (v) => v != null,
+      orElse: () => false,
+    );
+    final currentUser = ref.watch(currentUserProvider);
+    // Owner + manager only — kasir tidak boleh void demi kontrol shrinkage.
+    final canVoid = currentUser != null &&
+        (currentUser.globalRole == GlobalRole.owner ||
+            currentUser.globalRole == GlobalRole.manager);
+
+    return _Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _SectionLabel('Aksi'),
+          const SizedBox(height: AppSpacing.sm),
+          if (alreadyVoided) ...[
+            voidAsync.maybeWhen(
+              data: (v) => v == null
+                  ? const SizedBox.shrink()
+                  : Container(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: AppRadius.radiusSm,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.cancel_outlined,
+                              size: 18, color: AppColors.danger),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              v.voidReason == null || v.voidReason!.isEmpty
+                                  ? 'Transaksi ini sudah dibatalkan'
+                                  : 'Sudah dibatalkan — ${v.voidReason}',
+                              style: AppTypography.bodySm
+                                  .copyWith(color: AppColors.danger),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+              orElse: () => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          AppButton(
+            label: 'Cetak Ulang Struk',
+            icon: Icons.print_outlined,
+            variant: AppButtonVariant.secondary,
+            onPressed: () => _reprint(context, ref),
+            fullWidth: true,
+          ),
+          if (canVoid && !alreadyVoided) ...[
+            const SizedBox(height: AppSpacing.sm),
+            AppButton(
+              label: 'Batalkan Transaksi',
+              icon: Icons.cancel_outlined,
+              variant: AppButtonVariant.danger,
+              onPressed: () => _confirmVoid(context, ref),
+              fullWidth: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _reprint(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result =
+        await ref.read(printReceiptUseCaseProvider).print(tx.id);
+    if (!context.mounted) return;
+    switch (result) {
+      case Ok():
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Struk dikirim ke printer')),
+        );
+      case Err(:final error):
+        messenger.showSnackBar(
+          SnackBar(content: Text('Gagal cetak: ${error.name}')),
+        );
+    }
+  }
+
+  Future<void> _confirmVoid(BuildContext context, WidgetRef ref) async {
+    final reasonCtrl = TextEditingController();
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.warning_amber_outlined,
+            size: 36, color: AppColors.danger),
+        title: const Text('Batalkan transaksi?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Transaksi #${tx.id.substring(0, 8).toUpperCase()} akan '
+              'dibatalkan. Stok bahan akan dikembalikan secara otomatis. '
+              'Aksi ini tidak bisa dibatalkan.',
+              style: AppTypography.bodySm,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Alasan (opsional)',
+                hintText: 'mis. Salah pesan, item rusak',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Tidak'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Batalkan Transaksi'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final result = await ref.read(voidTransactionUseCaseProvider).voidTx(
+          originalId: tx.id,
+          reason: reasonCtrl.text.trim(),
+        );
+    if (!context.mounted) return;
+    switch (result) {
+      case Ok():
+        ref.invalidate(transactionDetailProvider(tx.id));
+        ref.invalidate(voidForTransactionProvider(tx.id));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Transaksi dibatalkan')),
+        );
+      case Err(:final error):
+        messenger.showSnackBar(
+          SnackBar(content: Text('Gagal membatalkan: ${error.name}')),
+        );
+    }
   }
 }
 

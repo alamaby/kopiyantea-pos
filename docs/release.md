@@ -2,10 +2,49 @@
 
 End-to-end release procedure: build, sign, certificate rotation, store submission.
 
-## 1. Version bump
+## 1. Automated build via GitHub Actions (recommended)
+
+Tag the commit and push — CI builds signed APK + AAB and attaches them to the GitHub Release:
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+- `versionName` is parsed from the tag (`v1.2.3` → `1.2.3`)
+- `versionCode` = `github.run_number` (monotonically increasing per repo; never resets, never reuses — Play Store-safe)
+- Pre-release tags (`v1.0.0-beta.1`) are auto-flagged as GitHub pre-releases
+- `pubspec.yaml` `version:` line is IGNORED during CI builds — no manual bump needed
+
+### One-time GitHub Secrets setup
+
+Go to **Settings → Secrets and variables → Actions** and add:
+
+| Secret | How to obtain |
+|---|---|
+| `KEYSTORE_BASE64` | `base64 -w 0 android/app/upload-keystore.jks \| pbcopy` (mac) or `base64 -w 0 ... > out.txt` (linux). Paste the base64 string. |
+| `KEYSTORE_PASSWORD` | Store password set at `keytool -genkey` time |
+| `KEY_PASSWORD` | Key password (often same as store password) |
+| `KEY_ALIAS` | The alias used in `keytool -alias ...` (e.g. `kopiyantea`) |
+| `ENV_FILE_BASE64` | `base64 -w 0 .env`. Required for production-grade builds — without this, CI falls back to `.env.example` and the app will fail `Env.validate()`. |
+
+The workflow [.github/workflows/release.yml](../.github/workflows/release.yml) reads these.
+
+### Manual dispatch (no tag)
+
+For test builds without creating a release tag, use **Actions → Release Build → Run workflow** and input a version like `0.1.0-test`. Artifacts attach to the workflow run (not to a release).
+
+### Artifact naming
+
+CI produces files named `kopiyantea-pos-1.2.3+456-<abi>.apk` and `kopiyantea-pos-1.2.3+456.aab` in the release.
+
+---
+
+## 2. Manual local build (fallback)
+
+Only when CI is unavailable. Bump version in `pubspec.yaml`:
 
 ```yaml
-# pubspec.yaml
 version: 0.2.0+5   # <name>+<buildNumber>
 ```
 

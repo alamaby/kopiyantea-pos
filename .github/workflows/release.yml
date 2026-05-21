@@ -1,0 +1,138 @@
+name: Release Build
+
+# Triggered by pushing a semver tag (e.g. `git tag v1.2.3 && git push origin v1.2.3`).
+# The tag itself drives the `versionName`; `github.run_number` (monotonically
+# increasing per repo) drives the `versionCode` so Play Store never rejects.
+# Pre-release tags (`v1.0.0-beta.1`) are marked prerelease on the GitHub release.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'         # v1.2.3
+      - 'v[0-9]+.[0-9]+.[0-9]+-*'       # v1.0.0-beta.1
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 1.2.3) — only used for manual dispatch.'
+        required: true
+        default: '0.1.0'
+
+permissions:
+  contents: write   # needed to attach artifacts to the GitHub Release
+
+jobs:
+  android:
+    name: Build Android APK + AAB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version + build number
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Strip leading "v" from tag → "1.2.3" or "1.0.0-beta.1"
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          BUILD_NUMBER="${{ github.run_number }}"
+          echo "version=$VERSION"             >> "$GITHUB_OUTPUT"
+          echo "build_number=$BUILD_NUMBER"   >> "$GITHUB_OUTPUT"
+          echo "Resolved: $VERSION+$BUILD_NUMBER"
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          # Pin Flutter version so CI matches dev. Bump deliberately.
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Decode keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/upload-keystore.jks
+          if [ ! -s android/app/upload-keystore.jks ]; then
+            echo "::error::KEYSTORE_BASE64 secret is missing or empty"
+            exit 1
+          fi
+
+      - name: Write key.properties
+        run: |
+          cat > android/key.properties <<EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=app/upload-keystore.jks
+          EOF
+
+      - name: Write .env
+        run: |
+          if [ -z "${{ secrets.ENV_FILE_BASE64 }}" ]; then
+            echo "::warning::ENV_FILE_BASE64 not set — falling back to .env.example values. Production builds REQUIRE real credentials."
+            cp .env.example .env
+          else
+            echo "${{ secrets.ENV_FILE_BASE64 }}" | base64 -d > .env
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run codegen
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze (non-blocking — info-level warnings OK)
+        run: flutter analyze || true
+
+      - name: Build APK (split-per-abi)
+        run: |
+          flutter build apk --release --split-per-abi \
+            --build-name="${{ steps.version.outputs.version }}" \
+            --build-number="${{ steps.version.outputs.build_number }}"
+
+      - name: Build App Bundle
+        run: |
+          flutter build appbundle --release \
+            --build-name="${{ steps.version.outputs.version }}" \
+            --build-number="${{ steps.version.outputs.build_number }}"
+
+      - name: Rename artifacts
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD="${{ steps.version.outputs.build_number }}"
+          mkdir -p dist
+          # APKs (arm64, armv7, x86_64)
+          for f in build/app/outputs/flutter-apk/app-*-release.apk; do
+            abi=$(basename "$f" | sed 's/^app-//;s/-release.apk$//')
+            cp "$f" "dist/kopiyantea-pos-${VERSION}+${BUILD}-${abi}.apk"
+          done
+          # AAB
+          cp build/app/outputs/bundle/release/app-release.aab \
+             "dist/kopiyantea-pos-${VERSION}+${BUILD}.aab"
+          ls -lh dist/
+
+      - name: Upload artifacts (workflow run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-${{ steps.version.outputs.version }}
+          path: dist/*
+          retention-days: 30
+
+      - name: Attach to GitHub Release
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: dist/*
+          fail_on_unmatched_files: true

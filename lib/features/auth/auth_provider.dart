@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import '../../core/database/app_database.dart';
+import '../../core/sync/sync_provider.dart';
 import '../../core/utils/result.dart';
 import 'auth_repository.dart';
 import 'bootstrap_provider.dart';
@@ -88,6 +89,14 @@ class Auth extends _$Auth {
         user: restored.user,
         branchId: restored.branchId,
       );
+      // TODO-BG-SYNC-ON-RESUME — fire-and-forget pull so cached data doesn't
+      // go stale when the user reopens the app after edits on another device.
+      // Force-sync (minInterval=0) since session restore = first run of this
+      // app instance.
+      // ignore: unawaited_futures
+      ref.read(syncProvider.notifier).bgSyncIfStale(
+            minInterval: Duration.zero,
+          );
     }
   }
 

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/sync/sync_provider.dart';
 import '../../core/theme/breakpoints.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
@@ -77,6 +78,7 @@ class PosScreen extends ConsumerWidget {
           orElse: () => const Text('Kasir'),
         ),
         actions: [
+          const _SyncIndicator(),
           const TodayQuickBadge(),
           const SizedBox(width: AppSpacing.xs),
           // FEAT-013 — quick QRIS access for walk-in customers who want to
@@ -114,6 +116,54 @@ class PosScreen extends ConsumerWidget {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+// ── Sync indicator (TODO-BG-SYNC-ON-RESUME) ───────────────────────────────────
+
+class _SyncIndicator extends ConsumerWidget {
+  const _SyncIndicator();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sync = ref.watch(syncProvider);
+    final tooltip = sync.isSyncing
+        ? 'Menyinkronkan…'
+        : sync.lastError != null
+            ? 'Sync gagal: ${sync.lastError}'
+            : sync.lastSyncAt == null
+                ? 'Belum tersinkron'
+                : 'Tersinkron ${formatDateTime(sync.lastSyncAt!)}';
+
+    final Widget dot = sync.isSyncing
+        ? const SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(AppColors.primary),
+            ),
+          )
+        : Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: sync.lastError != null
+                  ? AppColors.danger
+                  : sync.lastSyncAt == null
+                      ? context.colors.textTertiary
+                      : AppColors.success,
+            ),
+          );
+
+    return Tooltip(
+      message: tooltip,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+        child: SizedBox(width: 12, height: 12, child: Center(child: dot)),
       ),
     );
   }

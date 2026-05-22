@@ -7,6 +7,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'core/app_lifecycle_listener.dart';
 import 'core/config/env.dart';
 import 'core/database/app_database.dart';
 import 'core/database/daos/held_order_dao.dart';
@@ -99,16 +100,18 @@ class KopiyanteaPosApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
     final themeMode = _resolveThemeMode(ref);
 
-    return MaterialApp.router(
-      title: 'KopiyanteaPOS',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: themeMode,
-      routerConfig: router,
-      localizationsDelegates: AppL10n.localizationsDelegates,
-      supportedLocales: AppL10n.supportedLocales,
-      locale: const Locale('id', 'ID'),
+    return AppResumeSyncListener(
+      child: MaterialApp.router(
+        title: 'KopiyanteaPOS',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: themeMode,
+        routerConfig: router,
+        localizationsDelegates: AppL10n.localizationsDelegates,
+        supportedLocales: AppL10n.supportedLocales,
+        locale: const Locale('id', 'ID'),
+      ),
     );
   }
 

@@ -1,7 +1,9 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../database/daos/dao_providers.dart';
+import '../../features/auth/auth_provider.dart';
 import 'sync_repository.dart';
 
 part 'sync_provider.freezed.dart';
@@ -25,6 +27,8 @@ class SyncState with _$SyncState {
 /// "Belum pernah" because the provider rebuilds fresh on every visit.
 @Riverpod(keepAlive: true)
 class Sync extends _$Sync {
+  final Logger _log = Logger();
+
   @override
   SyncState build() => const SyncState();
 
@@ -54,6 +58,38 @@ class Sync extends _$Sync {
       state = state.copyWith(isSyncing: false, lastError: e.toString());
     }
     return state;
+  }
+
+  /// Background re-sync (TODO-BG-SYNC-ON-RESUME). Resolves accessible branches
+  /// for the current user and runs [syncNow] when the cache looks stale.
+  ///
+  /// - Dedupes against an in-flight sync (returns immediately).
+  /// - Skips when `lastSyncAt` is within [minInterval]. Pass [Duration.zero]
+  ///   to force a sync regardless of recency (used on session restore).
+  /// - Silent: errors are swallowed and surfaced via [SyncState.lastError]
+  ///   — callers fire-and-forget.
+  Future<void> bgSyncIfStale({
+    Duration minInterval = const Duration(minutes: 5),
+  }) async {
+    if (state.isSyncing) return;
+    final last = state.lastSyncAt;
+    if (last != null &&
+        minInterval > Duration.zero &&
+        DateTime.now().difference(last) < minInterval) {
+      return;
+    }
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    try {
+      final dao = ref.read(branchDaoProvider);
+      final access = await dao.getAccessForUser(user.id);
+      final branchIds = access.map((a) => a.branchId).toList();
+      if (branchIds.isEmpty) return;
+      _log.i('[Sync] bg sync triggered (branches=${branchIds.length})');
+      await syncNow(branchIds: branchIds);
+    } catch (e) {
+      _log.w('[Sync] bg sync failed: $e');
+    }
   }
 }
 

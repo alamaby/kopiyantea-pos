@@ -112,6 +112,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+    final result = await ref.read(authProvider.notifier).signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+    if (result is Err<Unit, AuthError>) {
+      setState(() => _error = _label(result.error));
+    }
+    // On Ok the browser is launched; session arrives via onAuthStateChange
+    // and the router redirects automatically once Authenticated.
+  }
+
   String _label(AuthError e) => switch (e) {
         AuthError.invalidCredentials => 'Email atau password salah',
         AuthError.userInactive =>
@@ -304,6 +319,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       color: context.colors.textTertiary,
                     ),
                     textAlign: TextAlign.center,
+                  ),
+
+                  const SizedBox(height: AppSpacing.md),
+
+                  // FEAT-008 — Google OAuth
+                  AppButton(
+                    label: 'Lanjutkan dengan Google',
+                    icon: Icons.account_circle_outlined,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: _isSubmitting ? null : _signInWithGoogle,
+                    fullWidth: true,
                   ),
 
                 ],

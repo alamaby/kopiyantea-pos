@@ -31,6 +31,7 @@ import 'features/settings/qris_settings_screen.dart';
 import 'features/settings/receipt_settings_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/settings/tax_settings_screen.dart';
+import 'features/settings/telemetry_screen.dart';
 import 'features/users/user_form_screen.dart';
 import 'features/users/user_list_screen.dart';
 import 'features/transactions/transaction_detail_screen.dart';
@@ -265,6 +266,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/settings/bank-accounts',
         name: 'bankAccounts',
         builder: (_, __) => const BankAccountsScreen(),
+      ),
+      // ENH-009 — telemetry dashboard.
+      GoRoute(
+        path: '/more/settings/telemetry',
+        name: 'telemetry',
+        builder: (_, __) => const TelemetryScreen(),
       ),
       // FEAT-006 — user management.
       GoRoute(

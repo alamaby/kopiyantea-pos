@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -55,6 +56,8 @@ class SettingsScreen extends ConsumerWidget {
             const _SyncSection(),
             const SizedBox(height: AppSpacing.lg),
             _PrivacySection(settings: s),
+            const SizedBox(height: AppSpacing.lg),
+            const _BackupSection(),
             const SizedBox(height: AppSpacing.lg),
             const _AboutSection(),
             const SizedBox(height: AppSpacing.lg),
@@ -119,6 +122,13 @@ class _OwnerSection extends StatelessWidget {
             title: 'Rekening Bank',
             subtitle: 'Daftar rekening untuk pembayaran transfer',
             route: '/more/settings/bank-accounts',
+          ),
+          const Divider(height: 1),
+          _OwnerTile(
+            icon: Icons.analytics_outlined,
+            title: 'Telemetri',
+            subtitle: 'Ukuran DB, antrian sinkronisasi, versi',
+            route: '/more/settings/telemetry',
           ),
         ],
       ),
@@ -417,6 +427,114 @@ class _PrivacySection extends ConsumerWidget {
 }
 
 // ── About ─────────────────────────────────────────────────────────────────────
+
+// ── ENH-011 — Settings Backup ────────────────────────────────────────────────
+
+class _BackupSection extends ConsumerWidget {
+  const _BackupSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(label: 'Backup Pengaturan'),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Salin pengaturan device ini ke clipboard untuk dipindahkan '
+            'ke device lain. Tidak termasuk data transaksi.',
+            style: AppTypography.bodySm
+                .copyWith(color: context.colors.textSecondary),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              AppButton(
+                label: 'Ekspor',
+                icon: Icons.upload_outlined,
+                variant: AppButtonVariant.secondary,
+                onPressed: () => _export(context, ref),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              AppButton(
+                label: 'Impor',
+                icon: Icons.download_outlined,
+                variant: AppButtonVariant.secondary,
+                onPressed: () => _import(context, ref),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _export(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final json =
+          await ref.read(settingsNotifierProvider.notifier).exportToJson();
+      await Clipboard.setData(ClipboardData(text: json));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Pengaturan disalin ke clipboard')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal ekspor: $e')),
+      );
+    }
+  }
+
+  Future<void> _import(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final raw = data?.text?.trim();
+    if (raw == null || raw.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Clipboard kosong')),
+      );
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Impor pengaturan?'),
+        content: const Text(
+          'Pengaturan device ini akan ditimpa dengan isi clipboard. '
+          'Tindakan ini tidak bisa di-undo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Timpa'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final n = await ref
+          .read(settingsNotifierProvider.notifier)
+          .applyFromJson(raw);
+      messenger.showSnackBar(
+        SnackBar(content: Text('$n pengaturan dipulihkan')),
+      );
+    } on FormatException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal impor: ${e.message}')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal impor: $e')),
+      );
+    }
+  }
+}
 
 class _AboutSection extends StatelessWidget {
   const _AboutSection();

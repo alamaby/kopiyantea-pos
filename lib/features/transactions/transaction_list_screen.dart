@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +15,7 @@ import '../../core/utils/labels.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../customers/customer_providers.dart';
 import '../settings/branch_selection_provider.dart';
 import 'transaction_providers.dart';
 
@@ -66,48 +69,162 @@ class TransactionListScreen extends ConsumerWidget {
 
 // ── List ──────────────────────────────────────────────────────────────────────
 
-class _TransactionList extends ConsumerWidget {
+class _TransactionList extends ConsumerStatefulWidget {
   const _TransactionList({required this.branchId});
 
   final String branchId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final txAsync = ref.watch(branchTransactionsProvider(branchId));
+  ConsumerState<_TransactionList> createState() => _TransactionListState();
+}
 
-    return txAsync.when(
-      loading: () => const Center(child: AppLoadingIndicator()),
-      error: (e, _) => AppEmptyState(
-        title: 'Gagal memuat transaksi',
-        icon: Icons.error_outline,
-        message: e.toString(),
-      ),
-      data: (txns) {
-        if (txns.isEmpty) {
-          return const AppEmptyState(
-            title: 'Belum ada transaksi',
-            icon: Icons.receipt_long_outlined,
-            message: 'Transaksi yang Anda buat di Kasir akan muncul di sini.',
-          );
-        }
-        final entries = _groupByDate(txns);
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
+class _TransactionListState extends ConsumerState<_TransactionList> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 200), () {
+      if (!mounted) return;
+      setState(() => _query = value);
+    });
+  }
+
+  void _clear() {
+    _debounce?.cancel();
+    _searchCtrl.clear();
+    setState(() => _query = '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final txAsync = ref.watch(branchTransactionsProvider(widget.branchId));
+    final customersMap = <String, String>{
+      for (final c in (ref.watch(allCustomersProvider).valueOrNull ??
+          const <CustomerRow>[]))
+        c.id: c.name,
+    };
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.md,
+            AppSpacing.lg,
+            AppSpacing.sm,
           ),
-          itemCount: entries.length,
-          itemBuilder: (_, i) => switch (entries[i]) {
-            _Header(:final label) => _DateHeader(label: label),
-            _Row(:final tx) => Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                child: _TxTile(tx: tx),
+          child: TextField(
+            controller: _searchCtrl,
+            onChanged: _onChanged,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Cari #ID, pelanggan, total, metode bayar',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: 'Bersihkan',
+                      onPressed: _clear,
+                    ),
+              border: OutlineInputBorder(
+                borderRadius: AppRadius.radiusLg,
               ),
-          },
-        );
-      },
+            ),
+          ),
+        ),
+        Expanded(
+          child: txAsync.when(
+            loading: () => const Center(child: AppLoadingIndicator()),
+            error: (e, _) => AppEmptyState(
+              title: 'Gagal memuat transaksi',
+              icon: Icons.error_outline,
+              message: e.toString(),
+            ),
+            data: (txns) {
+              if (txns.isEmpty) {
+                return const AppEmptyState(
+                  title: 'Belum ada transaksi',
+                  icon: Icons.receipt_long_outlined,
+                  message:
+                      'Transaksi yang Anda buat di Kasir akan muncul di sini.',
+                );
+              }
+              final filtered = _query.isEmpty
+                  ? txns
+                  : txns
+                      .where((tx) => _matchesQuery(
+                            tx: tx,
+                            query: _query,
+                            customerNameById: customersMap,
+                          ))
+                      .toList();
+              if (filtered.isEmpty) {
+                return AppEmptyState(
+                  title: 'Tidak ditemukan',
+                  icon: Icons.search_off,
+                  message:
+                      'Tidak ada transaksi cocok dengan "${_searchCtrl.text}".',
+                );
+              }
+              final entries = _groupByDate(filtered);
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
+                ),
+                itemCount: entries.length,
+                itemBuilder: (_, i) => switch (entries[i]) {
+                  _Header(:final label) => _DateHeader(label: label),
+                  _Row(:final tx) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                      child: _TxTile(tx: tx),
+                    ),
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
+}
+
+/// ENH-005 — pure matcher for client-side search. Case-insensitive contains
+/// over: short ID (first 8 chars), total (raw integer string), payment
+/// method label, and customer name resolved via [customerNameById].
+bool _matchesQuery({
+  required TransactionRow tx,
+  required String query,
+  required Map<String, String> customerNameById,
+}) {
+  final q = query.toLowerCase().replaceAll('#', '').trim();
+  if (q.isEmpty) return true;
+
+  final shortId = tx.id.substring(0, 8).toLowerCase();
+  if (shortId.contains(q)) return true;
+
+  if (tx.total.toStringAsFixed(0).contains(q)) return true;
+
+  if (paymentMethodLabel(tx.paymentMethod).toLowerCase().contains(q)) {
+    return true;
+  }
+
+  final cId = tx.customerId;
+  if (cId != null) {
+    final name = customerNameById[cId];
+    if (name != null && name.toLowerCase().contains(q)) return true;
+  }
+  return false;
 }
 
 // ── Tile ──────────────────────────────────────────────────────────────────────

@@ -18,3 +18,17 @@ final DateFormat _time = DateFormat('HH:mm', 'id_ID');
 String formatDateTime(DateTime dt) => _dateTime.format(dt);
 String formatDate(DateTime dt) => _date.format(dt);
 String formatTime(DateTime dt) => _time.format(dt);
+
+/// Coarse "berapa lama lalu" untuk timestamp di masa lampau. Untuk
+/// elapsed > 7 hari jatuh ke tanggal absolut. Bahasa: Indonesia.
+String formatRelativeTime(DateTime dt, {DateTime? now}) {
+  final ref = now ?? DateTime.now();
+  final diff = ref.difference(dt);
+  if (diff.isNegative) return formatDateTime(dt);
+  if (diff.inSeconds < 60) return 'baru saja';
+  if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
+  if (diff.inHours < 24) return '${diff.inHours} jam lalu';
+  if (diff.inDays == 1) return 'kemarin';
+  if (diff.inDays < 7) return '${diff.inDays} hari lalu';
+  return formatDate(dt);
+}

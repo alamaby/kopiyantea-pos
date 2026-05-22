@@ -585,6 +585,100 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 - [ ] Smoke cart: tambah 2 item → hapus line 1 → langsung hilang + snackbar → BATAL → kembali di index 0; lalu hapus + tunggu 4 detik → permanen
 - [ ] Smoke invitation: owner → swipe → confirm → snackbar → BATAL → row balik di list; jalankan Sync Now sebelum BATAL → row tetap balik + outbox baru di-enqueue → sync lagi → server row re-created
 
+### [FEAT-008] Google Sign-In OAuth — **DONE DEV** (client-side)
+**Implemented:**
+- `AuthRepository.signInWithGoogle()` — wrapper `signInWithOAuth(OAuthProvider.google, redirectTo: kAuthDeepLink)`; session datang via existing `onAuthStateChange` listener → reuse `resolveSessionWithClaim` (sama dengan magic link)
+- `Auth.signInWithGoogle()` notifier method
+- LoginScreen: tombol "Lanjutkan dengan Google" (icon `account_circle_outlined`) di bawah Magic Link
+
+**Pre-requisite manual (TIDAK OTOMATIS):**
+- [ ] Supabase Dashboard → Auth → Providers → Google: enable + paste Client ID/Secret
+- [ ] Google Cloud Console: buat OAuth 2.0 Client; authorized redirect URI = `https://<project-ref>.supabase.co/auth/v1/callback`
+- [ ] Supabase Auth → URL Configuration → Redirect URLs: `kopiyantea://login-callback` (sudah ada untuk magic link)
+- [ ] Android `AndroidManifest.xml`: intent-filter `kopiyantea://` (sudah ada)
+
+**Outstanding QA:**
+- [ ] `flutter analyze`
+- [ ] Setelah config Supabase: tap tombol Google → browser eksternal → pilih akun → redirect kembali ke app → otomatis masuk ke /pos
+- [ ] Akun Google yang email-nya tidak terdaftar di `app_users` + tidak ada pending invitation → error `userNotRegistered`
+
+### [ENH-010] Catalog Bulk Import/Export CSV — **DONE DEV** (MVP)
+**Implemented:**
+- `CatalogDao.getAllProducts()` — snapshot semua produk (sorted by name)
+- Pure helper `lib/features/catalog/catalog_csv.dart` — `exportProductsToCsv(List<ProductRow>)` (RFC 4180-ish escape) + `parseProductsCsv(String)` → `CsvParseResult(ok, errors)`; header detection, per-row validation with line numbers; ID kosong → UUID v7 auto
+- CatalogScreen AppBar PopupMenu (owner-only) "Ekspor CSV" / "Impor CSV"
+- Ekspor → `Clipboard.setData` → snackbar count
+- Impor: parse → preview dialog (jumlah OK + daftar errors scrollable) → confirm → `upsertProduct` + `outboxDao.enqueue` per row (entity=product) → snackbar
+
+**Scope MVP:** Hanya Products global (id, name, category, base_price, sku, is_active). **Belum**: `branch_products` overrides, `product_recipes`, `option_groups`, image URL.
+
+**Outstanding QA:**
+- [ ] `flutter analyze`
+- [ ] Smoke: 5 produk → Ekspor → paste di Google Sheets → 5 row terbaca header benar; edit 1 + tambah 1 tanpa id → Impor → preview tampil "6 OK"; konfirmasi → produk muncul di list; outbox terisi 6 row → sync → server upsert
+- [ ] CSV malformed (kurang kolom name) → dialog tampil errors per baris, tidak ada produk dibuat
+
+### [ENH-009] Telemetry Dashboard di Settings — **DONE DEV**
+**Implemented:**
+- `telemetry_provider.dart` — `TelemetrySnapshot` (app name+version, db size bytes, row counts: transactions/items/movements, outbox pending/failed/done, lastSyncAt)
+- DB size via `path_provider` + `File.length()`; row counts via `COUNT(*)` custom expression
+- `telemetry_screen.dart` — 3 card (Aplikasi, Database, Sinkronisasi) dengan `formatRelativeTime` untuk lastSyncAt; refresh action di AppBar (`ref.invalidate`)
+- Route `/more/settings/telemetry` + entry `_OwnerTile(icon: analytics_outlined)` di OwnerSection Settings
+
+**Outstanding QA:**
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (`telemetry_provider.g.dart` baru)
+- [ ] `flutter analyze`
+- [ ] Smoke: owner → Pengaturan → Telemetri → semua angka muncul; refresh icon update
+
+### [ENH-011] Settings Export/Import (Config Backup) — **DONE DEV**
+**Implemented:**
+- `SettingsNotifier.exportToJson()` — JSON envelope `{app, version, exportedAt, settings}` (pretty-printed)
+- `SettingsNotifier.applyFromJson(raw)` — validate envelope, apply per-key (toleran field hilang), return jumlah yang dipulihkan; throws `FormatException` untuk envelope salah
+- Clipboard-based UI (no extra deps): `_BackupSection` di SettingsScreen dengan tombol Ekspor + Impor; confirm dialog "timpa" sebelum impor
+- Magic header `kSettingsExportApp = 'kopiyantea-pos'`, `kSettingsExportVersion = 1`
+
+**Outstanding QA:**
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (provider freezed/g.dart kemungkinan re-gen karena tambah konst di file yang sama — biasanya tidak perlu, tapi run untuk aman)
+- [ ] `flutter analyze`
+- [ ] Smoke: Ekspor → paste di notes → JSON readable; di device kedua tap Impor → toast "N pengaturan dipulihkan"; tampered JSON → toast "Gagal impor: ..."
+
+### [ENH-006] Bulk Delete Failed Outbox + Age Indicator — **DONE DEV**
+**Implemented:**
+- `OutboxDao.deleteAllFailed()` — single-statement bulk delete
+- `formatRelativeTime(DateTime)` helper di `lib/core/utils/formatters.dart` (baru saja / N menit lalu / kemarin / N hari lalu / tanggal absolut > 7 hari)
+- OutboxQueueScreen: AppBar action baru `delete_sweep_outlined` "Hapus semua yang gagal" dengan confirm dialog + count + snackbar feedback
+- Tile age display: `"5 menit lalu · 18 Mei 2026, 14:32"` (relatif + absolut berdampingan)
+
+**Outstanding QA:**
+- [ ] `flutter analyze`
+- [ ] Smoke: trigger beberapa tx push gagal (offline / set status=failed manual) → tombol bulk hapus muncul → confirm → semua row gagal hilang; row baru tampil "baru saja"
+
+### [ENH-006a] Cashier Name Snapshot di Transactions — **DONE DEV**
+**Implemented:**
+- Drift v11: `Transactions.cashierNameSnapshot` (nullable) + non-destructive migration `addColumn`
+- `CheckoutUseCase` set field dari `currentUserProvider.fullName` saat checkout
+- `print_receipt_use_case.dart` prefer `tx.cashierNameSnapshot`, fallback live `app_users.fullName` untuk legacy pre-migration rows
+- Sync DTO push (`toSupabaseJson`) + pull (`transactionFromJson`) include `cashier_name_snapshot`
+
+**Server migration:** `supabase/migrations/20260522120000_cashier_name_snapshot.sql` — `add column if not exists cashier_name_snapshot text` (idempotent + comment).
+
+**Outstanding QA:**
+- [ ] `dart run build_runner build --delete-conflicting-outputs` (Drift v11 + companion)
+- [ ] `supabase db push` (atau apply manual via dashboard SQL editor)
+- [ ] Smoke: checkout baru → DB row punya snapshot non-null; ubah `app_users.full_name` → struk lama tetap pakai snapshot lama; tx legacy (pre-v11) → struk masih jalan via fallback live lookup
+
+### [ENH-005] Search di TransactionListScreen — **DONE DEV**
+**Implemented:**
+- `_TransactionList` di `lib/features/transactions/transaction_list_screen.dart` di-convert ke `ConsumerStatefulWidget` dengan `TextEditingController` + debounce 200ms via `Timer`
+- TextField di header list (prefix `Icons.search`, suffix `IconButton(Icons.clear)` saat ada query)
+- Watch `allCustomersProvider` → build `Map<id, name>` untuk resolve `tx.customerId` → nama pelanggan
+- Pure `_matchesQuery` — case-insensitive contains atas: short ID (first 8 char, `#` distrip), total mentah (`toStringAsFixed(0)`), `paymentMethodLabel`, dan nama pelanggan
+- Empty state khusus saat hasil 0: `AppEmptyState(Icons.search_off, "Tidak ditemukan", message bawa query)`
+- Tidak ada perubahan DAO/provider/schema — pure UI + client filter di atas `branchTransactionsProvider` reactive
+
+**Outstanding QA:**
+- [ ] `flutter analyze`
+- [ ] Smoke: ketik 3 char short ID (case insensitive) → list mengerucut; ketik dengan/ tanpa `#` → keduanya match; ketik nama pelanggan → muncul; ketik `42000` → tx total Rp 42.000; ketik `cash` → semua tx cash; clear → list penuh; query tanpa hasil → empty state "Tidak ditemukan"
+
 ### [ENH-007] Reprint Receipt — **DONE DEV**
 **Implemented:**
 - `TransactionDetailScreen._ActionsCard` dengan tombol "Cetak Ulang Struk"

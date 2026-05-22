@@ -60,7 +60,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -114,6 +114,12 @@ class AppDatabase extends _$AppDatabase {
             // ENH-004 — opt-in printing static QRIS on receipt.
             await m.addColumn(
                 receiptSettings, receiptSettings.printQrisOnReceipt);
+          }
+          if (from < 11) {
+            // Cashier name snapshot — make struk lama tahan terhadap
+            // perubahan/penghapusan user.
+            await m.addColumn(
+                transactions, transactions.cashierNameSnapshot);
           }
         },
         beforeOpen: (_) async {

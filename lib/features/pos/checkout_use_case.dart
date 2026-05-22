@@ -50,11 +50,16 @@ class CheckoutUseCase {
     required this.db,
     this.uuid = const Uuid(),
     this.cashierId = _kFallbackCashierId,
+    this.cashierName,
   });
 
   final AppDatabase db;
   final Uuid uuid;
   final String cashierId;
+  /// Snapshot taken at provider construction (logged-in user's full name).
+  /// Null for the demo-fallback path; receipt UI falls back to a live
+  /// lookup when null.
+  final String? cashierName;
 
   Future<Result<CheckoutResult, CheckoutError>> checkout({
     required CartState cart,
@@ -199,6 +204,7 @@ class CheckoutUseCase {
       id: txId,
       branchId: branch.id,
       cashierId: cashierId,
+      cashierNameSnapshot: Value(cashierName),
       customerId: Value(cart.customer?.id),
       subtotal: totals.subtotal,
       discountAmount: Value(cart.manualDiscountAmount),
@@ -316,5 +322,6 @@ final checkoutUseCaseProvider = Provider<CheckoutUseCase>((ref) {
   return CheckoutUseCase(
     db: ref.watch(databaseProvider),
     cashierId: user?.id ?? _kFallbackCashierId,
+    cashierName: user?.fullName,
   );
 });

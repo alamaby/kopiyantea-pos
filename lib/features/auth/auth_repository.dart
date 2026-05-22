@@ -82,6 +82,29 @@ class AuthRepository {
   /// FEAT-006 — send a magic-link email. No password required. The email
   /// contains a link that deep-links back into the app, which Supabase's
   /// Flutter SDK auto-handles via [onAuthStateChange].
+  /// FEAT-008 — kick off Google OAuth via Supabase. Returns Ok once the
+  /// browser hand-off is initiated; the actual session arrives later via
+  /// `auth.onAuthStateChange` and is handled in [resolveSessionWithClaim].
+  /// Requires Supabase project: Auth → Providers → Google enabled, with
+  /// `kopiyantea://login-callback` whitelisted as a redirect URL.
+  Future<Result<Unit, AuthError>> signInWithGoogle() async {
+    final sb = _supabase;
+    if (sb == null) return const Err(AuthError.networkUnavailable);
+    try {
+      await sb.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: kAuthDeepLink,
+      );
+      return Ok(Unit.instance);
+    } on AuthException catch (e) {
+      _log.w('[Auth] Google OAuth failed: ${e.message}');
+      return const Err(AuthError.unknown);
+    } catch (e) {
+      _log.e('[Auth] Google OAuth error', error: e);
+      return const Err(AuthError.networkUnavailable);
+    }
+  }
+
   Future<Result<Unit, AuthError>> signInWithMagicLink(String email) async {
     final sb = _supabase;
     if (sb == null) return const Err(AuthError.networkUnavailable);

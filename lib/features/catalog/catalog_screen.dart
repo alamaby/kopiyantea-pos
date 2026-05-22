@@ -1,10 +1,16 @@
+import 'dart:convert';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/catalog_dao.dart';
 import '../../core/database/daos/dao_providers.dart';
+import '../../core/domain/enums.dart';
 import '../../core/pricing/pricing.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
@@ -14,7 +20,9 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../auth/auth_provider.dart';
 import '../settings/branch_selection_provider.dart';
+import 'catalog_csv.dart';
 import 'catalog_providers.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
@@ -56,6 +64,35 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           ),
           orElse: () => const Text('Menu'),
         ),
+        actions: [
+          if (ref.watch(currentUserProvider)?.globalRole == GlobalRole.owner)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              tooltip: 'Lainnya',
+              onSelected: (v) {
+                if (v == 'export') _exportCsv(context, ref);
+                if (v == 'import') _importCsv(context, ref);
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'export',
+                  child: ListTile(
+                    leading: Icon(Icons.upload_outlined),
+                    title: Text('Ekspor CSV'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'import',
+                  child: ListTile(
+                    leading: Icon(Icons.download_outlined),
+                    title: Text('Impor CSV'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              ],
+            ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_catalog',
@@ -105,6 +142,101 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  // ── ENH-010 CSV import/export ───────────────────────────────────────────────
+
+  Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final dao = ref.read(catalogDaoProvider);
+    final rows = await dao.getAllProducts();
+    final csv = exportProductsToCsv(rows);
+    await Clipboard.setData(ClipboardData(text: csv));
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('${rows.length} produk disalin ke clipboard sebagai CSV'),
+      ),
+    );
+  }
+
+  Future<void> _importCsv(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    final raw = data?.text;
+    if (raw == null || raw.trim().isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Clipboard kosong')),
+      );
+      return;
+    }
+    final result = parseProductsCsv(raw);
+
+    if (!context.mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Impor'),
+        content: SizedBox(
+          width: 520,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${result.ok.length} baris akan dibuat/diperbarui.'),
+              if (result.errors.isNotEmpty) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text('${result.errors.length} kesalahan (dilewati):',
+                    style:
+                        const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: AppSpacing.xs),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      result.errors.join('\n'),
+                      style: AppTypography.labelSm,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed:
+                result.ok.isEmpty ? null : () => Navigator.pop(ctx, true),
+            child: const Text('Impor'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    final dao = ref.read(catalogDaoProvider);
+    final outboxDao = ref.read(outboxDaoProvider);
+    const uuid = Uuid();
+    final now = DateTime.now();
+    for (final c in result.ok) {
+      await dao.upsertProduct(c);
+      await outboxDao.enqueue(OutboxItemsCompanion.insert(
+        id: uuid.v7(),
+        entityType: OutboxEntityType.product,
+        payload: jsonEncode({'id': c.id.value}),
+        createdAt: now,
+      ));
+    }
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('${result.ok.length} produk diimpor & diantrekan untuk sinkron'),
       ),
     );
   }

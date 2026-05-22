@@ -99,6 +99,13 @@ class Auth extends _$Auth {
     return repo.signInWithMagicLink(email);
   }
 
+  /// FEAT-008 — kick off Google OAuth. Browser is launched by Supabase;
+  /// post-redirect session is handled by the [onAuthStateChange] listener.
+  Future<Result<Unit, AuthError>> signInWithGoogle() async {
+    final repo = ref.read(authRepositoryProvider);
+    return repo.signInWithGoogle();
+  }
+
   Future<Result<Unit, AuthError>> signIn({
     required String email,
     required String password,

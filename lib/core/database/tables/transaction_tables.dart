@@ -13,6 +13,10 @@ class Transactions extends Table {
       text().references(Branches, #id)();
   TextColumn get cashierId =>
       text().references(AppUsers, #id)();
+  /// Immutable snapshot of the cashier's full name at checkout time. Set
+  /// on every new transaction; pre-migration legacy rows have NULL and
+  /// fall back to a live `app_users.full_name` lookup in the UI.
+  TextColumn get cashierNameSnapshot => text().nullable()();
   TextColumn get customerId =>
       text().nullable().references(Customers, #id)();
 

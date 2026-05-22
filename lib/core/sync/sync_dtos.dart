@@ -18,6 +18,7 @@ extension TransactionSyncDto on TransactionRow {
         'id': id,
         'branch_id': branchId,
         'cashier_id': cashierId,
+        'cashier_name_snapshot': cashierNameSnapshot,
         'customer_id': customerId,
         'subtotal': subtotal,
         'discount_amount': discountAmount,
@@ -374,6 +375,8 @@ TransactionsCompanion transactionFromJson(Map<String, dynamic> json) =>
       id: json['id'] as String,
       branchId: json['branch_id'] as String,
       cashierId: json['cashier_id'] as String,
+      cashierNameSnapshot:
+          Value(json['cashier_name_snapshot'] as String?),
       customerId: Value(json['customer_id'] as String?),
       subtotal: (json['subtotal'] as num).toDouble(),
       discountAmount:

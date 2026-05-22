@@ -69,6 +69,10 @@ class CatalogDao extends DatabaseAccessor<AppDatabase> with _$CatalogDaoMixin {
   Future<ProductRow?> getProductById(String id) =>
       (select(products)..where((p) => p.id.equals(id))).getSingleOrNull();
 
+  /// ENH-010 — snapshot of every product for bulk CSV export.
+  Future<List<ProductRow>> getAllProducts() =>
+      (select(products)..orderBy([(p) => OrderingTerm.asc(p.name)])).get();
+
   Future<ProductRow?> getBySku(String sku) =>
       (select(products)..where((p) => p.sku.equals(sku))).getSingleOrNull();
 

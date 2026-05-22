@@ -55,11 +55,13 @@ class PrintReceiptUseCase {
     final setting = await _loadReceiptSetting(tx.branchId);
     final logoBytes = await _maybeFetchLogo(setting);
 
-    // FEAT-014b — cashier name lookup. Skipped when setting opts out
-    // (`showCashierName == false`) or when the user row can't be
-    // resolved (e.g. demo fallback id).
+    // FEAT-014b — cashier name. Prefer the immutable snapshot (set on
+    // every new tx); fall back to a live `app_users` lookup for legacy
+    // pre-snapshot rows. Skipped entirely when setting opts out.
     final cashierName = setting?.showCashierName ?? true
-        ? (await branchDao.getUserById(tx.cashierId))?.fullName
+        ? (tx.cashierNameSnapshot?.isNotEmpty ?? false
+            ? tx.cashierNameSnapshot
+            : (await branchDao.getUserById(tx.cashierId))?.fullName)
         : null;
 
     // ENH-004 — opt-in static QRIS image on receipt. Only fired when

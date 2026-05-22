@@ -41,6 +41,11 @@ class OutboxQueueScreen extends ConsumerWidget {
             icon: const Icon(Icons.refresh),
             onPressed: () => _retryAllFailed(context, ref),
           ),
+          IconButton(
+            tooltip: 'Hapus semua yang gagal',
+            icon: const Icon(Icons.delete_sweep_outlined),
+            onPressed: () => _deleteAllFailed(context, ref),
+          ),
         ],
       ),
       body: rowsAsync.when(
@@ -97,6 +102,45 @@ class OutboxQueueScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+
+  Future<void> _deleteAllFailed(BuildContext context, WidgetRef ref) async {
+    final rows = ref.read(allOutboxRowsProvider).valueOrNull ?? const [];
+    final failedCount =
+        rows.where((r) => r.status == OutboxStatus.failed).length;
+    if (failedCount == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Tidak ada baris gagal untuk dihapus')),
+      );
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus semua yang gagal?'),
+        content: Text(
+          '$failedCount baris gagal akan dihapus permanen. Data yang '
+          'belum sampai ke server akan hilang.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Hapus Semua'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final n = await ref.read(outboxDaoProvider).deleteAllFailed();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$n baris gagal dihapus')),
     );
   }
 
@@ -184,7 +228,7 @@ class _OutboxTile extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Dibuat: ${formatDateTime(row.createdAt)}',
+              '${formatRelativeTime(row.createdAt)} · ${formatDateTime(row.createdAt)}',
               style: AppTypography.labelXs.copyWith(
                 color: context.colors.textTertiary,
               ),

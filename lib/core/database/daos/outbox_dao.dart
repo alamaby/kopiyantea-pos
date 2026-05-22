@@ -60,6 +60,13 @@ class OutboxDao extends DatabaseAccessor<AppDatabase> with _$OutboxDaoMixin {
   Future<int> deleteById(String id) =>
       (delete(outboxItems)..where((o) => o.id.equals(id))).go();
 
+  /// ENH-006 — bulk-clear every failed row in a single statement. Used by
+  /// the outbox queue's "Hapus semua gagal" action.
+  Future<int> deleteAllFailed() =>
+      (delete(outboxItems)
+            ..where((o) => o.status.equalsValue(OutboxStatus.failed)))
+          .go();
+
   /// FEAT-003 — reset a failed row to pending so it pushes on the next sync.
   Future<void> retryNow(String id) =>
       (update(outboxItems)..where((o) => o.id.equals(id))).write(

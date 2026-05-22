@@ -172,27 +172,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Brand
-                  Container(
-                    width: 72,
-                    height: 72,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primarySurface,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.coffee,
-                      size: 36,
-                      color: AppColors.primaryDark,
-                    ),
+                  Image.asset(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 'assets/images/logo_kopiyantea_dark.png'
+                        : 'assets/images/logo_kopiyantea_light.png',
+                    height: 96,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  Text(
-                    'KopiyanteaPOS',
-                    style: AppTypography.displayMd,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
                   Text(
                     'Masuk untuk mulai bertransaksi',
                     style: AppTypography.bodyMd.copyWith(

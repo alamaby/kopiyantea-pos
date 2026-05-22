@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
@@ -52,6 +53,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     switch (result) {
       case Ok():
         await _persistRemember(email);
+        TextInput.finishAutofillContext();
         // Router redirect will navigate away.
         break;
       case Err(:final error):
@@ -131,8 +133,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         AuthError.invalidCredentials => 'Email atau password salah',
         AuthError.userInactive =>
           'Akun nonaktif — hubungi pemilik untuk aktivasi',
-        AuthError.userNotRegistered =>
-          'Pengguna belum terdaftar di aplikasi',
+        AuthError.userNotRegistered => 'Pengguna belum terdaftar di aplikasi',
         AuthError.noBranchAccess =>
           'Pengguna tidak punya akses ke cabang manapun',
         AuthError.networkUnavailable =>
@@ -189,37 +190,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xxxl),
 
-                  // Email
-                  TextField(
-                    controller: _emailCtrl,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    enabled: !_isSubmitting,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-
-                  // Password
-                  TextField(
-                    controller: _passwordCtrl,
-                    obscureText: _obscure,
-                    textInputAction: TextInputAction.done,
-                    enabled: !_isSubmitting,
-                    onSubmitted: (_) => _signIn(),
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                  AutofillGroup(
+                    child: Column(
+                      children: [
+                        // Email
+                        TextField(
+                          controller: _emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [
+                            AutofillHints.username,
+                            AutofillHints.email,
+                          ],
+                          enabled: !_isSubmitting,
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
                         ),
-                        onPressed: () => setState(() => _obscure = !_obscure),
-                      ),
+                        const SizedBox(height: AppSpacing.lg),
+
+                        // Password
+                        TextField(
+                          controller: _passwordCtrl,
+                          obscureText: _obscure,
+                          textInputAction: TextInputAction.done,
+                          autofillHints: const [AutofillHints.password],
+                          enableSuggestions: false,
+                          autocorrect: false,
+                          enabled: !_isSubmitting,
+                          onSubmitted: (_) => _signIn(),
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscure
+                                    ? Icons.visibility_outlined
+                                    : Icons.visibility_off_outlined,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _obscure = !_obscure),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -231,16 +246,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         value: _rememberMe,
                         onChanged: _isSubmitting
                             ? null
-                            : (v) =>
-                                setState(() => _rememberMe = v ?? true),
+                            : (v) => setState(() => _rememberMe = v ?? true),
                         activeColor: AppColors.primary,
                       ),
                       Expanded(
                         child: GestureDetector(
                           onTap: _isSubmitting
                               ? null
-                              : () => setState(
-                                  () => _rememberMe = !_rememberMe),
+                              : () =>
+                                  setState(() => _rememberMe = !_rememberMe),
                           child: Text(
                             'Ingat email saya di perangkat ini',
                             style: AppTypography.bodySm,
@@ -318,7 +332,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: _isSubmitting ? null : _signInWithGoogle,
                     fullWidth: true,
                   ),
-
                 ],
               ),
             ),

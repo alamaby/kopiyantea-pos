@@ -118,13 +118,6 @@ class _OwnerSection extends StatelessWidget {
           ),
           const Divider(height: 1),
           _OwnerTile(
-            icon: Icons.receipt_long_outlined,
-            title: 'Tampilan Struk',
-            subtitle: 'Logo, header, footer per cabang',
-            route: '/more/settings/receipt',
-          ),
-          const Divider(height: 1),
-          _OwnerTile(
             icon: Icons.account_balance_outlined,
             title: 'Rekening Bank',
             subtitle: 'Daftar rekening untuk pembayaran transfer',
@@ -370,6 +363,42 @@ class _DeviceSection extends ConsumerWidget {
                   ),
                   Icon(Icons.chevron_right,
                       color: context.colors.textTertiary, size: 18),
+                ],
+              ),
+            ),
+          ),
+          const Divider(),
+          InkWell(
+            onTap: () => GoRouter.of(context).push('/more/settings/receipt'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    color: context.colors.textSecondary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Tampilan Struk', style: AppTypography.titleMd),
+                        Text(
+                          'Logo, header, footer per cabang',
+                          style: AppTypography.bodySm.copyWith(
+                            color: context.colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: context.colors.textTertiary,
+                    size: 18,
+                  ),
                 ],
               ),
             ),

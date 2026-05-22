@@ -13,6 +13,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
+import '../../catalog/category_providers.dart';
 import '../../modifiers/modifier_providers.dart';
 import '../cart_provider.dart';
 import '../menu_provider.dart';
@@ -182,12 +183,37 @@ class _MenuTile extends ConsumerWidget {
               ),
               if (product.category != null) ...[
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  product.category!,
-                  style: AppTypography.labelXs.copyWith(
-                    color: context.colors.textSecondary,
-                  ),
-                ),
+                Builder(builder: (context) {
+                  final byName =
+                      ref.watch(categoryByNameProvider).valueOrNull;
+                  final color = byName == null
+                      ? null
+                      : resolveCategoryColor(byName, product.category);
+                  return Row(
+                    children: [
+                      if (color != null) ...[
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                      ],
+                      Flexible(
+                        child: Text(
+                          product.category!,
+                          style: AppTypography.labelXs.copyWith(
+                            color: context.colors.textSecondary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  );
+                }),
               ],
               const SizedBox(height: AppSpacing.sm),
               Text(

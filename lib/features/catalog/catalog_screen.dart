@@ -24,6 +24,7 @@ import '../auth/auth_provider.dart';
 import '../settings/branch_selection_provider.dart';
 import 'catalog_csv.dart';
 import 'catalog_providers.dart';
+import 'category_providers.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
   const CatalogScreen({super.key});
@@ -221,9 +222,50 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     if (ok != true) return;
 
     final dao = ref.read(catalogDaoProvider);
+    final categoryDao = ref.read(categoryDaoProvider);
     final outboxDao = ref.read(outboxDaoProvider);
     const uuid = Uuid();
     final now = DateTime.now();
+
+    // Tier 1 — auto-register kategori baru yang muncul di CSV supaya
+    // produk impor langsung mendarat di registry (bukan tertinggal sebagai
+    // free-text yang tidak punya color/sortOrder).
+    final csvCategories = <String>{
+      for (final c in result.ok)
+        if (c.category.present && c.category.value != null)
+          c.category.value!.trim(),
+    }..removeWhere((s) => s.isEmpty);
+    if (csvCategories.isNotEmpty) {
+      final existing = await categoryDao.getAll();
+      final existingLower =
+          existing.map((c) => c.name.toLowerCase()).toSet();
+      var nextOrder = existing.isEmpty
+          ? 0
+          : (existing
+                  .map((c) => c.sortOrder)
+                  .reduce((a, b) => a > b ? a : b) +
+              1);
+      for (final name in csvCategories) {
+        if (existingLower.contains(name.toLowerCase())) continue;
+        final newId = uuid.v7();
+        await categoryDao.upsert(CategoriesCompanion.insert(
+          id: newId,
+          name: name,
+          sortOrder: Value(nextOrder),
+          isActive: const Value(true),
+          createdAt: now,
+          updatedAt: now,
+        ));
+        await outboxDao.enqueue(OutboxItemsCompanion.insert(
+          id: uuid.v7(),
+          entityType: OutboxEntityType.category,
+          payload: jsonEncode({'id': newId}),
+          createdAt: now,
+        ));
+        nextOrder++;
+      }
+    }
+
     for (final c in result.ok) {
       await dao.upsertProduct(c);
       await outboxDao.enqueue(OutboxItemsCompanion.insert(
@@ -381,6 +423,32 @@ class _Tile extends ConsumerWidget {
                       Row(
                         children: [
                           if (product.category != null) ...[
+                            Consumer(
+                              builder: (_, ref, __) {
+                                final map = ref
+                                    .watch(categoryByNameProvider)
+                                    .valueOrNull;
+                                final color = map == null
+                                    ? null
+                                    : resolveCategoryColor(
+                                        map, product.category);
+                                if (color == null) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                      right: AppSpacing.xs),
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                             Text(
                               product.category!,
                               style: AppTypography.bodySm.copyWith(

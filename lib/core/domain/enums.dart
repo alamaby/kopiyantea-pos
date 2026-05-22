@@ -41,4 +41,6 @@ enum OutboxEntityType {
   productRecipe,
   // FEAT-015 — global bank accounts for transfer payment.
   bankAccount,
+  // Tier 1 — product category registry sync.
+  category,
 }

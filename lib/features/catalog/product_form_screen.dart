@@ -19,6 +19,7 @@ import '../../core/utils/result.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import 'category_providers.dart';
 
 /// Add/edit screen for a master `Product` row.
 ///
@@ -37,9 +38,13 @@ class ProductFormScreen extends ConsumerStatefulWidget {
 
 class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   final _nameCtrl = TextEditingController();
-  final _categoryCtrl = TextEditingController();
   final _basePriceCtrl = TextEditingController();
   final _skuCtrl = TextEditingController();
+
+  /// Tier 1 — kategori sekarang dipilih dari registry, bukan free text.
+  /// Nilai = nama kategori (mirrored ke `Products.category`); null = tanpa
+  /// kategori.
+  String? _selectedCategoryName;
 
   ProductRow? _existing;
   bool _isLoading = false;
@@ -66,7 +71,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _categoryCtrl.dispose();
     _basePriceCtrl.dispose();
     _skuCtrl.dispose();
     super.dispose();
@@ -81,7 +85,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       _isLoading = false;
       if (p != null) {
         _nameCtrl.text = p.name;
-        _categoryCtrl.text = p.category ?? '';
+        _selectedCategoryName = p.category;
         _basePriceCtrl.text = p.basePrice.toStringAsFixed(0);
         _skuCtrl.text = p.sku ?? '';
         _isActive = p.isActive;
@@ -100,8 +104,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     });
 
     final name = _nameCtrl.text.trim();
-    final category =
-        _categoryCtrl.text.trim().isEmpty ? null : _categoryCtrl.text.trim();
+    final category = _selectedCategoryName;
     final priceText = _basePriceCtrl.text.trim();
     final sku = _skuCtrl.text.trim().isEmpty ? null : _skuCtrl.text.trim();
 
@@ -296,10 +299,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             required: true,
           ),
           const SizedBox(height: AppSpacing.lg),
-          _Field(
-            label: 'Kategori',
-            controller: _categoryCtrl,
-            hint: 'mis. Kopi, Pastry',
+          _CategoryPickerField(
+            selectedName: _selectedCategoryName,
+            onChanged: (name) =>
+                setState(() => _selectedCategoryName = name),
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
@@ -470,6 +473,177 @@ class _PhotoSection extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Tier 1 — kategori picker yang membaca dari registry kategori. Memuat
+/// kategori aktif dari [activeCategoriesProvider] dan menampilkan sebagai
+/// dropdown + tombol quick-add inline. Nilai (`selectedName`) tetap berupa
+/// string supaya `Products.category` text bisa langsung di-mirror.
+class _CategoryPickerField extends ConsumerWidget {
+  const _CategoryPickerField({
+    required this.selectedName,
+    required this.onChanged,
+  });
+
+  final String? selectedName;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(activeCategoriesProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+          child: Text(
+            'Kategori',
+            style: AppTypography.labelSm
+                .copyWith(color: context.colors.textSecondary),
+          ),
+        ),
+        async.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+            child: AppLoadingIndicator(),
+          ),
+          error: (e, _) => Text(
+            'Gagal memuat kategori: $e',
+            style: AppTypography.bodySm.copyWith(color: AppColors.danger),
+          ),
+          data: (rows) {
+            // Selected name tidak harus ada di list (mis. produk lama dari
+            // sync yang belum di-seed). Tambahkan opsi virtual supaya
+            // DropdownButton tidak crash karena value mismatch.
+            final names = rows.map((c) => c.name).toList();
+            final hasSelected = selectedName == null ||
+                names.any((n) =>
+                    n.toLowerCase() == selectedName!.toLowerCase());
+            return Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String?>(
+                    value: hasSelected ? selectedName : null,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.category_outlined),
+                      hintText: 'Pilih kategori',
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Tanpa kategori'),
+                      ),
+                      for (final c in rows)
+                        DropdownMenuItem<String?>(
+                          value: c.name,
+                          child: Row(
+                            children: [
+                              if (c.color != null) ...[
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: Color(c.color!),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  c.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      // Opsi virtual kalau selectedName legacy/tidak match.
+                      if (!hasSelected)
+                        DropdownMenuItem<String?>(
+                          value: selectedName,
+                          child: Text(
+                            '$selectedName (belum terdaftar)',
+                            style: AppTypography.bodyMd
+                                .copyWith(color: AppColors.warning),
+                          ),
+                        ),
+                    ],
+                    onChanged: onChanged,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                IconButton.outlined(
+                  tooltip: 'Tambah kategori baru',
+                  onPressed: () => _quickAdd(context, ref),
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _quickAdd(BuildContext context, WidgetRef ref) async {
+    final ctrl = TextEditingController();
+    final created = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Tambah Kategori'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          textCapitalization: TextCapitalization.words,
+          decoration: const InputDecoration(
+            hintText: 'mis. Kopi, Pastry',
+            prefixIcon: Icon(Icons.category_outlined),
+          ),
+          onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+    if (created == null || created.isEmpty) return;
+    final dao = ref.read(categoryDaoProvider);
+    final dup = await dao.getByName(created);
+    if (dup != null) {
+      onChanged(dup.name);
+      return;
+    }
+    final all = await dao.getAll();
+    final nextOrder = all.isEmpty
+        ? 0
+        : (all.map((c) => c.sortOrder).reduce((a, b) => a > b ? a : b) + 1);
+    final now = DateTime.now();
+    final newId = const Uuid().v7();
+    await dao.upsert(CategoriesCompanion.insert(
+      id: newId,
+      name: created,
+      sortOrder: Value(nextOrder),
+      isActive: const Value(true),
+      createdAt: now,
+      updatedAt: now,
+    ));
+    await ref.read(outboxDaoProvider).enqueue(OutboxItemsCompanion.insert(
+          id: const Uuid().v7(),
+          entityType: OutboxEntityType.category,
+          payload: jsonEncode({'id': newId}),
+          createdAt: now,
+        ));
+    onChanged(created);
   }
 }
 

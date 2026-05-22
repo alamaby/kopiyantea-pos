@@ -218,6 +218,29 @@ extension ProductRecipeSyncDto on ProductRecipeRow {
       };
 }
 
+extension CategorySyncDto on CategoryRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'name': name,
+        'sort_order': sortOrder,
+        'color': color,
+        'is_active': isActive,
+        'created_at': createdAt.toIso8601String(),
+        'updated_at': updatedAt.toIso8601String(),
+      };
+}
+
+CategoriesCompanion categoryFromJson(Map<String, dynamic> json) =>
+    CategoriesCompanion.insert(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      sortOrder: Value(json['sort_order'] as int? ?? 0),
+      color: Value(json['color'] as int?),
+      isActive: Value(json['is_active'] as bool? ?? true),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+
 extension BankAccountSyncDto on BankAccountRow {
   Map<String, dynamic> toSupabaseJson() => {
         'id': id,

@@ -9,6 +9,7 @@ import 'features/auth/bootstrap_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/bank_accounts/bank_accounts_screen.dart';
 import 'features/catalog/catalog_screen.dart';
+import 'features/catalog/categories_screen.dart';
 import 'features/catalog/product_detail_screen.dart';
 import 'features/catalog/product_form_screen.dart';
 import 'features/customers/customer_form_screen.dart';
@@ -266,6 +267,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/settings/bank-accounts',
         name: 'bankAccounts',
         builder: (_, __) => const BankAccountsScreen(),
+      ),
+      // Tier 1 — kategori produk (registry).
+      GoRoute(
+        path: '/more/settings/categories',
+        name: 'categories',
+        builder: (_, __) => const CategoriesScreen(),
       ),
       // ENH-009 — telemetry dashboard.
       GoRoute(

@@ -90,6 +90,13 @@ class _OwnerSection extends StatelessWidget {
           ),
           const Divider(height: 1),
           _OwnerTile(
+            icon: Icons.category_outlined,
+            title: 'Kategori Produk',
+            subtitle: 'Atur nama, urutan & warna kategori menu',
+            route: '/more/settings/categories',
+          ),
+          const Divider(height: 1),
+          _OwnerTile(
             icon: Icons.tune_outlined,
             title: 'Modifier Produk',
             subtitle: 'Atur grup pilihan (gula, ukuran, dll.)',

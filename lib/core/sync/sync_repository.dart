@@ -149,6 +149,28 @@ class SyncRepository {
       errors++;
     }
 
+    // ── categories (chain-wide) — pull SEBELUM products supaya picker punya
+    // registry lengkap begitu produk masuk.
+    try {
+      final rows = await sb.from('categories').select();
+      final dao = _ref.read(categoryDaoProvider);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        try {
+          await dao.upsert(categoryFromJson(json));
+          upserted++;
+        } catch (e) {
+          // UNIQUE(name) bisa konflik kalau device ini sudah punya kategori
+          // dengan nama sama tapi id berbeda (race lokal sebelum sync
+          // pertama). Skip per-row, biar tidak gagal seluruh pull.
+          _log.w('[Sync] pull category row failed (skipping)', error: e);
+          errors++;
+        }
+      }
+    } catch (e) {
+      _log.w('[Sync] pull categories failed', error: e);
+      errors++;
+    }
+
     // ── products (chain-wide) ──
     try {
       final rows = await sb.from('products').select();
@@ -421,6 +443,8 @@ class SyncRepository {
             await _pushProductRecipe(id!);
           case OutboxEntityType.bankAccount:
             await _pushBankAccount(id!);
+          case OutboxEntityType.category:
+            await _pushCategory(id!);
           case OutboxEntityType.transactionItem:
             // Children of a transaction; rides on parent push.
             break;
@@ -663,6 +687,19 @@ class SyncRepository {
       return;
     }
     await sb.from('bank_accounts').upsert(row.toSupabaseJson());
+  }
+
+  /// Tier 1 — kategori registry. Owner-write (RLS), all-read. Local-delete
+  /// (row sudah hilang) → propagate sebagai DELETE di server supaya
+  /// device lain ikut bersih.
+  Future<void> _pushCategory(String id) async {
+    final sb = _sb!;
+    final row = await _ref.read(categoryDaoProvider).getById(id);
+    if (row == null) {
+      await sb.from('categories').delete().eq('id', id);
+      return;
+    }
+    await sb.from('categories').upsert(row.toSupabaseJson());
   }
 
   Future<void> _pushProductRecipe(String recipeId) async {

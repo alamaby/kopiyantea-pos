@@ -10,6 +10,7 @@ import '../domain/enums.dart';
 import 'tables/bank_account_table.dart';
 import 'tables/branch_tables.dart';
 import 'tables/catalog_tables.dart';
+import 'tables/category_table.dart';
 import 'tables/customer_tables.dart';
 import 'tables/held_order_table.dart';
 import 'tables/inventory_tables.dart';
@@ -53,6 +54,8 @@ part 'app_database.g.dart';
     ShiftClosings,
     // FEAT-015 — global bank accounts for transfer payment (schemaVersion 9)
     BankAccounts,
+    // Tier 1 — kategori produk registry (schemaVersion 12)
+    Categories,
   ],
   // DAOs removed from annotation — instantiated as lazy getters below.
 )
@@ -60,7 +63,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -121,6 +124,12 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(
                 transactions, transactions.cashierNameSnapshot);
           }
+          if (from < 12) {
+            // Tier 1 — kategori registry + seed dari distinct
+            // Products.category yang sudah ada.
+            await m.createTable(categories);
+            await _seedCategoriesFromExistingProducts();
+          }
         },
         beforeOpen: (_) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -140,4 +149,33 @@ class AppDatabase extends _$AppDatabase {
 
   /// In-memory database for unit/widget tests.
   static AppDatabase memory() => AppDatabase(NativeDatabase.memory());
+
+  /// Tier 1 — bootstrap `categories` dari nilai unik `products.category`
+  /// yang sudah ada. Dipanggil dari migrasi v11→v12. Memakai raw
+  /// `customStatement` supaya tidak butuh DAO baru di sini (DAO belum
+  /// di-import; menghindari circular import).
+  Future<void> _seedCategoriesFromExistingProducts() async {
+    final rows = await customSelect(
+      "SELECT DISTINCT category FROM products "
+      "WHERE category IS NOT NULL AND TRIM(category) <> '' "
+      "ORDER BY category COLLATE NOCASE",
+    ).get();
+    final now = DateTime.now().toIso8601String();
+    var order = 0;
+    for (final r in rows) {
+      final name = r.read<String>('category').trim();
+      if (name.isEmpty) continue;
+      // UUID-ish id from name + order — cukup unik untuk seed migrasi.
+      // Avoid uuid pkg di sini (zona migrasi, tetap ringan).
+      final id =
+          'seed-${DateTime.now().microsecondsSinceEpoch}-$order-${name.hashCode}';
+      await customStatement(
+        'INSERT OR IGNORE INTO categories '
+        '(id, name, sort_order, color, is_active, created_at, updated_at) '
+        'VALUES (?, ?, ?, NULL, 1, ?, ?)',
+        [id, name, order, now, now],
+      );
+      order++;
+    }
+  }
 }

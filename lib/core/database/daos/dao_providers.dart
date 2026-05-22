@@ -4,6 +4,7 @@ import '../database_provider.dart';
 import 'bank_account_dao.dart';
 import 'branch_dao.dart';
 import 'catalog_dao.dart';
+import 'category_dao.dart';
 import 'customer_dao.dart';
 import 'held_order_dao.dart';
 import 'inventory_dao.dart';
@@ -22,6 +23,10 @@ final branchDaoProvider = Provider<BranchDao>(
 
 final catalogDaoProvider = Provider<CatalogDao>(
   (ref) => CatalogDao(ref.watch(databaseProvider)),
+);
+
+final categoryDaoProvider = Provider<CategoryDao>(
+  (ref) => CategoryDao(ref.watch(databaseProvider)),
 );
 
 final inventoryDaoProvider = Provider<InventoryDao>(

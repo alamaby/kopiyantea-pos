@@ -62,40 +62,37 @@ class SyncRepository {
       final dao = _ref.read(branchDaoProvider);
 
       // 1. app_users row
-      final userJson = await sb
-          .from('app_users')
-          .select()
-          .eq('id', userId)
-          .maybeSingle();
+      final userJson =
+          await sb.from('app_users').select().eq('id', userId).maybeSingle();
       if (userJson == null) {
         _log.w('[Sync] user $userId not found in app_users on Supabase');
         return false;
       }
       await dao.upsertUser(appUserFromJson(userJson));
 
-      // 2. user_branch_access rows
-      final accessRows = await sb
-          .from('user_branch_access')
-          .select()
-          .eq('user_id', userId);
+      // 2. user_branch_access rows from server. Keep these in memory first:
+      // local Drift has FK(user_branch_access.branch_id -> branches.id), so
+      // inserting access before its branch exists breaks first-login bootstrap
+      // on a fresh device.
+      final accessRows =
+          await sb.from('user_branch_access').select().eq('user_id', userId);
       final accessList = (accessRows as List).cast<Map<String, dynamic>>();
-      for (final row in accessList) {
-        await dao.upsertUserBranchAccess(userBranchAccessFromJson(row));
-      }
 
       // 3. Branches the user has access to
       final branchIds =
           accessList.map((r) => r['branch_id'] as String).toList();
       if (branchIds.isNotEmpty) {
-        final branchesJson = await sb
-            .from('branches')
-            .select()
-            .inFilter('id', branchIds);
-        final branches =
-            (branchesJson as List).cast<Map<String, dynamic>>();
+        final branchesJson =
+            await sb.from('branches').select().inFilter('id', branchIds);
+        final branches = (branchesJson as List).cast<Map<String, dynamic>>();
         for (final json in branches) {
           await dao.upsertBranch(branchFromJson(json));
         }
+      }
+
+      // 4. Access rows, after branches exist locally.
+      for (final row in accessList) {
+        await dao.upsertUserBranchAccess(userBranchAccessFromJson(row));
       }
 
       _log.i('[Sync] pulled auth context for $userId '
@@ -136,10 +133,7 @@ class SyncRepository {
     // the user already has access to are pulled here on every sync.
     try {
       final dao = _ref.read(branchDaoProvider);
-      final rows = await sb
-          .from('branches')
-          .select()
-          .inFilter('id', branchIds);
+      final rows = await sb.from('branches').select().inFilter('id', branchIds);
       for (final json in (rows as List).cast<Map<String, dynamic>>()) {
         await dao.upsertBranch(branchFromJson(json));
         upserted++;
@@ -323,8 +317,7 @@ class SyncRepository {
             .from('transaction_items')
             .select()
             .inFilter('transaction_id', txIds);
-        for (final json
-            in (itemRows as List).cast<Map<String, dynamic>>()) {
+        for (final json in (itemRows as List).cast<Map<String, dynamic>>()) {
           await _db
               .into(_db.transactionItems)
               .insertOnConflictUpdate(transactionItemFromJson(json));
@@ -336,8 +329,7 @@ class SyncRepository {
             .from('inventory_movements')
             .select()
             .inFilter('reference_id', txIds);
-        for (final json
-            in (movRows as List).cast<Map<String, dynamic>>()) {
+        for (final json in (movRows as List).cast<Map<String, dynamic>>()) {
           await _db
               .into(_db.inventoryMovements)
               .insertOnConflictUpdate(inventoryMovementFromJson(json));
@@ -671,9 +663,9 @@ class SyncRepository {
       );
     }
     await sb.from('branch_products').upsert(
-      row.toSupabaseJson(),
-      onConflict: 'product_id,branch_id',
-    );
+          row.toSupabaseJson(),
+          onConflict: 'product_id,branch_id',
+        );
   }
 
   /// FEAT-015 — global bank accounts. Owner-write, all-read (handled by

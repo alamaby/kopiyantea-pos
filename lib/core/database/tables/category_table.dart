@@ -10,7 +10,8 @@ class Categories extends Table {
   TextColumn get id => text()(); // UUID v7
   TextColumn get name => text()(); // unique (case-insensitive di DAO)
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
-  /// ARGB32 (nullable). Null = pakai aksen netral.
+
+  /// RGB24 `0xRRGGBB` (nullable). Null = pakai aksen netral.
   IntColumn get color => integer().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime()();

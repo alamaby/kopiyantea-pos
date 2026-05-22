@@ -78,7 +78,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   Future<void> _load() async {
     setState(() => _isLoading = true);
-    final p = await ref.read(catalogDaoProvider).getProductById(widget.productId!);
+    final p =
+        await ref.read(catalogDaoProvider).getProductById(widget.productId!);
     if (!mounted) return;
     setState(() {
       _existing = p;
@@ -301,8 +302,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           const SizedBox(height: AppSpacing.lg),
           _CategoryPickerField(
             selectedName: _selectedCategoryName,
-            onChanged: (name) =>
-                setState(() => _selectedCategoryName = name),
+            onChanged: (name) => setState(() => _selectedCategoryName = name),
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
@@ -435,8 +435,7 @@ class _PhotoSection extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(Icons.add_photo_alternate_outlined,
-                                size: 36,
-                                color: context.colors.textTertiary),
+                                size: 36, color: context.colors.textTertiary),
                             const SizedBox(height: AppSpacing.xs),
                             Text(
                               'Tap untuk tambah foto',
@@ -518,8 +517,8 @@ class _CategoryPickerField extends ConsumerWidget {
             // DropdownButton tidak crash karena value mismatch.
             final names = rows.map((c) => c.name).toList();
             final hasSelected = selectedName == null ||
-                names.any((n) =>
-                    n.toLowerCase() == selectedName!.toLowerCase());
+                names
+                    .any((n) => n.toLowerCase() == selectedName!.toLowerCase());
             return Row(
               children: [
                 Expanded(
@@ -545,7 +544,7 @@ class _CategoryPickerField extends ConsumerWidget {
                                   width: 12,
                                   height: 12,
                                   decoration: BoxDecoration(
-                                    color: Color(c.color!),
+                                    color: categoryColorFromStorage(c.color),
                                     shape: BoxShape.circle,
                                   ),
                                 ),

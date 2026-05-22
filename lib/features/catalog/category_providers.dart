@@ -24,11 +24,15 @@ Stream<Map<String, CategoryRow>> categoryByName(CategoryByNameRef ref) {
       );
 }
 
+/// Warna kategori disimpan sebagai RGB24 (`0xRRGGBB`) agar aman untuk kolom
+/// integer Postgres/SQLite. Saat render, alpha penuh ditambahkan lagi.
+Color? categoryColorFromStorage(int? rgb) =>
+    rgb == null ? null : Color(0xFF000000 | (rgb & 0x00FFFFFF));
+
 /// Resolve warna kategori berdasarkan nama text di `Products.category`.
 /// Mengembalikan null kalau nama tidak match atau kategori tidak punya color.
 Color? resolveCategoryColor(Map<String, CategoryRow> byName, String? name) {
   if (name == null) return null;
   final row = byName[name.toLowerCase()];
-  final argb = row?.color;
-  return argb == null ? null : Color(argb);
+  return categoryColorFromStorage(row?.color);
 }

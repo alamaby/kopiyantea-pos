@@ -99,19 +99,19 @@ class AppDatabase extends _$AppDatabase {
           if (from < 7) {
             // FEAT-014 — receipt template config (logo position field).
             await m.addColumn(
-                receiptSettings, receiptSettings.logoPosition);
+              receiptSettings,
+              receiptSettings.logoPosition,
+            );
           }
           if (from < 8) {
             // FEAT-014b — opt-in cashier name on receipt.
-            await m.addColumn(
-                receiptSettings, receiptSettings.showCashierName);
+            await m.addColumn(receiptSettings, receiptSettings.showCashierName);
           }
           if (from < 9) {
             // FEAT-015 — global bank accounts + transaction FK + snapshot.
             await m.createTable(bankAccounts);
             await m.addColumn(transactions, transactions.bankAccountId);
-            await m.addColumn(
-                transactions, transactions.bankAccountSnapshot);
+            await m.addColumn(transactions, transactions.bankAccountSnapshot);
           }
           if (from < 10) {
             // ENH-004 — opt-in printing static QRIS on receipt.
@@ -121,8 +121,7 @@ class AppDatabase extends _$AppDatabase {
           if (from < 11) {
             // Cashier name snapshot — make struk lama tahan terhadap
             // perubahan/penghapusan user.
-            await m.addColumn(
-                transactions, transactions.cashierNameSnapshot);
+            await m.addColumn(transactions, transactions.cashierNameSnapshot);
           }
           if (from < 12) {
             // Tier 1 — kategori registry + seed dari distinct
@@ -133,6 +132,7 @@ class AppDatabase extends _$AppDatabase {
         },
         beforeOpen: (_) async {
           await customStatement('PRAGMA foreign_keys = ON');
+          await _sanitizeCategoryColors();
         },
       );
 
@@ -156,9 +156,9 @@ class AppDatabase extends _$AppDatabase {
   /// di-import; menghindari circular import).
   Future<void> _seedCategoriesFromExistingProducts() async {
     final rows = await customSelect(
-      "SELECT DISTINCT category FROM products "
+      'SELECT DISTINCT category FROM products '
       "WHERE category IS NOT NULL AND TRIM(category) <> '' "
-      "ORDER BY category COLLATE NOCASE",
+      'ORDER BY category COLLATE NOCASE',
     ).get();
     final now = DateTime.now().toIso8601String();
     var order = 0;
@@ -177,5 +177,20 @@ class AppDatabase extends _$AppDatabase {
       );
       order++;
     }
+  }
+
+  /// Normalisasi data lama/korup sebelum Drift membaca `categories.color`.
+  /// SQLite bisa menyimpan teks pada kolom integer; saat Drift membacanya,
+  /// teks hex seperti `#EF4444` akan diparse sebagai radix-10 dan gagal.
+  Future<void> _sanitizeCategoryColors() async {
+    await customStatement(
+      'UPDATE categories SET color = NULL '
+      "WHERE color IS NOT NULL AND typeof(color) = 'text' "
+      "AND TRIM(color) NOT GLOB '[0-9]*'",
+    );
+    await customStatement(
+      'UPDATE categories SET color = CAST(color AS INTEGER) & 16777215 '
+      'WHERE color IS NOT NULL',
+    );
   }
 }

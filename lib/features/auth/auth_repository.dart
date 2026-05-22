@@ -24,6 +24,7 @@ enum AuthError {
   noBranchAccess,
   networkUnavailable,
   unknown,
+
   /// FEAT-006 magic link: Supabase rejected the email (rate limit, invalid).
   emailDispatchFailed,
 }
@@ -136,6 +137,7 @@ class AuthRepository {
       await secureStorage.write(SecureStorage.kLastSignedInEmail, email);
     }
     await syncRepository.pullMyAuthContext(uid);
+    await _restoreMissingAppUserEmail(uid: uid, email: email);
     if (email.isNotEmpty) {
       await syncRepository.pullPendingInvitationByEmail(email);
       await _maybeClaimInvitation(uid: uid, email: email);
@@ -164,6 +166,7 @@ class AuthRepository {
       // BEFORE resolving locally — otherwise first-time sign-in on this
       // device fails with userNotRegistered.
       await syncRepository.pullMyAuthContext(uid);
+      await _restoreMissingAppUserEmail(uid: uid, email: email);
 
       // FEAT-006 — pull any pending invitation matching this email so the
       // claim step below can run on the inviter's device too. Cheap: server
@@ -193,6 +196,10 @@ class AuthRepository {
   Future<AuthedSession?> restoreSession() async {
     final session = currentSession;
     if (session == null) return null;
+    await _restoreMissingAppUserEmail(
+      uid: session.user.id,
+      email: session.user.email ?? '',
+    );
     final r = await _resolveAppUser(session.user.id, signOutOnFailure: false);
     return r is Ok<AuthedSession, AuthError> ? r.value : null;
   }
@@ -204,6 +211,43 @@ class AuthRepository {
       _log.w('[Auth] sign-out error (ignored)', error: e);
     }
     await secureStorage.clearAll();
+  }
+
+  Future<void> _restoreMissingAppUserEmail({
+    required String uid,
+    required String email,
+  }) async {
+    final normalizedEmail = email.trim();
+    if (normalizedEmail.isEmpty) return;
+
+    final user = await branchDao.getUserById(uid);
+    if (user == null || (user.email?.trim().isNotEmpty ?? false)) return;
+
+    final now = DateTime.now();
+    await branchDao.updateUserById(
+      uid,
+      AppUsersCompanion(
+        email: Value(normalizedEmail),
+        updatedAt: Value(now),
+      ),
+    );
+
+    try {
+      await _supabase?.from('app_users').update({
+        'email': normalizedEmail,
+        'updated_at': now.toIso8601String(),
+      }).eq('id', uid);
+    } catch (e) {
+      _log.w('[Auth] failed to restore app_users.email on server', error: e);
+      await outboxDao.enqueue(
+        OutboxItemsCompanion.insert(
+          id: const Uuid().v7(),
+          entityType: OutboxEntityType.appUser,
+          payload: jsonEncode({'id': uid}),
+          createdAt: now,
+        ),
+      );
+    }
   }
 
   /// Claims a pending invitation matching [email] by creating the local
@@ -222,8 +266,7 @@ class AuthRepository {
     final existing = await branchDao.getUserById(uid);
     if (existing != null) return;
 
-    final invitation =
-        await branchDao.getPendingInvitationByEmail(email);
+    final invitation = await branchDao.getPendingInvitationByEmail(email);
     if (invitation == null) {
       _log.w('[Auth] no pending invitation for $email');
       return;

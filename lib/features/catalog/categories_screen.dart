@@ -93,8 +93,7 @@ class CategoriesScreen extends ConsumerWidget {
       useRootNavigator: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       builder: (_) => _CategoryForm(existing: existing),
     );
@@ -237,7 +236,7 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = row.color == null ? null : Color(row.color!);
+    final color = categoryColorFromStorage(row.color);
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.md,
@@ -310,16 +309,16 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
   String? _errorName;
 
   static const _palette = <int>[
-    0xFFEF4444, // red
-    0xFFF97316, // orange
-    0xFFF59E0B, // amber
-    0xFF84CC16, // lime
-    0xFF10B981, // emerald
-    0xFF06B6D4, // cyan
-    0xFF3B82F6, // blue
-    0xFF8B5CF6, // violet
-    0xFFEC4899, // pink
-    0xFF6B7280, // gray
+    0xEF4444, // red
+    0xF97316, // orange
+    0xF59E0B, // amber
+    0x84CC16, // lime
+    0x10B981, // emerald
+    0x06B6D4, // cyan
+    0x3B82F6, // blue
+    0x8B5CF6, // violet
+    0xEC4899, // pink
+    0x6B7280, // gray
   ];
 
   @override
@@ -350,8 +349,7 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
     }
     final dao = ref.read(categoryDaoProvider);
     final existingByName = await dao.getByName(name);
-    if (existingByName != null &&
-        existingByName.id != widget.existing?.id) {
+    if (existingByName != null && existingByName.id != widget.existing?.id) {
       setState(() {
         _saving = false;
         _errorName = 'Nama sudah dipakai kategori lain';
@@ -425,9 +423,7 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                widget.existing == null
-                    ? 'Tambah Kategori'
-                    : 'Ubah Kategori',
+                widget.existing == null ? 'Tambah Kategori' : 'Ubah Kategori',
                 style: AppTypography.headlineMd,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -458,11 +454,11 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
                     selected: _color == null,
                     onTap: () => setState(() => _color = null),
                   ),
-                  for (final argb in _palette)
+                  for (final rgb in _palette)
                     _ColorSwatch(
-                      color: Color(argb),
-                      selected: _color == argb,
-                      onTap: () => setState(() => _color = argb),
+                      color: categoryColorFromStorage(rgb),
+                      selected: _color == rgb,
+                      onTap: () => setState(() => _color = rgb),
                     ),
                 ],
               ),
@@ -510,8 +506,7 @@ class _ColorSwatch extends StatelessWidget {
           ),
         ),
         child: color == null
-            ? Icon(Icons.block,
-                size: 18, color: context.colors.textTertiary)
+            ? Icon(Icons.block, size: 18, color: context.colors.textTertiary)
             : (selected
                 ? const Icon(Icons.check, size: 18, color: Colors.white)
                 : null),

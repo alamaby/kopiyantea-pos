@@ -19,7 +19,7 @@ comment on table public.categories is
   'rows tetap valid; metadata sort_order + color hanya dipakai untuk render UI.';
 
 comment on column public.categories.color is
-  'Optional ARGB32 untuk dot warna kategori di catalog & POS grid. NULL = '
+  'Optional RGB24 0xRRGGBB untuk dot warna kategori di catalog & POS grid. NULL = '
   'tanpa warna (pakai aksen netral).';
 
 -- RLS — pola sama dengan bank_accounts: owner-write, semua authenticated read.

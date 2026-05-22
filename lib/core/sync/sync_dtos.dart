@@ -223,11 +223,34 @@ extension CategorySyncDto on CategoryRow {
         'id': id,
         'name': name,
         'sort_order': sortOrder,
-        'color': color,
+        'color': color == null ? null : color! & 0x00FFFFFF,
         'is_active': isActive,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
+}
+
+int? _categoryRgb24(Object? raw) {
+  if (raw == null) return null;
+  if (raw is num) return raw.toInt() & 0x00FFFFFF;
+  if (raw is! String) return null;
+
+  var text = raw.trim();
+  if (text.isEmpty) return null;
+
+  final radix = text.startsWith('#') ||
+          text.startsWith('0x') ||
+          text.startsWith('0X') ||
+          RegExp(r'[a-fA-F]').hasMatch(text)
+      ? 16
+      : 10;
+  if (text.startsWith('#')) text = text.substring(1);
+  if (text.startsWith('0x') || text.startsWith('0X')) {
+    text = text.substring(2);
+  }
+
+  final parsed = int.tryParse(text, radix: radix);
+  return parsed == null ? null : parsed & 0x00FFFFFF;
 }
 
 CategoriesCompanion categoryFromJson(Map<String, dynamic> json) =>
@@ -235,7 +258,7 @@ CategoriesCompanion categoryFromJson(Map<String, dynamic> json) =>
       id: json['id'] as String,
       name: json['name'] as String,
       sortOrder: Value(json['sort_order'] as int? ?? 0),
-      color: Value(json['color'] as int?),
+      color: Value(_categoryRgb24(json['color'])),
       isActive: Value(json['is_active'] as bool? ?? true),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
@@ -278,8 +301,7 @@ AppUsersCompanion appUserFromJson(Map<String, dynamic> json) =>
     AppUsersCompanion.insert(
       id: json['id'] as String,
       fullName: json['full_name'] as String,
-      globalRole:
-          _enumByName(GlobalRole.values, json['global_role'] as String),
+      globalRole: _enumByName(GlobalRole.values, json['global_role'] as String),
       email: Value(json['email'] as String?),
       isActive: Value(json['is_active'] as bool? ?? true),
       failedLoginCount: Value(json['failed_login_count'] as int? ?? 0),
@@ -295,8 +317,7 @@ PendingInvitationsCompanion pendingInvitationFromJson(
       id: json['id'] as String,
       email: json['email'] as String,
       fullName: json['full_name'] as String,
-      globalRole:
-          _enumByName(GlobalRole.values, json['global_role'] as String),
+      globalRole: _enumByName(GlobalRole.values, json['global_role'] as String),
       branchIdsCsv: Value(json['branch_ids_csv'] as String? ?? ''),
       invitedBy: Value(json['invited_by'] as String?),
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -398,12 +419,10 @@ TransactionsCompanion transactionFromJson(Map<String, dynamic> json) =>
       id: json['id'] as String,
       branchId: json['branch_id'] as String,
       cashierId: json['cashier_id'] as String,
-      cashierNameSnapshot:
-          Value(json['cashier_name_snapshot'] as String?),
+      cashierNameSnapshot: Value(json['cashier_name_snapshot'] as String?),
       customerId: Value(json['customer_id'] as String?),
       subtotal: (json['subtotal'] as num).toDouble(),
-      discountAmount:
-          Value((json['discount_amount'] as num?)?.toDouble() ?? 0),
+      discountAmount: Value((json['discount_amount'] as num?)?.toDouble() ?? 0),
       taxAmount: Value((json['tax_amount'] as num?)?.toDouble() ?? 0),
       total: (json['total'] as num).toDouble(),
       taxPercentageSnapshot:
@@ -420,8 +439,7 @@ TransactionsCompanion transactionFromJson(Map<String, dynamic> json) =>
         TransactionStatus.values,
         json['status'] as String,
       ),
-      voidedByTransactionId:
-          Value(json['voided_by_transaction_id'] as String?),
+      voidedByTransactionId: Value(json['voided_by_transaction_id'] as String?),
       voidReason: Value(json['void_reason'] as String?),
       bankAccountId: Value(json['bank_account_id'] as String?),
       bankAccountSnapshot: Value(json['bank_account_snapshot'] as String?),

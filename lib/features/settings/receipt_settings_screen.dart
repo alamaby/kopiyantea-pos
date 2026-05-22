@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -5,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/database_provider.dart';
+import '../../core/domain/enums.dart';
 import '../../core/storage/image_upload_service.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
@@ -44,8 +48,7 @@ class ReceiptSettingsScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
             itemCount: branches.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(height: AppSpacing.lg),
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
             itemBuilder: (_, i) => _BranchReceiptCard(branch: branches[i]),
           );
         },
@@ -59,8 +62,7 @@ class _BranchReceiptCard extends ConsumerStatefulWidget {
   final BranchRow branch;
 
   @override
-  ConsumerState<_BranchReceiptCard> createState() =>
-      _BranchReceiptCardState();
+  ConsumerState<_BranchReceiptCard> createState() => _BranchReceiptCardState();
 }
 
 class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
@@ -120,12 +122,10 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
     final companion = ReceiptSettingsCompanion(
       id: Value(_existing?.id ?? const Uuid().v7()),
       branchId: Value(widget.branch.id),
-      headerText: Value(_headerCtrl.text.trim().isEmpty
-          ? null
-          : _headerCtrl.text.trim()),
-      footerText: Value(_footerCtrl.text.trim().isEmpty
-          ? null
-          : _footerCtrl.text.trim()),
+      headerText: Value(
+          _headerCtrl.text.trim().isEmpty ? null : _headerCtrl.text.trim()),
+      footerText: Value(
+          _footerCtrl.text.trim().isEmpty ? null : _footerCtrl.text.trim()),
       logoUrl: Value(_logoUrl),
       logoPosition: Value(_logoPosition),
       paperWidthMm: Value(_paperWidth),
@@ -135,6 +135,12 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
       updatedAt: Value(now),
     );
     await db.into(db.receiptSettings).insertOnConflictUpdate(companion);
+    await ref.read(outboxDaoProvider).enqueue(OutboxItemsCompanion.insert(
+          id: const Uuid().v7(),
+          entityType: OutboxEntityType.receiptSetting,
+          payload: jsonEncode({'id': companion.id.value}),
+          createdAt: now,
+        ));
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
@@ -237,8 +243,8 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
                   child: CachedNetworkImage(
                     imageUrl: _logoUrl!,
                     fit: BoxFit.contain,
-                    placeholder: (_, __) =>
-                        const SizedBox(height: 80, child: AppLoadingIndicator()),
+                    placeholder: (_, __) => const SizedBox(
+                        height: 80, child: AppLoadingIndicator()),
                     errorWidget: (_, __, ___) => const Icon(
                       Icons.broken_image_outlined,
                       color: AppColors.danger,
@@ -312,8 +318,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
             SwitchListTile(
               value: _showLogo,
               onChanged: (v) => setState(() => _showLogo = v),
-              title: Text('Tampilkan di struk',
-                  style: AppTypography.titleMd),
+              title: Text('Tampilkan di struk', style: AppTypography.titleMd),
               contentPadding: EdgeInsets.zero,
               activeColor: AppColors.primary,
             ),
@@ -379,8 +384,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           SwitchListTile(
             value: _showCashierName,
             onChanged: (v) => setState(() => _showCashierName = v),
-            title: Text('Tampilkan nama kasir',
-                style: AppTypography.titleMd),
+            title: Text('Tampilkan nama kasir', style: AppTypography.titleMd),
             subtitle: Text(
               'Cetak "Kasir: Nama" di header struk untuk audit',
               style: AppTypography.bodySm.copyWith(
@@ -395,8 +399,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           SwitchListTile(
             value: _printQrisOnReceipt,
             onChanged: (v) => setState(() => _printQrisOnReceipt = v),
-            title: Text('Cetak QRIS di struk',
-                style: AppTypography.titleMd),
+            title: Text('Cetak QRIS di struk', style: AppTypography.titleMd),
             subtitle: Text(
               'Untuk transaksi QRIS, cetak QR cabang di struk. Berguna '
               'untuk skenario bayar belakangan (takeaway, delivery, '
@@ -419,8 +422,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
               ButtonSegment(value: 80, label: Text('80mm')),
             ],
             selected: {_paperWidth},
-            onSelectionChanged: (s) =>
-                setState(() => _paperWidth = s.first),
+            onSelectionChanged: (s) => setState(() => _paperWidth = s.first),
           ),
 
           const SizedBox(height: AppSpacing.lg),

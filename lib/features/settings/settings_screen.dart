@@ -55,13 +55,11 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             const _SyncSection(),
             const SizedBox(height: AppSpacing.lg),
-            _PrivacySection(settings: s),
-            const SizedBox(height: AppSpacing.lg),
             const _BackupSection(),
             const SizedBox(height: AppSpacing.lg),
             const _AboutSection(),
             const SizedBox(height: AppSpacing.lg),
-            const _SignOutSection(),
+            _SignOutSection(settings: s),
           ],
         ),
       ),
@@ -409,59 +407,6 @@ class _DeviceSection extends ConsumerWidget {
   }
 }
 
-// ── Privacy / Session (FEAT-007) ─────────────────────────────────────────────
-
-class _PrivacySection extends ConsumerWidget {
-  const _PrivacySection({required this.settings});
-  final AppSettings settings;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hasSaved =
-        settings.lastLoginEmail != null && settings.lastLoginEmail!.isNotEmpty;
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionHeader(label: 'Privasi & Sesi'),
-          SwitchListTile(
-            value: settings.rememberMe,
-            onChanged: (v) async {
-              await ref
-                  .read(settingsNotifierProvider.notifier)
-                  .setRememberMe(v);
-            },
-            title: Text('Ingat email login', style: AppTypography.titleMd),
-            subtitle: Text(
-              hasSaved && settings.rememberMe
-                  ? 'Tersimpan: ${settings.lastLoginEmail}'
-                  : 'Email akan otomatis terisi di layar masuk',
-              style: AppTypography.bodySm
-                  .copyWith(color: context.colors.textSecondary),
-            ),
-            contentPadding: EdgeInsets.zero,
-            activeColor: AppColors.primary,
-          ),
-          if (hasSaved) ...[
-            const SizedBox(height: AppSpacing.sm),
-            AppButton(
-              label: 'Hapus Email Tersimpan',
-              icon: Icons.delete_sweep_outlined,
-              variant: AppButtonVariant.secondary,
-              onPressed: () async {
-                await ref
-                    .read(settingsNotifierProvider.notifier)
-                    .setLastLoginEmail(null);
-              },
-              fullWidth: true,
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 // ── About ─────────────────────────────────────────────────────────────────────
 
 // ── ENH-011 — Settings Backup ────────────────────────────────────────────────
@@ -642,7 +587,9 @@ class _SectionHeader extends StatelessWidget {
 // ── Sign-out section ──────────────────────────────────────────────────────────
 
 class _SignOutSection extends ConsumerWidget {
-  const _SignOutSection();
+  const _SignOutSection({required this.settings});
+
+  final AppSettings settings;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -652,6 +599,8 @@ class _SignOutSection extends ConsumerWidget {
     final authUser = ref.watch(supabaseClientProvider).auth.currentUser;
     final loginProviders = _loginProviders(authUser?.appMetadata);
     final lastLogin = _lastLoginLabel(authUser?.lastSignInAt);
+    final hasSaved =
+        settings.lastLoginEmail != null && settings.lastLoginEmail!.isNotEmpty;
 
     return AppCard(
       child: Column(
@@ -725,6 +674,39 @@ class _SignOutSection extends ConsumerWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
           ],
+          SwitchListTile(
+            value: settings.rememberMe,
+            onChanged: (v) async {
+              await ref
+                  .read(settingsNotifierProvider.notifier)
+                  .setRememberMe(v);
+            },
+            title: Text('Ingat email login', style: AppTypography.titleMd),
+            subtitle: Text(
+              hasSaved && settings.rememberMe
+                  ? 'Tersimpan: ${settings.lastLoginEmail}'
+                  : 'Email akan otomatis terisi di layar masuk',
+              style: AppTypography.bodySm
+                  .copyWith(color: context.colors.textSecondary),
+            ),
+            contentPadding: EdgeInsets.zero,
+            activeColor: AppColors.primary,
+          ),
+          if (hasSaved) ...[
+            const SizedBox(height: AppSpacing.sm),
+            AppButton(
+              label: 'Hapus Email Tersimpan',
+              icon: Icons.delete_sweep_outlined,
+              variant: AppButtonVariant.secondary,
+              onPressed: () async {
+                await ref
+                    .read(settingsNotifierProvider.notifier)
+                    .setLastLoginEmail(null);
+              },
+              fullWidth: true,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.lg),
           AppButton(
             label: 'Keluar',
             icon: Icons.logout,

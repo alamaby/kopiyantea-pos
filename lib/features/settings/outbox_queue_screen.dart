@@ -152,11 +152,8 @@ class OutboxQueueScreen extends ConsumerWidget {
       SnackBar(content: Text('$n baris di-reset ke status menunggu')),
     );
     // Trigger an immediate push attempt.
-    final branchIds = ref
-        .read(allBranchesProvider)
-        .valueOrNull
-        ?.map((b) => b.id)
-        .toList();
+    final branchIds =
+        ref.read(allBranchesProvider).valueOrNull?.map((b) => b.id).toList();
     await ref.read(syncProvider.notifier).syncNow(branchIds: branchIds);
   }
 }
@@ -242,9 +239,7 @@ class _OutboxTile extends ConsumerWidget {
                 final bg = isDark
                     ? AppColors.danger.withValues(alpha: 0.22)
                     : const Color(0xFFFEE2E2);
-                final fg = isDark
-                    ? const Color(0xFFFECACA)
-                    : AppColors.danger;
+                final fg = isDark ? const Color(0xFFFECACA) : AppColors.danger;
                 return Container(
                   padding: const EdgeInsets.all(AppSpacing.sm),
                   decoration: BoxDecoration(
@@ -297,11 +292,8 @@ class _OutboxTile extends ConsumerWidget {
   Future<void> _retry(BuildContext context, WidgetRef ref) async {
     await ref.read(outboxDaoProvider).retryNow(row.id);
     if (!context.mounted) return;
-    final branchIds = ref
-        .read(allBranchesProvider)
-        .valueOrNull
-        ?.map((b) => b.id)
-        .toList();
+    final branchIds =
+        ref.read(allBranchesProvider).valueOrNull?.map((b) => b.id).toList();
     await ref.read(syncProvider.notifier).syncNow(branchIds: branchIds);
   }
 
@@ -344,6 +336,7 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.optionGroup => 'Grup Modifier',
         OutboxEntityType.optionItem => 'Opsi Modifier',
         OutboxEntityType.productOptionGroup => 'Link Modifier',
+        OutboxEntityType.receiptSetting => 'Tampilan Struk',
         OutboxEntityType.product => 'Produk',
         OutboxEntityType.branchProduct => 'Override Cabang',
         OutboxEntityType.productRecipe => 'Resep',
@@ -364,6 +357,7 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.optionGroup => Icons.tune,
         OutboxEntityType.optionItem => Icons.toggle_on_outlined,
         OutboxEntityType.productOptionGroup => Icons.link,
+        OutboxEntityType.receiptSetting => Icons.receipt_long_outlined,
         OutboxEntityType.product => Icons.coffee_outlined,
         OutboxEntityType.branchProduct => Icons.storefront_outlined,
         OutboxEntityType.productRecipe => Icons.menu_book_outlined,

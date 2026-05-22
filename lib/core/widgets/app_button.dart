@@ -61,9 +61,14 @@ class AppButton extends StatelessWidget {
                 Icon(icon, size: 18, color: colors.foreground),
                 const SizedBox(width: AppSpacing.sm),
               ],
-              Text(
-                label,
-                style: AppTypography.titleMd.copyWith(color: colors.foreground),
+              Flexible(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                  style:
+                      AppTypography.titleMd.copyWith(color: colors.foreground),
+                ),
               ),
             ],
           );
@@ -94,14 +99,15 @@ class AppButton extends StatelessWidget {
 
   _ButtonColors _colorsFor(AppButtonVariant v, AppPalette pal) {
     return switch (v) {
-      AppButtonVariant.primary =>
-        const _ButtonColors(background: AppColors.primary, foreground: Colors.white),
-      AppButtonVariant.secondary =>
-        const _ButtonColors(background: AppColors.primarySurface, foreground: AppColors.primaryDark),
-      AppButtonVariant.danger =>
-        const _ButtonColors(background: AppColors.danger, foreground: Colors.white),
-      AppButtonVariant.ghost =>
-        _ButtonColors(background: Colors.transparent, foreground: pal.textPrimary),
+      AppButtonVariant.primary => const _ButtonColors(
+          background: AppColors.primary, foreground: Colors.white),
+      AppButtonVariant.secondary => const _ButtonColors(
+          background: AppColors.primarySurface,
+          foreground: AppColors.primaryDark),
+      AppButtonVariant.danger => const _ButtonColors(
+          background: AppColors.danger, foreground: Colors.white),
+      AppButtonVariant.ghost => _ButtonColors(
+          background: Colors.transparent, foreground: pal.textPrimary),
     };
   }
 }

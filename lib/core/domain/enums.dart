@@ -33,6 +33,8 @@ enum OutboxEntityType {
   optionGroup,
   optionItem,
   productOptionGroup,
+  // FEAT-014 — per-branch receipt template/settings.
+  receiptSetting,
   // Opsi C (seed sync) — chain-wide catalog + per-branch overrides + recipes
   // are pushed to Supabase via outbox so first-device seed data appears in
   // server tables (otherwise transaction FKs reject sync).

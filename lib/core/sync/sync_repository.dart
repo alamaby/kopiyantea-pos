@@ -107,6 +107,7 @@ class SyncRepository {
   /// Pulls master/operational data for the given branches:
   /// - products (chain-wide; RLS filters)
   /// - branch_products (scoped to branchIds)
+  /// - option_groups + options + product_option_groups (modifier master)
   /// - inventory_items + product_recipes (scoped)
   /// - receipt_settings (scoped)
   /// - customers (chain-wide)
@@ -191,6 +192,35 @@ class SyncRepository {
       }
     } catch (e) {
       _log.w('[Sync] pull branch_products failed', error: e);
+      errors++;
+    }
+
+    // ── modifiers (chain-wide master + product bindings) ──
+    // Pull after products so product_option_groups FK rows can land safely.
+    try {
+      final dao = _ref.read(optionDaoProvider);
+
+      final groupRows = await sb.from('option_groups').select();
+      for (final json in (groupRows as List).cast<Map<String, dynamic>>()) {
+        await dao.upsertGroup(optionGroupFromJson(json));
+        upserted++;
+      }
+
+      final optionRows = await sb.from('options').select();
+      for (final json in (optionRows as List).cast<Map<String, dynamic>>()) {
+        await dao.upsertOption(optionFromJson(json));
+        upserted++;
+      }
+
+      final bindingRows = await sb.from('product_option_groups').select();
+      for (final json in (bindingRows as List).cast<Map<String, dynamic>>()) {
+        await _db
+            .into(_db.productOptionGroups)
+            .insertOnConflictUpdate(productOptionGroupFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull modifiers failed', error: e);
       errors++;
     }
 
@@ -426,6 +456,8 @@ class SyncRepository {
           case OutboxEntityType.productOptionGroup:
             // payload carries both product_id + option_group_id
             await _pushProductOptionGroup(payload);
+          case OutboxEntityType.receiptSetting:
+            await _pushReceiptSetting(id!);
           case OutboxEntityType.product:
             await _pushProduct(id!);
           case OutboxEntityType.branchProduct:
@@ -634,6 +666,18 @@ class SyncRepository {
       'product_id': productId,
       'option_group_id': groupId,
     });
+  }
+
+  Future<void> _pushReceiptSetting(String id) async {
+    final sb = _sb!;
+    final row = await (_db.select(_db.receiptSettings)
+          ..where((s) => s.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) {
+      await sb.from('receipt_settings').delete().eq('id', id);
+      return;
+    }
+    await sb.from('receipt_settings').upsert(row.toSupabaseJson());
   }
 
   // ── Opsi C — seed catalog push ────────────────────────────────────────────

@@ -180,6 +180,23 @@ extension TransactionItemOptionSyncDto on TransactionItemOptionRow {
       };
 }
 
+extension ReceiptSettingSyncDto on ReceiptSettingRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'branch_id': branchId,
+        'header_text': headerText,
+        'footer_text': footerText,
+        'logo_url': logoUrl,
+        'paper_width_mm': paperWidthMm,
+        'locale': locale,
+        'show_logo': showLogo,
+        'logo_position': logoPosition,
+        'show_cashier_name': showCashierName,
+        'print_qris_on_receipt': printQrisOnReceipt,
+        'updated_at': updatedAt.toIso8601String(),
+      };
+}
+
 // ── Opsi C — catalog push DTOs ──────────────────────────────────────────────
 
 extension ProductSyncDto on ProductRow {
@@ -401,6 +418,37 @@ ProductRecipesCompanion productRecipeFromJson(Map<String, dynamic> json) =>
       branchId: json['branch_id'] as String,
       inventoryItemId: json['inventory_item_id'] as String,
       quantityRequired: (json['quantity_required'] as num).toDouble(),
+    );
+
+OptionGroupsCompanion optionGroupFromJson(Map<String, dynamic> json) =>
+    OptionGroupsCompanion.insert(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      isRequired: Value(json['is_required'] as bool? ?? false),
+      isMultiSelect: Value(json['is_multi_select'] as bool? ?? false),
+      sortOrder: Value(json['sort_order'] as int? ?? 0),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+
+MenuOptionsCompanion optionFromJson(Map<String, dynamic> json) =>
+    MenuOptionsCompanion.insert(
+      id: json['id'] as String,
+      groupId: json['group_id'] as String,
+      name: json['name'] as String,
+      priceDelta: Value((json['price_delta'] as num?)?.toDouble() ?? 0),
+      sortOrder: Value(json['sort_order'] as int? ?? 0),
+      isDefault: Value(json['is_default'] as bool? ?? false),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+
+ProductOptionGroupsCompanion productOptionGroupFromJson(
+  Map<String, dynamic> json,
+) =>
+    ProductOptionGroupsCompanion.insert(
+      productId: json['product_id'] as String,
+      optionGroupId: json['option_group_id'] as String,
     );
 
 CustomersCompanion customerFromJson(Map<String, dynamic> json) =>

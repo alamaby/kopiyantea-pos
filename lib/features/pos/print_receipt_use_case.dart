@@ -3,15 +3,19 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/database_provider.dart';
 import '../../core/domain/enums.dart';
+import '../../core/pricing/pricing.dart';
 import '../../core/services/printer_service.dart';
 import '../../core/services/service_providers.dart';
 import '../../core/utils/labels.dart';
 import '../../core/utils/result.dart';
+import '../auth/auth_provider.dart';
+import 'cart_state.dart';
 
 /// Fetches transaction + items + branch + customer from local DB, builds a
 /// [ReceiptPayload], and forwards to the active [PrinterService].
@@ -24,6 +28,8 @@ class PrintReceiptUseCase {
   final Ref _ref;
 
   static final Logger _log = Logger();
+  static const billingFooterText =
+      'Struk ini hanyalah bukti tagihan, bukan bukti pembayaran yang sah.';
 
   /// In-memory cache so reprinting in the same session doesn't re-download
   /// the same image (logo, QRIS, etc.). Keyed by URL — implicitly
@@ -113,6 +119,63 @@ class PrintReceiptUseCase {
       logoPosition: setting?.logoPosition ?? 'top',
       bankAccountSnapshot: tx.bankAccountSnapshot,
       qrisImageBytes: qrisBytes,
+    );
+
+    final printer = _ref.read(printerServiceProvider);
+    return printer.printReceipt(payload);
+  }
+
+  /// Prints the current cart as a billing receipt without saving a
+  /// transaction. Intended for asking payment from the customer before the
+  /// checkout flow is finalized.
+  Future<Result<Unit, PrinterError>> printBill({
+    required CartState cart,
+    required TotalsResult totals,
+  }) async {
+    final branch = cart.branch;
+    if (branch == null || cart.items.isEmpty) {
+      return const Err(PrinterError.printFailed);
+    }
+
+    final setting = await _loadReceiptSetting(branch.id);
+    final logoBytes = await _maybeFetchLogo(setting);
+    final cashierName = setting?.showCashierName ?? true
+        ? _ref.read(currentUserProvider)?.fullName
+        : null;
+
+    final payload = ReceiptPayload(
+      transactionId: const Uuid().v7(),
+      timestamp: DateTime.now(),
+      branchName: branch.name,
+      branchAddress: branch.address,
+      branchPhone: branch.phone,
+      items: cart.items
+          .map((it) => ReceiptItem(
+                name: it.branchProduct.customName ?? it.product.name,
+                quantity: it.quantity.toDouble(),
+                priceSnapshot: it.effectiveUnitPrice,
+                subtotal: it.lineSubtotal,
+                notes: it.notes,
+                options: it.selectedOptions
+                    .map((o) => o.priceDelta == 0
+                        ? '${o.groupName}: ${o.optionName}'
+                        : '${o.groupName}: ${o.optionName} (+${o.priceDelta.toStringAsFixed(0)})')
+                    .toList(growable: false),
+              ))
+          .toList(growable: false),
+      subtotal: totals.subtotal,
+      discountAmount: cart.manualDiscountAmount,
+      taxLabel: branch.taxLabel,
+      taxAmount: totals.taxAmount,
+      total: totals.total,
+      paymentMethodLabel: 'Tagihan',
+      customerName: cart.customer?.name,
+      cashierName: cashierName,
+      headerText: setting?.headerText,
+      footerText: billingFooterText,
+      paperWidthMm: setting?.paperWidthMm ?? 58,
+      logoBytes: logoBytes,
+      logoPosition: setting?.logoPosition ?? 'top',
     );
 
     final printer = _ref.read(printerServiceProvider);

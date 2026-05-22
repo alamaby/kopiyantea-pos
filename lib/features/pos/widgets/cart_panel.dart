@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/pricing/pricing.dart';
+import '../../../core/services/printer_service.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/result.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/undo_snackbar.dart';
@@ -15,6 +17,7 @@ import '../../customers/customer_picker_sheet.dart';
 import '../cart_provider.dart';
 import '../cart_state.dart';
 import '../held_order_service.dart';
+import '../print_receipt_use_case.dart';
 import 'checkout_sheet.dart';
 import 'option_picker_sheet.dart';
 
@@ -95,6 +98,16 @@ class CartPanel extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 AppButton(
+                  label: 'Cetak Tagihan',
+                  icon: Icons.receipt_long_outlined,
+                  variant: AppButtonVariant.secondary,
+                  onPressed: totals == null
+                      ? null
+                      : () => _printBill(context, ref, cartState, totals),
+                  fullWidth: true,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                AppButton(
                   label: 'Tahan Pesanan',
                   icon: Icons.pause_circle_outline,
                   variant: AppButtonVariant.secondary,
@@ -110,6 +123,39 @@ class CartPanel extends ConsumerWidget {
       ],
     );
   }
+
+  Future<void> _printBill(
+    BuildContext context,
+    WidgetRef ref,
+    CartState cartState,
+    TotalsResult totals,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await ref.read(printReceiptUseCaseProvider).printBill(
+          cart: cartState,
+          totals: totals,
+        );
+    if (!context.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          switch (result) {
+            Ok() => 'Tagihan dikirim ke printer',
+            Err(:final error) =>
+              'Gagal cetak tagihan: ${_printerErrorLabel(error)}',
+          },
+        ),
+      ),
+    );
+  }
+
+  String _printerErrorLabel(PrinterError error) => switch (error) {
+        PrinterError.notConnected => 'Printer belum terhubung',
+        PrinterError.deviceNotFound => 'Printer tidak ditemukan',
+        PrinterError.permissionDenied => 'Izin Bluetooth ditolak',
+        PrinterError.bluetoothOff => 'Bluetooth belum aktif',
+        PrinterError.printFailed => 'Gagal mencetak struk',
+      };
 
   /// FEAT-009 — prompt for a label (table # / customer name) then park the
   /// current cart. Cart is cleared after save so the cashier can start the
@@ -280,7 +326,8 @@ class _Header extends StatelessWidget {
           const SizedBox(width: AppSpacing.sm),
           Text(
             '($itemCount)',
-            style: AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
+            style: AppTypography.bodyMd
+                .copyWith(color: context.colors.textSecondary),
           ),
           const Spacer(),
           TextButton.icon(
@@ -424,8 +471,7 @@ class _CartItemTile extends StatelessWidget {
                       InkWell(
                         onTap: () => _editOptions(context),
                         child: Padding(
-                          padding:
-                              const EdgeInsets.only(top: AppSpacing.xs),
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -445,8 +491,8 @@ class _CartItemTile extends StatelessWidget {
                               const SizedBox(width: AppSpacing.xs),
                               Icon(Icons.edit_outlined,
                                   size: 12,
-                                  color: AppColors.accent.withValues(
-                                      alpha: 0.7)),
+                                  color:
+                                      AppColors.accent.withValues(alpha: 0.7)),
                             ],
                           ),
                         ),
@@ -548,8 +594,7 @@ class _CartItemTile extends StatelessWidget {
             child: const Text('Batal'),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.pop(dialogCtx, controller.text.trim()),
+            onPressed: () => Navigator.pop(dialogCtx, controller.text.trim()),
             child: const Text('Simpan'),
           ),
         ],
@@ -577,7 +622,9 @@ class _NotesField extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              hasNotes ? Icons.sticky_note_2_outlined : Icons.add_comment_outlined,
+              hasNotes
+                  ? Icons.sticky_note_2_outlined
+                  : Icons.add_comment_outlined,
               size: 14,
               color: hasNotes ? AppColors.accent : context.colors.textTertiary,
             ),

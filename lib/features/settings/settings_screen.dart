@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/domain/enums.dart';
+import '../../core/network/supabase_providers.dart';
 import '../../core/sync/sync_provider.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
@@ -33,8 +34,7 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Pengaturan')),
       body: settings.when(
-        loading: () =>
-            const Center(child: AppLoadingIndicator()),
+        loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
           title: 'Gagal memuat pengaturan',
           icon: Icons.error_outline,
@@ -525,9 +525,8 @@ class _BackupSection extends ConsumerWidget {
     );
     if (ok != true) return;
     try {
-      final n = await ref
-          .read(settingsNotifierProvider.notifier)
-          .applyFromJson(raw);
+      final n =
+          await ref.read(settingsNotifierProvider.notifier).applyFromJson(raw);
       messenger.showSnackBar(
         SnackBar(content: Text('$n pengaturan dipulihkan')),
       );
@@ -578,8 +577,8 @@ class _AboutRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style:
-                  AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
+              style: AppTypography.bodyMd
+                  .copyWith(color: context.colors.textSecondary),
             ),
           ),
           Text(value, style: AppTypography.bodyMd),
@@ -619,6 +618,12 @@ class _SignOutSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final branchesAsync = ref.watch(allBranchesProvider);
+    final selectedBranchAsync = ref.watch(selectedBranchProvider);
+    final authUser = ref.watch(supabaseClientProvider).auth.currentUser;
+    final loginProviders = _loginProviders(authUser?.appMetadata);
+    final lastLogin = _lastLoginLabel(authUser?.lastSignInAt);
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -626,15 +631,70 @@ class _SignOutSection extends ConsumerWidget {
           const _SectionHeader(label: 'Akun'),
           const SizedBox(height: AppSpacing.sm),
           if (user != null) ...[
-            Text(user.fullName, style: AppTypography.titleMd),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              user.globalRole.name,
-              style: AppTypography.labelSm.copyWith(
-                color: context.colors.textSecondary,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.primarySurface,
+                    borderRadius: AppRadius.radiusMd,
+                  ),
+                  child: const Icon(
+                    Icons.person_outline,
+                    color: AppColors.primaryDark,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(user.fullName, style: AppTypography.titleMd),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        user.email ?? authUser?.email ?? 'Email tidak tersedia',
+                        style: AppTypography.bodySm.copyWith(
+                          color: context.colors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                _RoleBadge(role: user.globalRole),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _AccountInfoRow(
+              icon: Icons.storefront_outlined,
+              label: 'Cabang aktif',
+              value: selectedBranchAsync.maybeWhen(
+                data: (branch) => branch?.name ?? 'Belum dipilih',
+                orElse: () => 'Memuat...',
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
+            _AccountInfoRow(
+              icon: Icons.account_tree_outlined,
+              label: 'Akses cabang',
+              value: branchesAsync.maybeWhen(
+                data: (branches) => '${branches.length} cabang',
+                orElse: () => 'Memuat...',
+              ),
+            ),
+            _AccountInfoRow(
+              icon: Icons.verified_user_outlined,
+              label: 'Login',
+              value: loginProviders,
+            ),
+            _AccountInfoRow(
+              icon: Icons.history_outlined,
+              label: 'Terakhir login',
+              value: lastLogin,
+            ),
+            const SizedBox(height: AppSpacing.lg),
           ],
           AppButton(
             label: 'Keluar',
@@ -672,6 +732,98 @@ class _SignOutSection extends ConsumerWidget {
     if (confirmed != true) return;
     await ref.read(authProvider.notifier).signOut();
   }
+}
+
+class _RoleBadge extends StatelessWidget {
+  const _RoleBadge({required this.role});
+
+  final GlobalRole role;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (role) {
+      GlobalRole.owner => const AppBadge(
+          label: 'Owner',
+          icon: Icons.admin_panel_settings_outlined,
+          tone: AppBadgeTone.warning,
+        ),
+      GlobalRole.manager => const AppBadge(
+          label: 'Manager',
+          icon: Icons.supervisor_account_outlined,
+          tone: AppBadgeTone.info,
+        ),
+      GlobalRole.cashier => const AppBadge(
+          label: 'Kasir',
+          icon: Icons.point_of_sale_outlined,
+          tone: AppBadgeTone.success,
+        ),
+    };
+  }
+}
+
+class _AccountInfoRow extends StatelessWidget {
+  const _AccountInfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: context.colors.textSecondary),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              label,
+              style: AppTypography.bodySm.copyWith(
+                color: context.colors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.bodySm,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _loginProviders(Map<String, dynamic>? metadata) {
+  final raw = metadata?['providers'];
+  final providers = raw is List
+      ? raw.whereType<String>().toList()
+      : <String>[
+          if (metadata?['provider'] case final String provider) provider,
+        ];
+  if (providers.isEmpty) return 'Tidak diketahui';
+  return providers.map(_providerLabel).join(' + ');
+}
+
+String _providerLabel(String provider) => switch (provider) {
+      'email' => 'Email',
+      'google' => 'Google',
+      _ => provider,
+    };
+
+String _lastLoginLabel(String? raw) {
+  if (raw == null || raw.isEmpty) return 'Tidak tersedia';
+  final parsed = DateTime.tryParse(raw);
+  return parsed == null ? 'Tidak tersedia' : formatDateTime(parsed.toLocal());
 }
 
 // ── Sync section ──────────────────────────────────────────────────────────────
@@ -734,8 +886,7 @@ class _SyncSection extends ConsumerWidget {
               ),
               child: Text(
                 syncState.lastError!,
-                style: AppTypography.labelSm
-                    .copyWith(color: AppColors.danger),
+                style: AppTypography.labelSm.copyWith(color: AppColors.danger),
               ),
             ),
           ],
@@ -747,8 +898,7 @@ class _SyncSection extends ConsumerWidget {
                 ? null
                 : () async {
                     // Pull master for all branches the user currently has access to.
-                    final branches = await ref
-                        .read(allBranchesProvider.future);
+                    final branches = await ref.read(allBranchesProvider.future);
                     if (!context.mounted) return;
                     await ref.read(syncProvider.notifier).syncNow(
                           branchIds: branches.map((b) => b.id).toList(),

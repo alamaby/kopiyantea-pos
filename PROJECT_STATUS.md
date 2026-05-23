@@ -264,7 +264,12 @@
 - [x] Transaction history pull (Phase 6e3) — `pullTransactions(branchIds, limit=100)` fetches recent transactions + items + linked inventory_movements. Multi-device history visibility works. No incremental cursor yet — fetches last 100 each sync.
 - [x] `InventoryDao.upsertRecipe` for pull idempotency
 - [x] `SyncState` carries `lastPulled` counter; Settings card shows `kirim · terima · gagal` breakdown
-- [ ] Background sync via workmanager — deferred (0.5.2 broken; need 0.6.x or alternative)
+- [x] Background sync via workmanager — **DONE DEV** (0.9.0+3). Periodic best-effort task registered with network constraint, runs push outbox + branch-scoped master/transaction pull in background isolate.
+
+**Outstanding QA:**
+- [ ] Android real device: login → buat transaksi/outbox → kill app → tunggu periodic task dengan internet ON → outbox terkirim
+- [ ] Android real device: offline failure → task retry/backoff tidak crash dan manual sync tetap jalan
+- [ ] iOS behavior: best-effort only; verify registration/build if iOS release requested
 
 ## Phase 7 — Optimization & Release — **DONE DEV** (awaiting actual release runthrough)
 

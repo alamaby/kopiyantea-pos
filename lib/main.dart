@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +13,7 @@ import 'core/database/daos/held_order_dao.dart';
 import 'core/database/database_provider.dart';
 import 'core/logging/app_logger.dart';
 import 'core/network/pinned_http_client.dart';
+import 'core/sync/background_sync.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/settings_provider.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -46,7 +46,7 @@ Future<void> main() async {
   }
 
   // 2. Local-first initialization — must succeed.
-  await initializeDateFormatting('id_ID', null);
+  await initializeDateFormatting('id_ID');
   final db = await AppDatabase.open();
   // SharedPreferences instance — touched here to surface any platform-channel
   // init errors early. Seed step was removed: first-time data is pulled from
@@ -78,9 +78,16 @@ Future<void> main() async {
     log.i('Supabase initialized for ${Env.appEnv} '
         '(pinning: ${Env.certFingerprints.isNotEmpty ? "on" : "off"})');
   } catch (e, st) {
-    log.w('Supabase init failed — running offline-only',
-        error: e, stackTrace: st);
+    log.w(
+      'Supabase init failed — running offline-only',
+      error: e,
+      stackTrace: st,
+    );
   }
+
+  // Phase 6 — OS-level best-effort sync. This complements the foreground
+  // resume sync in AppResumeSyncListener and the manual Settings button.
+  await initializeBackgroundSync();
 
   runApp(
     ProviderScope(

@@ -15,6 +15,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/formatters.dart';
 import '../../core/utils/result.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
@@ -83,14 +84,22 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
   @override
   void initState() {
     super.initState();
+    _headerCtrl.addListener(_onTemplateChanged);
+    _footerCtrl.addListener(_onTemplateChanged);
     _load();
   }
 
   @override
   void dispose() {
+    _headerCtrl.removeListener(_onTemplateChanged);
+    _footerCtrl.removeListener(_onTemplateChanged);
     _headerCtrl.dispose();
     _footerCtrl.dispose();
     super.dispose();
+  }
+
+  void _onTemplateChanged() {
+    if (mounted && _loaded) setState(() {});
   }
 
   Future<void> _load() async {
@@ -226,6 +235,18 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
         children: [
           Text(widget.branch.name, style: AppTypography.titleMd),
           const SizedBox(height: AppSpacing.md),
+          _ReceiptPreview(
+            branch: widget.branch,
+            headerText: _headerCtrl.text.trim(),
+            footerText: _footerCtrl.text.trim(),
+            paperWidthMm: _paperWidth,
+            showLogo: _showLogo,
+            logoUrl: _logoUrl,
+            logoPosition: _logoPosition,
+            showCashierName: _showCashierName,
+            printQrisOnReceipt: _printQrisOnReceipt,
+          ),
+          const SizedBox(height: AppSpacing.lg),
 
           // Logo
           _LabelRow(label: 'Logo'),
@@ -434,6 +455,297 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
             fullWidth: true,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReceiptPreview extends StatelessWidget {
+  const _ReceiptPreview({
+    required this.branch,
+    required this.headerText,
+    required this.footerText,
+    required this.paperWidthMm,
+    required this.showLogo,
+    required this.logoUrl,
+    required this.logoPosition,
+    required this.showCashierName,
+    required this.printQrisOnReceipt,
+  });
+
+  final BranchRow branch;
+  final String headerText;
+  final String footerText;
+  final int paperWidthMm;
+  final bool showLogo;
+  final String? logoUrl;
+  final String logoPosition;
+  final bool showCashierName;
+  final bool printQrisOnReceipt;
+
+  @override
+  Widget build(BuildContext context) {
+    final paperWidth = paperWidthMm == 80 ? 360.0 : 288.0;
+    final now = DateTime.now();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _LabelRow(label: 'Preview struk'),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: context.colors.surfaceAlt,
+            borderRadius: AppRadius.radiusMd,
+            border: Border.all(color: context.colors.border),
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: paperWidth),
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x22000000),
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: DefaultTextStyle(
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      height: 1.25,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_shouldShowLogo && logoPosition == 'top') ...[
+                          _PreviewLogo(logoUrl: logoUrl!),
+                          const SizedBox(height: AppSpacing.sm),
+                        ],
+                        _CenterText(
+                          branch.name,
+                          bold: true,
+                          size: 16,
+                        ),
+                        if (branch.address?.isNotEmpty ?? false)
+                          _CenterText(branch.address!),
+                        if (branch.phone?.isNotEmpty ?? false)
+                          _CenterText(branch.phone!),
+                        if (headerText.isNotEmpty) _CenterText(headerText),
+                        const _ReceiptRule(),
+                        _PreviewRow(label: 'No:', value: '#PREVIEW'),
+                        _PreviewRow(
+                          label: 'Tanggal:',
+                          value: formatDateTime(now),
+                        ),
+                        const _PreviewRow(
+                          label: 'Pelanggan:',
+                          value: 'Contoh Pelanggan',
+                        ),
+                        if (showCashierName)
+                          const _PreviewRow(
+                            label: 'Kasir:',
+                            value: 'Kasir Demo',
+                          ),
+                        const _ReceiptRule(),
+                        const Text('Kopi Susu Aren x 1'),
+                        _PreviewRow(
+                          label: '  ${formatRupiah(22000)}',
+                          value: formatRupiah(22000),
+                        ),
+                        const Text('Nasi Goreng x 1'),
+                        _PreviewRow(
+                          label: '  ${formatRupiah(28000)}',
+                          value: formatRupiah(28000),
+                        ),
+                        const Text('  - Level Pedas: Normal'),
+                        const _ReceiptRule(),
+                        _PreviewRow(
+                          label: 'Subtotal',
+                          value: formatRupiah(50000),
+                        ),
+                        _PreviewRow(
+                          label: 'Diskon',
+                          value: '-${formatRupiah(5000)}',
+                        ),
+                        _PreviewRow(
+                          label: 'Pajak (${branch.taxLabel})',
+                          value: formatRupiah(4500),
+                        ),
+                        const _ReceiptRule(),
+                        _PreviewRow(
+                          label: 'TOTAL',
+                          value: formatRupiah(49500),
+                          bold: true,
+                          size: 15,
+                        ),
+                        const _ReceiptRule(),
+                        const _PreviewRow(label: 'Bayar', value: 'Tunai'),
+                        _PreviewRow(
+                          label: 'Diterima',
+                          value: formatRupiah(50000),
+                        ),
+                        _PreviewRow(
+                          label: 'Kembalian',
+                          value: formatRupiah(500),
+                        ),
+                        if (printQrisOnReceipt) ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          const _CenterText(
+                            'SCAN QRIS UNTUK BAYAR',
+                            bold: true,
+                          ),
+                          const _CenterText(
+                            'Masukkan nominal sesuai TOTAL di atas',
+                          ),
+                          const SizedBox(height: AppSpacing.xs),
+                          Center(
+                            child: Container(
+                              width: 84,
+                              height: 84,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.black),
+                              ),
+                              child: const Icon(
+                                Icons.qr_code_2,
+                                color: Colors.black,
+                                size: 56,
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: AppSpacing.sm),
+                        const _CenterText('Terima Kasih', bold: true),
+                        if (footerText.isNotEmpty) _CenterText(footerText),
+                        if (_shouldShowLogo && logoPosition == 'bottom') ...[
+                          const SizedBox(height: AppSpacing.sm),
+                          _PreviewLogo(logoUrl: logoUrl!),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool get _shouldShowLogo =>
+      showLogo && logoUrl != null && logoUrl!.isNotEmpty;
+}
+
+class _PreviewLogo extends StatelessWidget {
+  const _PreviewLogo({required this.logoUrl});
+
+  final String logoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 64, maxWidth: 180),
+        child: CachedNetworkImage(
+          imageUrl: logoUrl,
+          fit: BoxFit.contain,
+          placeholder: (_, __) => const SizedBox(
+            width: 96,
+            height: 48,
+            child: Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ),
+          errorWidget: (_, __, ___) => const Icon(
+            Icons.broken_image_outlined,
+            color: Colors.black,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CenterText extends StatelessWidget {
+  const _CenterText(this.text, {this.bold = false, this.size});
+
+  final String text;
+  final bool bold;
+  final double? size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+        fontSize: size,
+      ),
+    );
+  }
+}
+
+class _PreviewRow extends StatelessWidget {
+  const _PreviewRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+    this.size,
+  });
+
+  final String label;
+  final String value;
+  final bool bold;
+  final double? size;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyle(
+      fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
+      fontSize: size,
+    );
+    return Row(
+      children: [
+        Expanded(child: Text(label, style: style)),
+        const SizedBox(width: AppSpacing.sm),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            overflow: TextOverflow.ellipsis,
+            style: style,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReceiptRule extends StatelessWidget {
+  const _ReceiptRule();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+      child: Text(
+        '--------------------------------',
+        textAlign: TextAlign.center,
+        overflow: TextOverflow.clip,
+        maxLines: 1,
       ),
     );
   }

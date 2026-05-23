@@ -15,6 +15,7 @@ import '../../core/services/service_providers.dart';
 import '../../core/utils/labels.dart';
 import '../../core/utils/result.dart';
 import '../auth/auth_provider.dart';
+import '../settings/settings_provider.dart';
 import 'cart_state.dart';
 
 /// Fetches transaction + items + branch + customer from local DB, builds a
@@ -121,8 +122,7 @@ class PrintReceiptUseCase {
       qrisImageBytes: qrisBytes,
     );
 
-    final printer = _ref.read(printerServiceProvider);
-    return printer.printReceipt(payload);
+    return _printWithAutoReconnect(payload);
   }
 
   /// Prints the current cart as a billing receipt without saving a
@@ -178,8 +178,49 @@ class PrintReceiptUseCase {
       logoPosition: setting?.logoPosition ?? 'top',
     );
 
+    return _printWithAutoReconnect(payload);
+  }
+
+  Future<Result<Unit, PrinterError>> _printWithAutoReconnect(
+    ReceiptPayload payload,
+  ) async {
     final printer = _ref.read(printerServiceProvider);
-    return printer.printReceipt(payload);
+    final savedAddress = await _lastPrinterAddress();
+    final ready = await _ensureConnected(printer, savedAddress);
+    if (ready is Err<Unit, PrinterError>) return ready;
+
+    final result = await printer.printReceipt(payload);
+    if (result case Err(error: PrinterError.notConnected)) {
+      final reconnected = await _ensureConnected(
+        printer,
+        savedAddress,
+        force: true,
+      );
+      if (reconnected is Err<Unit, PrinterError>) return reconnected;
+      return printer.printReceipt(payload);
+    }
+    return result;
+  }
+
+  Future<Result<Unit, PrinterError>> _ensureConnected(
+    PrinterService printer,
+    String? savedAddress, {
+    bool force = false,
+  }) async {
+    if (!force && printer.isConnected) return Ok(Unit.instance);
+    if (savedAddress == null || savedAddress.isEmpty) {
+      return const Err(PrinterError.notConnected);
+    }
+    return printer.connect(savedAddress);
+  }
+
+  Future<String?> _lastPrinterAddress() async {
+    try {
+      final settings = await _ref.read(settingsNotifierProvider.future);
+      return settings.lastPrinterAddress;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<ReceiptSettingRow?> _loadReceiptSetting(String branchId) async {

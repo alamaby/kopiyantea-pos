@@ -27,8 +27,7 @@ class PrinterSettingsScreen extends ConsumerStatefulWidget {
       _PrinterSettingsScreenState();
 }
 
-class _PrinterSettingsScreenState
-    extends ConsumerState<PrinterSettingsScreen> {
+class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
   List<PrinterDevice>? _devices;
   bool _isScanning = false;
   bool _isConnecting = false;
@@ -101,6 +100,15 @@ class _PrinterSettingsScreenState
     setState(() {
       _statusMessage = null;
     });
+    final ready = await _ensureConnectedToSavedPrinter(printer);
+    if (!mounted) return;
+    if (ready case Err(:final error)) {
+      setState(() {
+        _statusIsError = true;
+        _statusMessage = _errorLabel(error);
+      });
+      return;
+    }
     final payload = ReceiptPayload(
       transactionId: '00000000-0000-0000-0000-000000000000',
       timestamp: DateTime.now(),
@@ -137,6 +145,18 @@ class _PrinterSettingsScreenState
     }
   }
 
+  Future<Result<Unit, PrinterError>> _ensureConnectedToSavedPrinter(
+    PrinterService printer,
+  ) async {
+    if (printer.isConnected) return Ok(Unit.instance);
+    final settings = await ref.read(settingsNotifierProvider.future);
+    final address = settings.lastPrinterAddress;
+    if (address == null || address.isEmpty) {
+      return const Err(PrinterError.notConnected);
+    }
+    return printer.connect(address);
+  }
+
   String _errorLabel(PrinterError e) => switch (e) {
         PrinterError.notConnected => 'Printer belum terhubung',
         PrinterError.deviceNotFound => 'Printer tidak ditemukan',
@@ -149,6 +169,10 @@ class _PrinterSettingsScreenState
   @override
   Widget build(BuildContext context) {
     final printer = ref.watch(printerServiceProvider);
+    final settings = ref.watch(settingsNotifierProvider).valueOrNull;
+    final rememberedAddress = settings?.lastPrinterAddress;
+    final hasRememberedPrinter =
+        rememberedAddress != null && rememberedAddress.isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Printer')),
@@ -158,8 +182,10 @@ class _PrinterSettingsScreenState
           _StatusCard(
             isConnected: printer.isConnected,
             address: printer.connectedAddress,
+            rememberedAddress: rememberedAddress,
             onDisconnect: printer.isConnected ? _disconnect : null,
-            onTestPrint: printer.isConnected ? _testPrint : null,
+            onTestPrint:
+                printer.isConnected || hasRememberedPrinter ? _testPrint : null,
           ),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
@@ -186,9 +212,8 @@ class _PrinterSettingsScreenState
                     _statusIsError
                         ? Icons.error_outline
                         : Icons.check_circle_outline,
-                    color: _statusIsError
-                        ? AppColors.danger
-                        : AppColors.success,
+                    color:
+                        _statusIsError ? AppColors.danger : AppColors.success,
                     size: 18,
                   ),
                   const SizedBox(width: AppSpacing.sm),
@@ -243,17 +268,22 @@ class _StatusCard extends StatelessWidget {
   const _StatusCard({
     required this.isConnected,
     required this.address,
+    required this.rememberedAddress,
     required this.onDisconnect,
     required this.onTestPrint,
   });
 
   final bool isConnected;
   final String? address;
+  final String? rememberedAddress;
   final VoidCallback? onDisconnect;
   final VoidCallback? onTestPrint;
 
   @override
   Widget build(BuildContext context) {
+    final hasRememberedPrinter =
+        rememberedAddress != null && rememberedAddress!.isNotEmpty;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -290,10 +320,14 @@ class _StatusCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            isConnected ? (address ?? '-') : 'Belum ada printer aktif',
+            isConnected
+                ? (address ?? '-')
+                : hasRememberedPrinter
+                    ? 'Terakhir: $rememberedAddress'
+                    : 'Belum ada printer aktif',
             style: AppTypography.titleMd,
           ),
-          if (isConnected) ...[
+          if (onTestPrint != null || onDisconnect != null) ...[
             const SizedBox(height: AppSpacing.md),
             Row(
               children: [
@@ -306,16 +340,18 @@ class _StatusCard extends StatelessWidget {
                     fullWidth: true,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: AppButton(
-                    label: 'Putuskan',
-                    variant: AppButtonVariant.ghost,
-                    icon: Icons.link_off,
-                    onPressed: onDisconnect,
-                    fullWidth: true,
+                if (onDisconnect != null) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: AppButton(
+                      label: 'Putuskan',
+                      variant: AppButtonVariant.ghost,
+                      icon: Icons.link_off,
+                      onPressed: onDisconnect,
+                      fullWidth: true,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ],
@@ -350,9 +386,7 @@ class _DeviceTile extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             border: Border.all(
-              color: isConnected
-                  ? AppColors.primary
-                  : context.colors.border,
+              color: isConnected ? AppColors.primary : context.colors.border,
               width: isConnected ? 2 : 1,
             ),
             borderRadius: AppRadius.radiusLg,

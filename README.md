@@ -1,87 +1,244 @@
 # KopiyanteaPOS
 
-Production-ready, **offline-first** Flutter mobile POS for an Indonesian coffee shop chain. Built around a local Drift database with an outbox-pattern sync to Supabase, append-only financial records, event-sourced inventory, and a Teal/Amber design system tuned for color-blind safety and one-handed cashier use.
+<p align="center">
+  <img src="assets/images/app_logo.png" alt="KopiyanteaPOS logo" width="128">
+</p>
 
----
+[![Release Build](https://github.com/alamaby/kopiyantea-pos/actions/workflows/release.yml/badge.svg)](https://github.com/alamaby/kopiyantea-pos/actions/workflows/release.yml)
+[![Supabase Keep-Alive](https://github.com/alamaby/kopiyantea-pos/actions/workflows/supabase-ping.yml/badge.svg)](https://github.com/alamaby/kopiyantea-pos/actions/workflows/supabase-ping.yml)
 
-## Setup
+KopiyanteaPOS is an offline-first Flutter point-of-sale app for an Indonesian coffee shop chain. It is designed for fast cashier workflows, local-first reliability, append-only financial records, event-sourced inventory, and secure synchronization to Supabase.
 
-> Filled in during **Phase 1**. Until then, no Flutter project exists in this repo.
+> Status: active development. See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the implementation tracker.
 
-```sh
-# placeholder
+## Highlights
+
+- Offline-first POS powered by local Drift storage.
+- Supabase sync with outbox pattern for reliable background delivery.
+- Append-only transaction records and void flow for auditability.
+- Event-sourced inventory movement with cached stock reconciliation.
+- Multi-branch catalog, inventory, customers, reports, settings, and user management.
+- Bluetooth receipt printer integration with ESC/POS formatting.
+- Indonesian-first UX with `id_ID` formatting and `en_US` fallback localization.
+- Responsive Flutter UI for compact phones and wider tablet layouts.
+- Color-blind-safe design tokens with non-color status signals.
+- Production hardening foundations: RLS-oriented Supabase schema, cert pinning, env validation, and release automation.
+
+## Tech Stack
+
+| Area | Technology |
+|---|---|
+| App | Flutter, Dart |
+| State management | Riverpod |
+| Routing | go_router |
+| Local database | Drift, SQLite |
+| Backend | Supabase |
+| Config | envied |
+| Hardware | Bluetooth thermal printer, ESC/POS |
+| Localization | Flutter gen-l10n, intl |
+| CI/CD | GitHub Actions |
+
+## Repository Structure
+
+```text
+lib/
+  core/                 Shared config, database, services, sync, theme, widgets
+  features/             Feature modules: POS, catalog, inventory, reports, etc.
+  l10n/                 Localization source files
+supabase/
+  migrations/           Forward-only Supabase SQL migrations
+  seed.sql              Development seed data
+docs/
+  adr/                  Architecture Decision Records
+  release.md            Release and signing guide
+test/                   Unit and widget tests
+android/, ios/          Platform projects
+```
+
+## Getting Started
+
+### Prerequisites
+
+- Flutter stable SDK, matching the project constraints in [pubspec.yaml](pubspec.yaml).
+- Dart SDK bundled with Flutter.
+- Android Studio or Xcode for platform builds.
+- Supabase project for real sync/auth flows.
+
+### 1. Clone
+
+PowerShell:
+
+```powershell
+git clone https://github.com/alamaby/kopiyantea-pos.git
+cd kopiyantea-pos
+```
+
+Bash:
+
+```bash
+git clone https://github.com/alamaby/kopiyantea-pos.git
+cd kopiyantea-pos
+```
+
+### 2. Configure Environment
+
+Copy the example env file and fill in real values.
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Bash:
+
+```bash
+cp .env.example .env
+```
+
+Required variables:
+
+| Variable | Description |
+|---|---|
+| `SUPABASE_URL` | Supabase project URL, must use `https://`. |
+| `SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key. Legacy anon JWT also works. |
+| `APP_ENV` | `development`, `staging`, or `production`. |
+| `SUPABASE_CERT_FINGERPRINTS` | Comma-separated SHA-256 cert fingerprints. Required for production. |
+
+Environment values are compiled by `envied` and validated at startup via `Env.validate()`.
+
+### 3. Install Dependencies
+
+PowerShell / Bash:
+
+```powershell
 flutter pub get
 ```
 
----
+### 4. Generate Code
 
-## Environment Variables
+Run this after changing `.env`, Drift tables, Riverpod annotations, Freezed models, or JSON models.
 
-All required env vars are declared in [`.env.example`](./.env.example). Copy it to `.env` and fill in real values before running the app.
+PowerShell / Bash:
 
-- `SUPABASE_URL` — Supabase project URL
-- `SUPABASE_PUBLISHABLE_KEY` — Supabase publishable key (`sb_publishable_...`); legacy JWT anon key also accepted
-- `APP_ENV` — `development` | `staging` | `production`
-- `SUPABASE_CERT_FINGERPRINTS` — SHA-256 fingerprints for cert pinning (prod)
-
-Env vars are validated at startup via [`envied`](https://pub.dev/packages/envied); missing/malformed values fail fast.
-
----
-
-## Build Commands
-
-```sh
-# Dev (hot reload)
-flutter run
-
-# Codegen (Drift, Freezed, Riverpod, envied)
+```powershell
 dart run build_runner build --delete-conflicting-outputs
-dart run build_runner watch --delete-conflicting-outputs   # continuous
+flutter gen-l10n
+```
 
-# Tests
-flutter test
-flutter test test/core/pricing/pricing_test.dart           # specific file
+### 5. Run
 
-# Lint
+PowerShell / Bash:
+
+```powershell
+flutter run
+```
+
+## Useful Commands
+
+PowerShell:
+
+```powershell
+# Analyze
 flutter analyze
 
-# Android release (see docs/release.md for full procedure)
+# Run all tests
+flutter test
+
+# Run a specific test file
+flutter test test/core/pricing/pricing_test.dart
+
+# Format changed Dart files
+dart format lib test
+
+# Android release builds
 flutter build apk --split-per-abi --release
 flutter build appbundle --release
 
-# iOS release
+# iOS release build
 flutter build ipa --release
 ```
 
-Full release procedure incl. signing, cert rotation, store submission: [`docs/release.md`](docs/release.md).
+Bash:
 
----
+```bash
+# Analyze
+flutter analyze
+
+# Run all tests
+flutter test
+
+# Run a specific test file
+flutter test test/core/pricing/pricing_test.dart
+
+# Format changed Dart files
+dart format lib test
+
+# Android release builds
+flutter build apk --split-per-abi --release
+flutter build appbundle --release
+
+# iOS release build
+flutter build ipa --release
+```
 
 ## Architecture
 
-- Architecture Decision Records (ADRs): [`/docs/adr/`](./docs/adr/)
-- Diagrams: [`/docs/architecture/`](./docs/architecture/) (Mermaid, default theme)
-- Database schema: see ADR-0006, ADR-0007, ADR-0008 and `/supabase/migrations/`
-- Master prompt (source of truth for the build): [`MASTER_PROMPT_v5.md`](./MASTER_PROMPT_v5.md)
-- Project status & phase tracking: [`PROJECT_STATUS.md`](./PROJECT_STATUS.md)
+The app follows a local-first architecture:
 
----
+1. User actions write to the local Drift database first.
+2. Syncable changes are queued in an outbox table.
+3. Background sync pushes outbox entries to Supabase.
+4. Supabase RLS protects server-side data access.
+5. Financial and inventory records are kept audit-friendly through append-only/event-style tables.
 
-## Design System — Quick Reference
+Important references:
 
-Full spec in Section 6 of the master prompt and [ADR-0013](./docs/adr/0013-design-tokens-and-inter-font.md).
+- [Architecture Decision Records](docs/adr)
+- [Release Guide](docs/release.md)
+- [Project Status](PROJECT_STATUS.md)
+- [Master Build Prompt](MASTER_PROMPT_v5.md)
+
+## Database and Migrations
+
+Supabase schema changes live in [supabase/migrations](supabase/migrations). Migrations are timestamped, forward-only, and should be non-destructive whenever possible.
+
+Local database definitions live under [lib/core/database](lib/core/database). Keep Drift schema changes aligned with Supabase migrations and ADR decisions.
+
+## Design System
+
+The app uses a Teal/Amber design system with bundled Inter fonts and color-blind-safe status semantics.
 
 | Token | Value |
 |---|---|
 | Primary | Teal-700 `#0F766E` |
 | Accent | Orange-600 `#EA580C` |
-| Success | **Sky-600** `#0284C7` (not green — color-blind safe) |
+| Success | Sky-600 `#0284C7` |
 | Danger | Red-600 `#DC2626` |
-| Surface (light / dark) | `#FFFFFF` / Stone-800 `#292524` |
-| Font | **Inter** (bundled asset, 4 weights — not loaded from CDN) |
-| Spacing | 4pt base: 4 / 8 / 12 / 16 / 24 / 32 / 48 / 64 |
-| Radius | sm 4 · md 8 · lg 12 · xl 16 · full 999 |
-| Touch targets | 44 min · 48 standard · 56 primary · 64 numeric keypad |
+| Font | Inter, bundled in `assets/fonts` |
+| Spacing | 4pt scale |
+| Radius | 4, 8, 12, 16, 999 |
 | Locale | `id_ID` default, `en_US` fallback |
 
-**Color-blind safety:** never color-only signals — every status pairs color with an icon. Sky blue for success (distinct from danger red under deuteranopia/protanopia).
+Status UI should never rely on color alone. Pair semantic colors with labels, icons, or numeric signs.
+
+## Release
+
+Android release builds are automated through GitHub Actions. Push a SemVer tag to create signed APK and AAB artifacts:
+
+PowerShell / Bash:
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+Required GitHub secrets and manual fallback steps are documented in [docs/release.md](docs/release.md).
+
+## License
+
+Proprietary. All rights reserved.
+
+## Author
+
+Created by Alam Aby Bashit.

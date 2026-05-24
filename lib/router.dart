@@ -25,6 +25,7 @@ import 'features/inventory/stock_movement_screen.dart';
 import 'features/modifiers/option_group_form_screen.dart';
 import 'features/modifiers/option_groups_screen.dart';
 import 'features/modifiers/product_options_screen.dart';
+import 'features/settings/about_app_screen.dart';
 import 'features/settings/outbox_queue_screen.dart';
 import 'features/shift/shift_closing_screen.dart';
 import 'features/settings/printer_settings_screen.dart';
@@ -232,6 +233,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/settings',
         name: 'settings',
         builder: (_, __) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/more/settings/about',
+        name: 'aboutApp',
+        builder: (_, __) => const AboutAppScreen(),
       ),
       GoRoute(
         path: '/more/settings/printer',

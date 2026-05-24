@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config/app_constants.dart';
 import '../../core/database/app_database.dart';
 import '../../core/domain/enums.dart';
 import '../../core/network/supabase_providers.dart';
@@ -80,49 +81,49 @@ class _OwnerSection extends StatelessWidget {
         children: [
           const _SectionHeader(label: 'Khusus Pemilik'),
           const SizedBox(height: AppSpacing.sm),
-          _OwnerTile(
+          _SettingsNavTile(
             icon: Icons.people_outline,
             title: 'Pengguna',
             subtitle: 'Tambah kasir, manajer, atur akses cabang',
             route: '/more/settings/users',
           ),
           const Divider(height: 1),
-          _OwnerTile(
+          _SettingsNavTile(
             icon: Icons.category_outlined,
             title: 'Kategori Produk',
             subtitle: 'Atur nama, urutan & warna kategori menu',
             route: '/more/settings/categories',
           ),
           const Divider(height: 1),
-          _OwnerTile(
+          _SettingsNavTile(
             icon: Icons.tune_outlined,
             title: 'Modifier Produk',
             subtitle: 'Atur grup pilihan (gula, ukuran, dll.)',
             route: '/more/settings/modifiers',
           ),
           const Divider(height: 1),
-          _OwnerTile(
+          _SettingsNavTile(
             icon: Icons.percent_outlined,
             title: 'Pajak',
             subtitle: 'Tarif & label per cabang (PB1/PPN)',
             route: '/more/settings/tax',
           ),
           const Divider(height: 1),
-          _OwnerTile(
+          _SettingsNavTile(
             icon: Icons.qr_code_2_outlined,
             title: 'QRIS Statis',
             subtitle: 'Unggah gambar QRIS per cabang',
             route: '/more/settings/qris',
           ),
           const Divider(height: 1),
-          _OwnerTile(
+          _SettingsNavTile(
             icon: Icons.account_balance_outlined,
             title: 'Rekening Bank',
             subtitle: 'Daftar rekening untuk pembayaran transfer',
             route: '/more/settings/bank-accounts',
           ),
           const Divider(height: 1),
-          _OwnerTile(
+          _SettingsNavTile(
             icon: Icons.analytics_outlined,
             title: 'Telemetri',
             subtitle: 'Ukuran DB, antrian sinkronisasi, versi',
@@ -134,8 +135,8 @@ class _OwnerSection extends StatelessWidget {
   }
 }
 
-class _OwnerTile extends StatelessWidget {
-  const _OwnerTile({
+class _SettingsNavTile extends StatelessWidget {
+  const _SettingsNavTile({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -527,35 +528,13 @@ class _AboutSection extends StatelessWidget {
         children: [
           const _SectionHeader(label: 'Tentang'),
           const SizedBox(height: AppSpacing.sm),
-          _AboutRow(label: 'Aplikasi', value: 'KopiyanteaPOS'),
-          _AboutRow(label: 'Versi', value: '0.1.0+1'),
-          _AboutRow(label: 'Lisensi', value: 'Proprietary'),
-        ],
-      ),
-    );
-  }
-}
-
-class _AboutRow extends StatelessWidget {
-  const _AboutRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              label,
-              style: AppTypography.bodyMd
-                  .copyWith(color: context.colors.textSecondary),
-            ),
+          _SettingsNavTile(
+            icon: Icons.info_outline,
+            title: 'Tentang Aplikasi',
+            subtitle:
+                '${AppConstants.appName} ${AppConstants.appVersion}+${AppConstants.appBuildNumber}',
+            route: '/more/settings/about',
           ),
-          Text(value, style: AppTypography.bodyMd),
         ],
       ),
     );

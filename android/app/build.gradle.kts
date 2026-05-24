@@ -1,5 +1,5 @@
-import java.util.Properties
 import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
     id("com.android.application")
@@ -11,6 +11,25 @@ plugins {
 val keystoreProperties = Properties().apply {
     val f = rootProject.file("key.properties")
     if (f.exists()) load(FileInputStream(f))
+}
+
+fun String.toApkNameSegment(): String =
+    trim()
+        .replace(Regex("""[^\w.-]+"""), "-")
+        .trim('-')
+        .ifBlank { "app" }
+
+fun String.toTaskNameSegment(): String =
+    replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+
+val appDisplayName: Provider<String> = providers.provider {
+    val manifest = project.file("src/main/AndroidManifest.xml")
+    val label = Regex("""android:label="([^"]+)"""")
+        .find(manifest.readText())
+        ?.groupValues
+        ?.get(1)
+
+    (label ?: rootProject.name).toApkNameSegment()
 }
 
 android {
@@ -66,4 +85,28 @@ android {
 
 flutter {
     source = "../.."
+}
+
+android.buildTypes.configureEach {
+    val buildTypeName = name
+    val buildTypeTaskName = buildTypeName.toTaskNameSegment()
+    val renameTask = tasks.register<Copy>("copyRenamed${buildTypeTaskName}Apk") {
+        group = "build"
+        description = "Copies the $buildTypeName APK with app name, version, and build number."
+
+        val versionName = providers.provider { android.defaultConfig.versionName ?: "0.0.0" }
+        val versionCode = providers.provider { android.defaultConfig.versionCode?.toString() ?: "0" }
+
+        from(layout.buildDirectory.dir("outputs/apk/$buildTypeName")) {
+            include("app-$buildTypeName.apk")
+            rename {
+                "${appDisplayName.get()}-v${versionName.get()}+${versionCode.get()}-$buildTypeName.apk"
+            }
+        }
+        into(layout.buildDirectory.dir("outputs/flutter-apk"))
+    }
+
+    tasks.matching { it.name == "assemble$buildTypeTaskName" }.configureEach {
+        finalizedBy(renameTask)
+    }
 }

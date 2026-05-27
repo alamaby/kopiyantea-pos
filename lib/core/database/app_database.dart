@@ -63,7 +63,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -128,6 +128,12 @@ class AppDatabase extends _$AppDatabase {
             // Products.category yang sudah ada.
             await m.createTable(categories);
             await _seedCategoriesFromExistingProducts();
+          }
+          if (from < 13) {
+            // Receipt visibility toggles for customer and branch name.
+            await m.addColumn(
+                receiptSettings, receiptSettings.showCustomerName);
+            await m.addColumn(receiptSettings, receiptSettings.showBranchName);
           }
         },
         beforeOpen: (_) async {

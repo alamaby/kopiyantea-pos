@@ -89,6 +89,7 @@ class PrintReceiptUseCase {
       branchName: branch.name,
       branchAddress: branch.address,
       branchPhone: branch.phone,
+      showBranchName: setting?.showBranchName ?? true,
       items: items
           .map((it) => ReceiptItem(
                 name: it.nameSnapshot,
@@ -111,7 +112,12 @@ class PrintReceiptUseCase {
       paymentMethodLabel: paymentMethodLabel(tx.paymentMethod),
       paymentReceived: tx.paymentReceived,
       paymentChange: tx.paymentChange,
-      customerName: customer?.name,
+      customerName: setting?.showCustomerName ?? true
+          ? _customerReceiptLabel(
+              name: customer?.name,
+              phone: customer?.phone,
+            )
+          : null,
       cashierName: cashierName,
       headerText: setting?.headerText,
       footerText: setting?.footerText,
@@ -149,6 +155,7 @@ class PrintReceiptUseCase {
       branchName: branch.name,
       branchAddress: branch.address,
       branchPhone: branch.phone,
+      showBranchName: setting?.showBranchName ?? true,
       items: cart.items
           .map((it) => ReceiptItem(
                 name: it.branchProduct.customName ?? it.product.name,
@@ -169,7 +176,12 @@ class PrintReceiptUseCase {
       taxAmount: totals.taxAmount,
       total: totals.total,
       paymentMethodLabel: 'Tagihan',
-      customerName: cart.customer?.name,
+      customerName: setting?.showCustomerName ?? true
+          ? _customerReceiptLabel(
+              name: cart.customer?.name,
+              phone: cart.customer?.phone,
+            )
+          : null,
       cashierName: cashierName,
       headerText: setting?.headerText,
       footerText: billingFooterText,
@@ -255,6 +267,29 @@ class PrintReceiptUseCase {
       _log.w('[Print] image fetch failed: $url', error: e);
       return null;
     }
+  }
+
+  String? _customerReceiptLabel({
+    required String? name,
+    required String? phone,
+  }) {
+    final trimmedName = name?.trim();
+    if (trimmedName == null || trimmedName.isEmpty) return null;
+
+    final maskedPhone = _maskedPhoneForReceipt(phone);
+    if (maskedPhone == null) return trimmedName;
+    return '$trimmedName ($maskedPhone)';
+  }
+
+  String? _maskedPhoneForReceipt(String? phone) {
+    final digits = phone?.replaceAll(RegExp(r'\D'), '');
+    if (digits == null || digits.isEmpty) return null;
+    if (digits.length <= 6) return digits;
+
+    final prefix = digits.substring(0, 3);
+    final suffix = digits.substring(digits.length - 3);
+    final mask = '*' * (digits.length - 6);
+    return '$prefix$mask$suffix';
   }
 }
 

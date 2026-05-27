@@ -18,6 +18,7 @@ class ReceiptItem {
   final double priceSnapshot;
   final double subtotal;
   final String? notes;
+
   /// FEAT-001 — bullet list of selected modifier names. Empty when product
   /// has no modifiers.
   final List<String> options;
@@ -42,6 +43,7 @@ class ReceiptPayload {
     required this.paymentMethodLabel,
     this.branchAddress,
     this.branchPhone,
+    this.showBranchName = true,
     this.paymentReceived,
     this.paymentChange,
     this.customerName,
@@ -60,6 +62,7 @@ class ReceiptPayload {
   final String branchName;
   final String? branchAddress;
   final String? branchPhone;
+  final bool showBranchName;
   final List<ReceiptItem> items;
   final double subtotal;
   final double discountAmount;
@@ -70,13 +73,16 @@ class ReceiptPayload {
   final double? paymentReceived;
   final double? paymentChange;
   final String? customerName;
+
   /// FEAT-014b — staff who processed this tx. Null when the receipt
   /// setting `showCashierName` is off, or when the lookup failed.
   final String? cashierName;
+
   /// FEAT-015 — destination bank account for transfer payments. Printed
   /// on the next line after "Bayar: Transfer" so the receipt records
   /// exactly which rekening received the money.
   final String? bankAccountSnapshot;
+
   /// ENH-004 — branch's static QRIS image bytes, fetched from
   /// `branches.qrisImageUrl` and rendered on the receipt. Only populated
   /// by [PrintReceiptUseCase] when the receipt setting opts in AND the

@@ -74,6 +74,8 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
   String? _logoUrl;
   String _logoPosition = 'top';
   bool _showCashierName = true;
+  bool _showCustomerName = true;
+  bool _showBranchName = true;
   bool _printQrisOnReceipt = false;
 
   bool _loaded = false;
@@ -118,6 +120,8 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
         _logoUrl = row.logoUrl;
         _logoPosition = row.logoPosition;
         _showCashierName = row.showCashierName;
+        _showCustomerName = row.showCustomerName;
+        _showBranchName = row.showBranchName;
         _printQrisOnReceipt = row.printQrisOnReceipt;
       }
       _loaded = true;
@@ -140,6 +144,8 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
       paperWidthMm: Value(_paperWidth),
       showLogo: Value(_showLogo),
       showCashierName: Value(_showCashierName),
+      showCustomerName: Value(_showCustomerName),
+      showBranchName: Value(_showBranchName),
       printQrisOnReceipt: Value(_printQrisOnReceipt),
       updatedAt: Value(now),
     );
@@ -244,6 +250,8 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
             logoUrl: _logoUrl,
             logoPosition: _logoPosition,
             showCashierName: _showCashierName,
+            showCustomerName: _showCustomerName,
+            showBranchName: _showBranchName,
             printQrisOnReceipt: _printQrisOnReceipt,
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -403,11 +411,40 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           const SizedBox(height: AppSpacing.lg),
           // FEAT-014b — cashier accountability toggle.
           SwitchListTile(
+            value: _showBranchName,
+            onChanged: (v) => setState(() => _showBranchName = v),
+            title: Text('Tampilkan nama cabang', style: AppTypography.titleMd),
+            subtitle: Text(
+              'Cetak nama cabang seperti "${widget.branch.name}" di bagian atas struk',
+              style: AppTypography.bodySm.copyWith(
+                color: context.colors.textSecondary,
+              ),
+            ),
+            contentPadding: EdgeInsets.zero,
+            activeColor: AppColors.primary,
+          ),
+
+          SwitchListTile(
             value: _showCashierName,
             onChanged: (v) => setState(() => _showCashierName = v),
             title: Text('Tampilkan nama kasir', style: AppTypography.titleMd),
             subtitle: Text(
               'Cetak "Kasir: Nama" di header struk untuk audit',
+              style: AppTypography.bodySm.copyWith(
+                color: context.colors.textSecondary,
+              ),
+            ),
+            contentPadding: EdgeInsets.zero,
+            activeColor: AppColors.primary,
+          ),
+
+          SwitchListTile(
+            value: _showCustomerName,
+            onChanged: (v) => setState(() => _showCustomerName = v),
+            title:
+                Text('Tampilkan nama pelanggan', style: AppTypography.titleMd),
+            subtitle: Text(
+              'Cetak nama pelanggan dan nomor telepon yang dimasking jika transaksi punya pelanggan',
               style: AppTypography.bodySm.copyWith(
                 color: context.colors.textSecondary,
               ),
@@ -470,6 +507,8 @@ class _ReceiptPreview extends StatelessWidget {
     required this.logoUrl,
     required this.logoPosition,
     required this.showCashierName,
+    required this.showCustomerName,
+    required this.showBranchName,
     required this.printQrisOnReceipt,
   });
 
@@ -481,6 +520,8 @@ class _ReceiptPreview extends StatelessWidget {
   final String? logoUrl;
   final String logoPosition;
   final bool showCashierName;
+  final bool showCustomerName;
+  final bool showBranchName;
   final bool printQrisOnReceipt;
 
   @override
@@ -528,11 +569,12 @@ class _ReceiptPreview extends StatelessWidget {
                           _PreviewLogo(logoUrl: logoUrl!),
                           const SizedBox(height: AppSpacing.sm),
                         ],
-                        _CenterText(
-                          branch.name,
-                          bold: true,
-                          size: 16,
-                        ),
+                        if (showBranchName)
+                          _CenterText(
+                            branch.name,
+                            bold: true,
+                            size: 16,
+                          ),
                         if (branch.address?.isNotEmpty ?? false)
                           _CenterText(branch.address!),
                         if (branch.phone?.isNotEmpty ?? false)
@@ -544,10 +586,11 @@ class _ReceiptPreview extends StatelessWidget {
                           label: 'Tanggal:',
                           value: formatDateTime(now),
                         ),
-                        const _PreviewRow(
-                          label: 'Pelanggan:',
-                          value: 'Contoh Pelanggan',
-                        ),
+                        if (showCustomerName)
+                          const _PreviewRow(
+                            label: 'Pelanggan:',
+                            value: 'Contoh (081******379)',
+                          ),
                         if (showCashierName)
                           const _PreviewRow(
                             label: 'Kasir:',

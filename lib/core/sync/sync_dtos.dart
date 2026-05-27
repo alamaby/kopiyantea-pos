@@ -192,6 +192,8 @@ extension ReceiptSettingSyncDto on ReceiptSettingRow {
         'show_logo': showLogo,
         'logo_position': logoPosition,
         'show_cashier_name': showCashierName,
+        'show_customer_name': showCustomerName,
+        'show_branch_name': showBranchName,
         'print_qris_on_receipt': printQrisOnReceipt,
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -538,6 +540,8 @@ ReceiptSettingsCompanion receiptSettingFromJson(Map<String, dynamic> json) =>
       paperWidthMm: Value(json['paper_width_mm'] as int? ?? 58),
       showLogo: Value(json['show_logo'] as bool? ?? false),
       showCashierName: Value(json['show_cashier_name'] as bool? ?? true),
+      showCustomerName: Value(json['show_customer_name'] as bool? ?? true),
+      showBranchName: Value(json['show_branch_name'] as bool? ?? true),
       printQrisOnReceipt:
           Value(json['print_qris_on_receipt'] as bool? ?? false),
       locale: Value(json['locale'] as String? ?? 'id_ID'),

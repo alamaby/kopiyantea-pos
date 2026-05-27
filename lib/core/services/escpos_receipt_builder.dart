@@ -41,16 +41,18 @@ class EscPosReceiptBuilder {
     }
 
     // ── Header ──
-    bytes += g.text(
-      p.branchName,
-      styles: const PosStyles(
-        align: PosAlign.center,
-        bold: true,
-        fontType: PosFontType.fontA,
-        height: PosTextSize.size2,
-        width: PosTextSize.size2,
-      ),
-    );
+    if (p.showBranchName && p.branchName.isNotEmpty) {
+      bytes += g.text(
+        p.branchName,
+        styles: const PosStyles(
+          align: PosAlign.center,
+          bold: true,
+          fontType: PosFontType.fontA,
+          height: PosTextSize.size2,
+          width: PosTextSize.size2,
+        ),
+      );
+    }
     if (p.branchAddress != null) {
       bytes += g.text(p.branchAddress!, styles: _centerStyle);
     }

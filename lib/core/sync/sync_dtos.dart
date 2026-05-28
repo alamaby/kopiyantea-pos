@@ -35,7 +35,7 @@ extension TransactionSyncDto on TransactionRow {
         'void_reason': voidReason,
         'bank_account_id': bankAccountId,
         'bank_account_snapshot': bankAccountSnapshot,
-        'client_created_at': clientCreatedAt.toIso8601String(),
+        'client_created_at': _toSupabaseTimestamp(clientCreatedAt),
         // server_received_at is set by Supabase trigger
       };
 }
@@ -63,7 +63,7 @@ extension InventoryMovementSyncDto on InventoryMovementRow {
         'reference_id': referenceId,
         'notes': notes,
         'created_by': createdBy,
-        'created_at': createdAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
       };
 }
 
@@ -74,8 +74,8 @@ extension CustomerSyncDto on CustomerRow {
         'phone': phone,
         'email': email,
         'loyalty_points': loyaltyPoints,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -94,8 +94,8 @@ extension BranchSyncDto on BranchRow {
         'tax_inclusive': taxInclusive,
         'failed_login_lockout_threshold': failedLoginLockoutThreshold,
         'qris_image_url': qrisImageUrl,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -108,8 +108,8 @@ extension InventoryItemSyncDto on InventoryItemRow {
         // cached_stock is server-authoritative; do NOT push it from client.
         'min_stock': minStock,
         'cost_per_unit': costPerUnit,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -120,8 +120,8 @@ extension AppUserSyncDto on AppUserRow {
         'global_role': globalRole.name,
         'email': email,
         'is_active': isActive,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -141,7 +141,7 @@ extension PendingInvitationSyncDto on PendingInvitationRow {
         'global_role': globalRole.name,
         'branch_ids_csv': branchIdsCsv,
         'invited_by': invitedBy,
-        'created_at': createdAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
       };
 }
 
@@ -152,8 +152,8 @@ extension OptionGroupSyncDto on OptionGroupRow {
         'is_required': isRequired,
         'is_multi_select': isMultiSelect,
         'sort_order': sortOrder,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -165,8 +165,8 @@ extension OptionSyncDto on OptionRow {
         'price_delta': priceDelta,
         'sort_order': sortOrder,
         'is_default': isDefault,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -195,7 +195,7 @@ extension ReceiptSettingSyncDto on ReceiptSettingRow {
         'show_customer_name': showCustomerName,
         'show_branch_name': showBranchName,
         'print_qris_on_receipt': printQrisOnReceipt,
-        'updated_at': updatedAt.toIso8601String(),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -210,8 +210,8 @@ extension ProductSyncDto on ProductRow {
         'sku': sku,
         'image_url': imageUrl,
         'is_active': isActive,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -223,7 +223,9 @@ extension BranchProductSyncDto on BranchProductRow {
         'is_available': isAvailable,
         'custom_name': customName,
         'discount_percentage': discountPercentage,
-        'discount_valid_until': discountValidUntil?.toIso8601String(),
+        'discount_valid_until': discountValidUntil == null
+            ? null
+            : _toSupabaseTimestamp(discountValidUntil!),
       };
 }
 
@@ -244,8 +246,8 @@ extension CategorySyncDto on CategoryRow {
         'sort_order': sortOrder,
         'color': color == null ? null : color! & 0x00FFFFFF,
         'is_active': isActive,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -279,8 +281,8 @@ CategoriesCompanion categoryFromJson(Map<String, dynamic> json) =>
       sortOrder: Value(json['sort_order'] as int? ?? 0),
       color: Value(_categoryRgb24(json['color'])),
       isActive: Value(json['is_active'] as bool? ?? true),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 extension BankAccountSyncDto on BankAccountRow {
@@ -291,8 +293,8 @@ extension BankAccountSyncDto on BankAccountRow {
         'account_holder': accountHolder,
         'display_order': displayOrder,
         'is_active': isActive,
-        'created_at': createdAt.toIso8601String(),
-        'updated_at': updatedAt.toIso8601String(),
+        'created_at': _toSupabaseTimestamp(createdAt),
+        'updated_at': _toSupabaseTimestamp(updatedAt),
       };
 }
 
@@ -304,8 +306,8 @@ BankAccountsCompanion bankAccountFromJson(Map<String, dynamic> json) =>
       accountHolder: json['account_holder'] as String,
       displayOrder: Value(json['display_order'] as int? ?? 0),
       isActive: Value(json['is_active'] as bool? ?? true),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 // ── Pull DTOs (JSON → Drift Companion) ────────────────────────────────────────
@@ -313,8 +315,15 @@ BankAccountsCompanion bankAccountFromJson(Map<String, dynamic> json) =>
 T _enumByName<T extends Enum>(List<T> values, String name) =>
     values.firstWhere((v) => v.name == name);
 
+String _toSupabaseTimestamp(DateTime value) => value.toUtc().toIso8601String();
+
+DateTime _fromSupabaseTimestamp(Object raw) {
+  final value = raw is DateTime ? raw : DateTime.parse(raw as String);
+  return value.toLocal();
+}
+
 DateTime? _maybeDate(Object? raw) =>
-    raw == null ? null : DateTime.parse(raw as String);
+    raw == null ? null : _fromSupabaseTimestamp(raw);
 
 AppUsersCompanion appUserFromJson(Map<String, dynamic> json) =>
     AppUsersCompanion.insert(
@@ -325,8 +334,8 @@ AppUsersCompanion appUserFromJson(Map<String, dynamic> json) =>
       isActive: Value(json['is_active'] as bool? ?? true),
       failedLoginCount: Value(json['failed_login_count'] as int? ?? 0),
       lockedUntil: Value(_maybeDate(json['locked_until'])),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 PendingInvitationsCompanion pendingInvitationFromJson(
@@ -339,7 +348,7 @@ PendingInvitationsCompanion pendingInvitationFromJson(
       globalRole: _enumByName(GlobalRole.values, json['global_role'] as String),
       branchIdsCsv: Value(json['branch_ids_csv'] as String? ?? ''),
       invitedBy: Value(json['invited_by'] as String?),
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
     );
 
 UserBranchAccessesCompanion userBranchAccessFromJson(
@@ -369,8 +378,8 @@ BranchesCompanion branchFromJson(Map<String, dynamic> json) =>
       failedLoginLockoutThreshold:
           Value(json['failed_login_lockout_threshold'] as int? ?? 5),
       qrisImageUrl: Value(json['qris_image_url'] as String?),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 // ── Master data pull DTOs ─────────────────────────────────────────────────────
@@ -384,8 +393,8 @@ ProductsCompanion productFromJson(Map<String, dynamic> json) =>
       sku: Value(json['sku'] as String?),
       imageUrl: Value(json['image_url'] as String?),
       isActive: Value(json['is_active'] as bool? ?? true),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 BranchProductsCompanion branchProductFromJson(Map<String, dynamic> json) =>
@@ -409,8 +418,8 @@ InventoryItemsCompanion inventoryItemFromJson(Map<String, dynamic> json) =>
       cachedStock: Value((json['cached_stock'] as num?)?.toDouble() ?? 0),
       minStock: Value((json['min_stock'] as num?)?.toDouble() ?? 0),
       costPerUnit: Value((json['cost_per_unit'] as num?)?.toDouble() ?? 0),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 ProductRecipesCompanion productRecipeFromJson(Map<String, dynamic> json) =>
@@ -429,8 +438,8 @@ OptionGroupsCompanion optionGroupFromJson(Map<String, dynamic> json) =>
       isRequired: Value(json['is_required'] as bool? ?? false),
       isMultiSelect: Value(json['is_multi_select'] as bool? ?? false),
       sortOrder: Value(json['sort_order'] as int? ?? 0),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 MenuOptionsCompanion optionFromJson(Map<String, dynamic> json) =>
@@ -441,8 +450,8 @@ MenuOptionsCompanion optionFromJson(Map<String, dynamic> json) =>
       priceDelta: Value((json['price_delta'] as num?)?.toDouble() ?? 0),
       sortOrder: Value(json['sort_order'] as int? ?? 0),
       isDefault: Value(json['is_default'] as bool? ?? false),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 ProductOptionGroupsCompanion productOptionGroupFromJson(
@@ -460,8 +469,8 @@ CustomersCompanion customerFromJson(Map<String, dynamic> json) =>
       phone: Value(json['phone'] as String?),
       email: Value(json['email'] as String?),
       loyaltyPoints: Value(json['loyalty_points'] as int? ?? 0),
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 TransactionsCompanion transactionFromJson(Map<String, dynamic> json) =>
@@ -493,7 +502,7 @@ TransactionsCompanion transactionFromJson(Map<String, dynamic> json) =>
       voidReason: Value(json['void_reason'] as String?),
       bankAccountId: Value(json['bank_account_id'] as String?),
       bankAccountSnapshot: Value(json['bank_account_snapshot'] as String?),
-      clientCreatedAt: DateTime.parse(json['client_created_at'] as String),
+      clientCreatedAt: _fromSupabaseTimestamp(json['client_created_at']),
       serverReceivedAt: Value(_maybeDate(json['server_received_at'])),
     );
 
@@ -526,7 +535,7 @@ InventoryMovementsCompanion inventoryMovementFromJson(
       referenceId: Value(json['reference_id'] as String?),
       notes: Value(json['notes'] as String?),
       createdBy: Value(json['created_by'] as String?),
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
     );
 
 ReceiptSettingsCompanion receiptSettingFromJson(Map<String, dynamic> json) =>
@@ -545,5 +554,5 @@ ReceiptSettingsCompanion receiptSettingFromJson(Map<String, dynamic> json) =>
       printQrisOnReceipt:
           Value(json['print_qris_on_receipt'] as bool? ?? false),
       locale: Value(json['locale'] as String? ?? 'id_ID'),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );

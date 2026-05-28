@@ -150,7 +150,15 @@ class AppDatabase extends _$AppDatabase {
   static Future<AppDatabase> open() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'kopiyantea.sqlite'));
-    return AppDatabase(NativeDatabase.createInBackground(file));
+    return AppDatabase(
+      NativeDatabase.createInBackground(
+        file,
+        setup: (db) {
+          db.execute('PRAGMA busy_timeout = 5000;');
+          db.execute('PRAGMA journal_mode = WAL;');
+        },
+      ),
+    );
   }
 
   /// In-memory database for unit/widget tests.

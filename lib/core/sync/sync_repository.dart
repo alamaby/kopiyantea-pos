@@ -402,7 +402,7 @@ class SyncRepository {
 
   // ── PUSH ────────────────────────────────────────────────────────────────────
 
-  /// Drains the outbox in FIFO. Each item is routed by `entityType`:
+  /// Drains the outbox in dependency-aware order. Each item is routed by `entityType`:
   /// - transaction → push tx header + items + related inventory_movements
   /// - customer → push customer row (LWW)
   /// Children of a transaction (items, movements) are NOT enqueued
@@ -412,7 +412,8 @@ class SyncRepository {
     if (sb == null) return const PushSummary(pushed: 0, failed: 0);
 
     final outboxDao = _ref.read(outboxDaoProvider);
-    final pending = await outboxDao.getPendingItems(limit: 20);
+    final pending = [...await outboxDao.getPendingItems(limit: 100)]
+      ..sort(_compareOutboxPushOrder);
 
     var pushed = 0;
     var failed = 0;
@@ -493,6 +494,41 @@ class SyncRepository {
     return PushSummary(pushed: pushed, failed: failed);
   }
 
+  int _compareOutboxPushOrder(OutboxItemRow a, OutboxItemRow b) {
+    final priority = _outboxPushPriority(a.entityType)
+        .compareTo(_outboxPushPriority(b.entityType));
+    if (priority != 0) return priority;
+    return a.createdAt.compareTo(b.createdAt);
+  }
+
+  int _outboxPushPriority(OutboxEntityType type) {
+    switch (type) {
+      case OutboxEntityType.appUser:
+      case OutboxEntityType.branch:
+      case OutboxEntityType.userBranchAccess:
+      case OutboxEntityType.pendingInvitation:
+        return 10;
+      case OutboxEntityType.customer:
+      case OutboxEntityType.bankAccount:
+        return 20;
+      case OutboxEntityType.category:
+      case OutboxEntityType.product:
+      case OutboxEntityType.branchProduct:
+      case OutboxEntityType.productRecipe:
+      case OutboxEntityType.optionGroup:
+      case OutboxEntityType.optionItem:
+      case OutboxEntityType.productOptionGroup:
+      case OutboxEntityType.inventoryItem:
+      case OutboxEntityType.receiptSetting:
+        return 30;
+      case OutboxEntityType.transaction:
+        return 40;
+      case OutboxEntityType.transactionItem:
+      case OutboxEntityType.inventoryMovement:
+        return 50;
+    }
+  }
+
   Future<void> _pushTransaction(String txId) async {
     final sb = _sb!;
     final txDao = _ref.read(transactionDaoProvider);
@@ -501,6 +537,13 @@ class SyncRepository {
       throw StateError('Transaction $txId not found in local DB');
     }
     final items = await txDao.getItemsForTransaction(txId);
+
+    if (tx.customerId != null) {
+      await _pushCustomer(tx.customerId!);
+    }
+    if (tx.bankAccountId != null) {
+      await _pushBankAccount(tx.bankAccountId!);
+    }
 
     // Push parent header — append-only on server (ADR-0001).
     await sb

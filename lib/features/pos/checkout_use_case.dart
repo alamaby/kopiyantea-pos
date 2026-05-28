@@ -315,9 +315,9 @@ class CheckoutUseCase {
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 final checkoutUseCaseProvider = Provider<CheckoutUseCase>((ref) {
-  // Prefer the authenticated user's id; fall back to the seed cashier when
-  // not authenticated (offline-only dev — production gates checkout behind
-  // the auth router redirect, so this path shouldn't fire there).
+  // Prefer the authenticated user's id; fall back to a fixed dev cashier when
+  // not authenticated. Production gates checkout behind the auth router
+  // redirect, so this path shouldn't fire there.
   final user = ref.watch(currentUserProvider);
   return CheckoutUseCase(
     db: ref.watch(databaseProvider),

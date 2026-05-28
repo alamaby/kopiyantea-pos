@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Bluetooth thermal printer (Phase 5a) -->
     <!-- Legacy permissions for Android < 12 (API < 31) -->
     <uses-permission android:name="android.permission.BLUETOOTH"
@@ -18,7 +20,9 @@
     <application
         android:label="Kopiyantea POS"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

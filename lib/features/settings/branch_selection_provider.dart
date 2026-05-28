@@ -15,7 +15,7 @@ Stream<List<BranchRow>> allBranches(AllBranchesRef ref) {
 }
 
 /// The currently active branch, derived from [SettingsNotifier.selectedBranchId].
-/// Returns null when no branch is selected (first run before seed).
+/// Returns null when no branch is selected (first run before bootstrap pull).
 ///
 /// Reactive (Stream) so changes to the branch row (e.g. tax % update via
 /// Tax Settings) flow into screens watching this provider — otherwise the

@@ -33,6 +33,7 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
   final _searchCtrl = TextEditingController();
   String _query = '';
   String? _selectedCategory;
+  _MenuViewMode _viewMode = _MenuViewMode.grid;
 
   @override
   void dispose() {
@@ -83,6 +84,7 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
             _MenuFilters(
               controller: _searchCtrl,
               query: _query,
+              viewMode: _viewMode,
               selectedCategory: _selectedCategory,
               categories: categories,
               categoryByName: categoryByName,
@@ -96,6 +98,9 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
               onCategoryChanged: (category) {
                 setState(() => _selectedCategory = category);
               },
+              onViewModeChanged: (mode) {
+                setState(() => _viewMode = mode);
+              },
             ),
             Expanded(
               child: filtered.isEmpty
@@ -103,18 +108,28 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
                       query: _query,
                       selectedCategory: _selectedCategory,
                     )
-                  : GridView.builder(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 200,
-                        mainAxisSpacing: AppSpacing.sm,
-                        crossAxisSpacing: AppSpacing.sm,
-                        childAspectRatio: 0.7,
-                      ),
-                      itemCount: filtered.length,
-                      itemBuilder: (_, i) => _MenuTile(item: filtered[i]),
-                    ),
+                  : switch (_viewMode) {
+                      _MenuViewMode.grid => GridView.builder(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          gridDelegate:
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 200,
+                            mainAxisSpacing: AppSpacing.sm,
+                            crossAxisSpacing: AppSpacing.sm,
+                            childAspectRatio: 0.7,
+                          ),
+                          itemCount: filtered.length,
+                          itemBuilder: (_, i) => _MenuTile(item: filtered[i]),
+                        ),
+                      _MenuViewMode.detail => ListView.separated(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          itemCount: filtered.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: AppSpacing.sm),
+                          itemBuilder: (_, i) =>
+                              _MenuDetailRow(item: filtered[i]),
+                        ),
+                    },
             ),
           ],
         );
@@ -161,26 +176,32 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
   }
 }
 
+enum _MenuViewMode { grid, detail }
+
 class _MenuFilters extends StatelessWidget {
   const _MenuFilters({
     required this.controller,
     required this.query,
+    required this.viewMode,
     required this.selectedCategory,
     required this.categories,
     required this.categoryByName,
     required this.onQueryChanged,
     required this.onClearQuery,
     required this.onCategoryChanged,
+    required this.onViewModeChanged,
   });
 
   final TextEditingController controller;
   final String query;
+  final _MenuViewMode viewMode;
   final String? selectedCategory;
   final List<String> categories;
   final Map<String, CategoryRow>? categoryByName;
   final ValueChanged<String> onQueryChanged;
   final VoidCallback onClearQuery;
   final ValueChanged<String?> onCategoryChanged;
+  final ValueChanged<_MenuViewMode> onViewModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -200,21 +221,54 @@ class _MenuFilters extends StatelessWidget {
         ),
         child: Column(
           children: [
-            TextField(
-              controller: controller,
-              onChanged: onQueryChanged,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Cari menu...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: query.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.close),
-                        tooltip: 'Hapus pencarian',
-                        onPressed: onClearQuery,
-                      ),
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    onChanged: onQueryChanged,
+                    textInputAction: TextInputAction.search,
+                    decoration: InputDecoration(
+                      hintText: 'Cari menu...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: query.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close),
+                              tooltip: 'Hapus pencarian',
+                              onPressed: onClearQuery,
+                            ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                SegmentedButton<_MenuViewMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: _MenuViewMode.grid,
+                      icon: Icon(Icons.grid_view_outlined),
+                      tooltip: 'Tampilan grid',
+                    ),
+                    ButtonSegment(
+                      value: _MenuViewMode.detail,
+                      icon: Icon(Icons.view_list_outlined),
+                      tooltip: 'Tampilan detail',
+                    ),
+                  ],
+                  selected: {viewMode},
+                  showSelectedIcon: false,
+                  style: ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: WidgetStateProperty.all(
+                      const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    ),
+                  ),
+                  onSelectionChanged: (selection) {
+                    onViewModeChanged(selection.first);
+                  },
+                ),
+              ],
             ),
             if (categories.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.sm),
@@ -335,51 +389,13 @@ class _MenuTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final product = item.product;
     final bp = item.branchProduct;
-    final now = DateTime.now();
-
-    final discountActive = bp.discountPercentage > 0 &&
-        (bp.discountValidUntil == null || bp.discountValidUntil!.isAfter(now));
-
-    final effectivePrice = effectiveUnitPrice(
-      basePrice: product.basePrice,
-      priceOverride: bp.priceOverride,
-      discountPercentage: bp.discountPercentage,
-      discountValidUntil: bp.discountValidUntil,
-      now: now,
-    );
-    final originalPrice = bp.priceOverride ?? product.basePrice;
-    final hasReducedPrice = effectivePrice < originalPrice;
+    final pricing = _MenuPricing.from(item);
 
     return Material(
       color: context.colors.surface,
       borderRadius: AppRadius.radiusLg,
       child: InkWell(
-        onTap: () async {
-          HapticFeedback.selectionClick();
-          // FEAT-001 — if product has option groups, open picker first.
-          // We do a quick read; the picker itself watches reactively too.
-          final groups =
-              await ref.read(productOptionGroupsProvider(product.id).future);
-          if (!context.mounted) return;
-          if (groups.isEmpty) {
-            ref.read(cartNotifierProvider.notifier).addItem(
-                  product: product,
-                  branchProduct: bp,
-                );
-            return;
-          }
-          final picked = await OptionPickerSheet.show(
-            context,
-            productId: product.id,
-            productName: bp.customName ?? product.name,
-          );
-          if (picked == null) return; // user cancelled
-          ref.read(cartNotifierProvider.notifier).addItem(
-                product: product,
-                branchProduct: bp,
-                selectedOptions: picked,
-              );
-        },
+        onTap: () => _addMenuItemToCart(context, ref, item),
         borderRadius: AppRadius.radiusLg,
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
@@ -394,50 +410,10 @@ class _MenuTile extends ConsumerWidget {
               // above name/category/price so total tile height matches the
               // grid's childAspectRatio without overflowing.
               Expanded(
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: ClipRRect(
-                        borderRadius: AppRadius.radiusMd,
-                        child: product.imageUrl == null ||
-                                product.imageUrl!.isEmpty
-                            ? Container(
-                                color: context.colors.surfaceAlt,
-                                child: Icon(
-                                  Icons.coffee_outlined,
-                                  color: context.colors.textTertiary,
-                                  size: 32,
-                                ),
-                              )
-                            : CachedNetworkImage(
-                                imageUrl: product.imageUrl!,
-                                fit: BoxFit.cover,
-                                placeholder: (_, __) => Container(
-                                  color: context.colors.surfaceAlt,
-                                ),
-                                errorWidget: (_, __, ___) => Container(
-                                  color: context.colors.surfaceAlt,
-                                  child: Icon(
-                                    Icons.coffee_outlined,
-                                    color: context.colors.textTertiary,
-                                    size: 32,
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ),
-                    if (discountActive)
-                      Positioned(
-                        top: 4,
-                        left: 4,
-                        child: AppBadge(
-                          label:
-                              '-${bp.discountPercentage.toStringAsFixed(0)}%',
-                          icon: Icons.local_offer_outlined,
-                          tone: AppBadgeTone.accent,
-                        ),
-                      ),
-                  ],
+                child: _ProductPhoto(
+                  product: product,
+                  discountPercentage:
+                      pricing.discountActive ? bp.discountPercentage : null,
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
@@ -482,13 +458,13 @@ class _MenuTile extends ConsumerWidget {
               ],
               const SizedBox(height: AppSpacing.sm),
               Text(
-                formatRupiah(effectivePrice),
+                formatRupiah(pricing.effectivePrice),
                 style:
                     AppTypography.headlineMd.copyWith(color: AppColors.primary),
               ),
-              if (hasReducedPrice)
+              if (pricing.hasReducedPrice)
                 Text(
-                  formatRupiah(originalPrice),
+                  formatRupiah(pricing.originalPrice),
                   style: AppTypography.labelSm.copyWith(
                     color: context.colors.textTertiary,
                     decoration: TextDecoration.lineThrough,
@@ -500,4 +476,226 @@ class _MenuTile extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _MenuDetailRow extends ConsumerWidget {
+  const _MenuDetailRow({required this.item});
+
+  final BranchProductWithProductRow item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final product = item.product;
+    final bp = item.branchProduct;
+    final pricing = _MenuPricing.from(item);
+    final displayName = bp.customName ?? product.name;
+
+    return Material(
+      color: context.colors.surface,
+      borderRadius: AppRadius.radiusMd,
+      child: InkWell(
+        onTap: () => _addMenuItemToCart(context, ref, item),
+        borderRadius: AppRadius.radiusMd,
+        child: Container(
+          height: 88,
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            border: Border.all(color: context.colors.border),
+            borderRadius: AppRadius.radiusMd,
+          ),
+          child: Row(
+            children: [
+              SizedBox.square(
+                dimension: 64,
+                child: _ProductPhoto(product: product),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: AppTypography.titleMd,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            formatRupiah(pricing.effectivePrice),
+                            style: AppTypography.titleMd.copyWith(
+                              color: AppColors.primary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (pricing.hasReducedPrice) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          Flexible(
+                            child: Text(
+                              formatRupiah(pricing.originalPrice),
+                              style: AppTypography.labelSm.copyWith(
+                                color: context.colors.textTertiary,
+                                decoration: TextDecoration.lineThrough,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                        if (pricing.discountActive) ...[
+                          const SizedBox(width: AppSpacing.xs),
+                          AppBadge(
+                            label:
+                                '-${bp.discountPercentage.toStringAsFixed(0)}%',
+                            icon: Icons.local_offer_outlined,
+                            tone: AppBadgeTone.accent,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              IconButton.filledTonal(
+                tooltip: 'Tambah',
+                onPressed: () => _addMenuItemToCart(context, ref, item),
+                icon: const Icon(Icons.add),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductPhoto extends StatelessWidget {
+  const _ProductPhoto({
+    required this.product,
+    this.discountPercentage,
+  });
+
+  final ProductRow product;
+  final double? discountPercentage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ClipRRect(
+            borderRadius: AppRadius.radiusMd,
+            child: product.imageUrl == null || product.imageUrl!.isEmpty
+                ? Container(
+                    color: context.colors.surfaceAlt,
+                    child: Icon(
+                      Icons.coffee_outlined,
+                      color: context.colors.textTertiary,
+                      size: 32,
+                    ),
+                  )
+                : CachedNetworkImage(
+                    imageUrl: product.imageUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(
+                      color: context.colors.surfaceAlt,
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      color: context.colors.surfaceAlt,
+                      child: Icon(
+                        Icons.coffee_outlined,
+                        color: context.colors.textTertiary,
+                        size: 32,
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+        if (discountPercentage != null)
+          Positioned(
+            top: 4,
+            left: 4,
+            child: AppBadge(
+              label: '-${discountPercentage!.toStringAsFixed(0)}%',
+              icon: Icons.local_offer_outlined,
+              tone: AppBadgeTone.accent,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MenuPricing {
+  const _MenuPricing({
+    required this.effectivePrice,
+    required this.originalPrice,
+    required this.discountActive,
+  });
+
+  final double effectivePrice;
+  final double originalPrice;
+  final bool discountActive;
+
+  bool get hasReducedPrice => effectivePrice < originalPrice;
+
+  factory _MenuPricing.from(BranchProductWithProductRow item) {
+    final product = item.product;
+    final bp = item.branchProduct;
+    final now = DateTime.now();
+    final discountActive = bp.discountPercentage > 0 &&
+        (bp.discountValidUntil == null || bp.discountValidUntil!.isAfter(now));
+    final effectivePrice = effectiveUnitPrice(
+      basePrice: product.basePrice,
+      priceOverride: bp.priceOverride,
+      discountPercentage: bp.discountPercentage,
+      discountValidUntil: bp.discountValidUntil,
+      now: now,
+    );
+
+    return _MenuPricing(
+      effectivePrice: effectivePrice,
+      originalPrice: bp.priceOverride ?? product.basePrice,
+      discountActive: discountActive,
+    );
+  }
+}
+
+Future<void> _addMenuItemToCart(
+  BuildContext context,
+  WidgetRef ref,
+  BranchProductWithProductRow item,
+) async {
+  HapticFeedback.selectionClick();
+  final product = item.product;
+  final bp = item.branchProduct;
+
+  // FEAT-001 — if product has option groups, open picker first.
+  // We do a quick read; the picker itself watches reactively too.
+  final groups = await ref.read(productOptionGroupsProvider(product.id).future);
+  if (!context.mounted) return;
+  if (groups.isEmpty) {
+    ref.read(cartNotifierProvider.notifier).addItem(
+          product: product,
+          branchProduct: bp,
+        );
+    return;
+  }
+
+  final picked = await OptionPickerSheet.show(
+    context,
+    productId: product.id,
+    productName: bp.customName ?? product.name,
+  );
+  if (picked == null) return;
+  ref.read(cartNotifierProvider.notifier).addItem(
+        product: product,
+        branchProduct: bp,
+        selectedOptions: picked,
+      );
 }

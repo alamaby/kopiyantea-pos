@@ -23,7 +23,7 @@ import 'router.dart';
 ///
 /// Boot order (offline-first):
 /// 1. Env validation — fail fast if config is broken (master prompt §2.6)
-/// 2. intl date symbols + Drift DB + seed (works fully offline)
+/// 2. intl date symbols + Drift DB (local cache; master data is pulled)
 /// 3. Supabase.initialize — graceful: log on failure but don't block the app.
 ///    The local Drift DB is the source of truth; sync (Phase 6e) catches up later.
 Future<void> main() async {

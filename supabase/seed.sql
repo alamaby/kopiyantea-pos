@@ -1,9 +1,9 @@
--- Optional dev seed for Supabase — mirrors lib/core/database/seed_service.dart.
+-- Optional dev/staging seed for Supabase.
 -- Apply AFTER creating auth.users entries with matching IDs (via Supabase
 -- dashboard or `supabase auth signup`), otherwise app_users.id FK will fail.
 --
--- For local dev: use the in-app seed (SeedService.ensureSeeded) instead;
--- this file exists for staging/prod parity testing.
+-- The app no longer seeds Drift directly at startup. First-time local data is
+-- pulled from Supabase via the post-login bootstrap flow.
 
 -- Branches
 INSERT INTO branches (id, name, address, phone, created_at, updated_at) VALUES

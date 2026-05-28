@@ -98,9 +98,14 @@ android.buildTypes.configureEach {
         val versionCode = providers.provider { android.defaultConfig.versionCode?.toString() ?: "0" }
 
         from(layout.buildDirectory.dir("outputs/apk/$buildTypeName")) {
-            include("app-$buildTypeName.apk")
-            rename {
-                "${appDisplayName.get()}-v${versionName.get()}+${versionCode.get()}-$buildTypeName.apk"
+            include("*.apk")
+            rename { fileName ->
+                val apkVariant = fileName
+                    .removePrefix("app-")
+                    .removeSuffix(".apk")
+                    .ifBlank { buildTypeName }
+
+                "${appDisplayName.get()}-v${versionName.get()}+${versionCode.get()}-$apkVariant.apk"
             }
         }
         into(layout.buildDirectory.dir("outputs/flutter-apk"))

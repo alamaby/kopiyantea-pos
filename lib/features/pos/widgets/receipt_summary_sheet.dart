@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/domain/enums.dart';
 import '../../../core/services/printer_service.dart';
@@ -12,6 +13,7 @@ import '../../../core/utils/result.dart';
 import '../../../core/widgets/app_button.dart';
 import '../checkout_use_case.dart';
 import '../print_receipt_use_case.dart';
+import '../share_receipt_use_case.dart';
 
 /// Post-checkout receipt summary. The cart has already been cleared by the
 /// caller (checkout_sheet) — this is a read-only confirmation surface.
@@ -27,6 +29,7 @@ class ReceiptSummarySheet extends ConsumerStatefulWidget {
 
 class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
   bool _isPrinting = false;
+  bool _isSharing = false;
 
   CheckoutResult get result => widget.result;
 
@@ -97,8 +100,7 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
                       _hasDiscount(result))
                     _Row(
                       label: 'Diskon',
-                      value:
-                          '-${formatRupiah(_discountAmount(result))}',
+                      value: '-${formatRupiah(_discountAmount(result))}',
                       tone: AppColors.accent,
                     ),
                   _Row(label: 'Pajak', value: formatRupiah(t.taxAmount)),
@@ -118,8 +120,7 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
                       label: 'Diterima',
                       value: formatRupiah(result.paymentReceived!),
                     ),
-                  if (result.paymentChange != null &&
-                      result.paymentChange! > 0)
+                  if (result.paymentChange != null && result.paymentChange! > 0)
                     _Row(
                       label: 'Kembalian',
                       value: formatRupiah(result.paymentChange!),
@@ -141,16 +142,19 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
                     fullWidth: true,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: AppButton(
-                    label: 'Transaksi Baru',
-                    icon: Icons.add,
-                    onPressed: () => Navigator.of(context).pop(),
-                    fullWidth: true,
-                  ),
+                const SizedBox(width: AppSpacing.sm),
+                _ShareButton(
+                  isLoading: _isSharing,
+                  onPressed: _isSharing ? null : _onShare,
                 ),
               ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            AppButton(
+              label: 'Transaksi Baru',
+              icon: Icons.add,
+              onPressed: () => Navigator.of(context).pop(),
+              fullWidth: true,
             ),
           ],
         ),
@@ -158,8 +162,7 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
     );
   }
 
-  bool _hasDiscount(CheckoutResult r) =>
-      _discountAmount(r) > 0;
+  bool _hasDiscount(CheckoutResult r) => _discountAmount(r) > 0;
 
   // Derive manual discount: subtotal - (taxable base) where taxable base
   // equals total - taxAmount in exclusive mode. For Phase 4.2 simplicity,
@@ -191,6 +194,28 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
     }
   }
 
+  Future<void> _onShare() async {
+    setState(() => _isSharing = true);
+    final text = await ref
+        .read(shareReceiptUseCaseProvider)
+        .buildText(result.transactionId);
+    if (!mounted) return;
+    setState(() => _isSharing = false);
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (text == null || text.isEmpty) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Gagal menyiapkan struk untuk dibagikan')),
+      );
+      return;
+    }
+
+    await Share.share(
+      text,
+      subject: 'Struk #${result.transactionId.substring(0, 8).toUpperCase()}',
+    );
+  }
+
   String _errorLabel(PrinterError e) => switch (e) {
         PrinterError.notConnected =>
           'Printer belum terhubung — buka Pengaturan > Printer',
@@ -200,6 +225,49 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
         PrinterError.bluetoothOff => 'Bluetooth tidak aktif',
         PrinterError.printFailed => 'Gagal mencetak struk',
       };
+}
+
+class _ShareButton extends StatelessWidget {
+  const _ShareButton({
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onPressed == null || isLoading;
+    return Tooltip(
+      message: 'Bagikan struk',
+      child: Material(
+        color: disabled ? context.colors.disabled : AppColors.primarySurface,
+        borderRadius: AppRadius.radiusMd,
+        child: InkWell(
+          onTap: disabled ? null : onPressed,
+          borderRadius: AppRadius.radiusMd,
+          child: SizedBox(
+            width: AppTouchTarget.primaryTablet,
+            height: AppTouchTarget.primaryTablet,
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(
+                      Icons.share_outlined,
+                      color: AppColors.primaryDark,
+                      size: 20,
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Row extends StatelessWidget {

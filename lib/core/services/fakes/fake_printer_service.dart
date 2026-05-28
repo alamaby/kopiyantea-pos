@@ -2,6 +2,7 @@ import 'package:logger/logger.dart';
 
 import '../../utils/formatters.dart';
 import '../../utils/result.dart';
+import '../../utils/transaction_numbers.dart';
 import '../printer_service.dart';
 
 /// Dev/test fake — logs the rendered receipt as plain text instead of writing
@@ -52,10 +53,16 @@ class FakePrinterService implements PrinterService {
     _log.i('═══ FAKE RECEIPT ═══');
     _log.i(payload.branchName);
     if (payload.branchAddress != null) _log.i(payload.branchAddress);
-    _log.i('#${payload.transactionId.substring(0, 8).toUpperCase()}');
+    _log.i(
+      '#${displayTransactionNumber(
+        id: payload.transactionId,
+        transactionNumber: payload.transactionNumber,
+      )}',
+    );
     _log.i(formatDateTime(payload.timestamp));
     for (final item in payload.items) {
-      _log.i('  ${item.name} × ${item.quantity}  ${formatRupiah(item.subtotal)}');
+      _log.i(
+          '  ${item.name} × ${item.quantity}  ${formatRupiah(item.subtotal)}');
       if (item.notes != null && item.notes!.isNotEmpty) {
         _log.i('    note: ${item.notes}');
       }

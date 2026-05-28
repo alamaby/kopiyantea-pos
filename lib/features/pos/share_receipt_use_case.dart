@@ -5,6 +5,7 @@ import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/database_provider.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/labels.dart';
+import '../../core/utils/transaction_numbers.dart';
 
 class ShareReceiptUseCase {
   ShareReceiptUseCase(this._ref);
@@ -50,7 +51,7 @@ class ShareReceiptUseCase {
       if (branch.phone?.isNotEmpty ?? false) branch.phone!,
       if (setting?.headerText?.isNotEmpty ?? false) setting!.headerText!,
       '--------------------------------',
-      'No: #${tx.id.substring(0, 8).toUpperCase()}',
+      'No: #${displayTransactionRowNumber(tx)}',
       'Tanggal: ${formatDateTime(tx.clientCreatedAt)}',
       if (customerLabel != null) 'Pelanggan: $customerLabel',
       if (cashierName?.isNotEmpty ?? false) 'Kasir: $cashierName',

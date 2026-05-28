@@ -12,6 +12,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/labels.dart';
+import '../../core/utils/transaction_numbers.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
@@ -210,7 +211,10 @@ bool _matchesQuery({
   final q = query.toLowerCase().replaceAll('#', '').trim();
   if (q.isEmpty) return true;
 
-  final shortId = tx.id.substring(0, 8).toLowerCase();
+  final transactionNumber = displayTransactionRowNumber(tx).toLowerCase();
+  if (transactionNumber.contains(q)) return true;
+
+  final shortId = shortTransactionId(tx.id).toLowerCase();
   if (shortId.contains(q)) return true;
 
   if (tx.total.toStringAsFixed(0).contains(q)) return true;
@@ -236,7 +240,7 @@ class _TxTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shortId = tx.id.substring(0, 8).toUpperCase();
+    final transactionNumber = displayTransactionRowNumber(tx);
     final voided = tx.status == TransactionStatus.voided;
 
     return Material(
@@ -260,7 +264,7 @@ class _TxTile extends StatelessWidget {
                     Row(
                       children: [
                         Text(
-                          '#$shortId',
+                          '#$transactionNumber',
                           style: AppTypography.titleMd.copyWith(
                             fontFeatures: const [
                               FontFeature.tabularFigures(),

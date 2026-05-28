@@ -19,6 +19,7 @@ enum CheckoutError {
   noBranch,
   emptyCart,
   invalidPayment,
+
   /// FEAT-015 — Transfer chosen but no bank account selected.
   bankAccountMissing,
   databaseError,
@@ -27,6 +28,7 @@ enum CheckoutError {
 class CheckoutResult {
   const CheckoutResult({
     required this.transactionId,
+    required this.transactionNumber,
     required this.totals,
     required this.paymentMethod,
     required this.paymentReceived,
@@ -35,6 +37,7 @@ class CheckoutResult {
   });
 
   final String transactionId;
+  final String transactionNumber;
   final TotalsResult totals;
   final PaymentMethod paymentMethod;
   final double? paymentReceived;
@@ -56,6 +59,7 @@ class CheckoutUseCase {
   final AppDatabase db;
   final Uuid uuid;
   final String cashierId;
+
   /// Snapshot taken at provider construction (logged-in user's full name).
   /// Null for the demo-fallback path; receipt UI falls back to a live
   /// lookup when null.
@@ -92,8 +96,9 @@ class CheckoutUseCase {
       return const Err(CheckoutError.bankAccountMissing);
     }
 
-    final txId = uuid.v7();
     final now = DateTime.now();
+    final txId = uuid.v7();
+    final transactionNumber = await _buildTransactionNumber(branch.id, now);
     final change = isCash ? (paymentReceived! - totals.total) : null;
 
     final movements = await _buildInventoryMovements(
@@ -115,6 +120,7 @@ class CheckoutUseCase {
                 paymentReceived: paymentReceived,
                 paymentChange: change,
                 now: now,
+                transactionNumber: transactionNumber,
               ),
             );
 
@@ -175,6 +181,7 @@ class CheckoutUseCase {
     return Ok(
       CheckoutResult(
         transactionId: txId,
+        transactionNumber: transactionNumber,
         totals: totals,
         paymentMethod: paymentMethod,
         paymentReceived: paymentReceived,
@@ -195,6 +202,7 @@ class CheckoutUseCase {
     double? paymentReceived,
     double? paymentChange,
     required DateTime now,
+    required String transactionNumber,
   }) {
     final ba = cart.bankAccount;
     final bankSnapshot = ba == null
@@ -202,6 +210,7 @@ class CheckoutUseCase {
         : '${ba.bankName} ${ba.accountNumber} - ${ba.accountHolder}';
     return TransactionsCompanion.insert(
       id: txId,
+      transactionNumber: Value(transactionNumber),
       branchId: branch.id,
       cashierId: cashierId,
       cashierNameSnapshot: Value(cashierName),
@@ -222,6 +231,28 @@ class CheckoutUseCase {
       clientCreatedAt: now,
     );
   }
+
+  Future<String> _buildTransactionNumber(String branchId, DateTime now) async {
+    final start = DateTime(now.year, now.month, now.day);
+    final end = start.add(const Duration(days: 1));
+    final result = await db.customSelect(
+      'SELECT COUNT(*) AS count FROM transactions '
+      'WHERE branch_id = ? '
+      'AND voided_by_transaction_id IS NULL '
+      'AND client_created_at >= ? '
+      'AND client_created_at < ?',
+      variables: [
+        Variable<String>(branchId),
+        Variable<DateTime>(start),
+        Variable<DateTime>(end),
+      ],
+    ).getSingle();
+    final queue = result.read<int>('count') + 1;
+    return '${_two(now.year % 100)}${_two(now.month)}${_two(now.day)}'
+        '${_two(now.hour)}${_two(now.minute)}-${queue.toString().padLeft(3, '0')}';
+  }
+
+  String _two(int value) => value.toString().padLeft(2, '0');
 
   TransactionItemsCompanion _buildItemCompanion({
     required String txId,
@@ -256,8 +287,7 @@ class CheckoutUseCase {
     for (final item in cart.items) {
       final query = db.select(db.productRecipes)
         ..where((r) =>
-            r.productId.equals(item.product.id) &
-            r.branchId.equals(branchId));
+            r.productId.equals(item.product.id) & r.branchId.equals(branchId));
       final recipes = await query.get();
       for (final recipe in recipes) {
         result.add(

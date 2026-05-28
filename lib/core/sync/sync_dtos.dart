@@ -16,6 +16,7 @@ import '../domain/enums.dart';
 extension TransactionSyncDto on TransactionRow {
   Map<String, dynamic> toSupabaseJson() => {
         'id': id,
+        'transaction_number': transactionNumber,
         'branch_id': branchId,
         'cashier_id': cashierId,
         'cashier_name_snapshot': cashierNameSnapshot,
@@ -479,6 +480,7 @@ CustomersCompanion customerFromJson(Map<String, dynamic> json) =>
 TransactionsCompanion transactionFromJson(Map<String, dynamic> json) =>
     TransactionsCompanion.insert(
       id: json['id'] as String,
+      transactionNumber: Value(json['transaction_number'] as String?),
       branchId: json['branch_id'] as String,
       cashierId: json['cashier_id'] as String,
       cashierNameSnapshot: Value(json['cashier_name_snapshot'] as String?),

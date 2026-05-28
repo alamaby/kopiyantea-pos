@@ -9,6 +9,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/labels.dart';
+import '../../core/utils/transaction_numbers.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
@@ -63,7 +64,7 @@ class _DetailBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tx = data.transaction;
     final voided = tx.status == TransactionStatus.voided;
-    final shortId = tx.id.substring(0, 8).toUpperCase();
+    final transactionNumber = displayTransactionRowNumber(tx);
     final customerAsync = tx.customerId == null
         ? null
         : ref.watch(customerByIdProvider(tx.customerId!));
@@ -71,7 +72,11 @@ class _DetailBody extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
-        _HeaderCard(tx: tx, shortId: shortId, voided: voided),
+        _HeaderCard(
+          tx: tx,
+          transactionNumber: transactionNumber,
+          voided: voided,
+        ),
         const SizedBox(height: AppSpacing.lg),
         if (customerAsync != null)
           customerAsync.maybeWhen(
@@ -183,8 +188,7 @@ class _ActionsCard extends ConsumerWidget {
 
   Future<void> _reprint(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
-    final result =
-        await ref.read(printReceiptUseCaseProvider).print(tx.id);
+    final result = await ref.read(printReceiptUseCaseProvider).print(tx.id);
     if (!context.mounted) return;
     switch (result) {
       case Ok():
@@ -211,7 +215,7 @@ class _ActionsCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Transaksi #${tx.id.substring(0, 8).toUpperCase()} akan '
+              'Transaksi #${displayTransactionRowNumber(tx)} akan '
               'dibatalkan. Stok bahan akan dikembalikan secara otomatis. '
               'Aksi ini tidak bisa dibatalkan.',
               style: AppTypography.bodySm,
@@ -320,8 +324,7 @@ class _CustomerCard extends StatelessWidget {
               ),
               child: Text(
                 '${customer.loyaltyPoints} poin',
-                style:
-                    AppTypography.labelSm.copyWith(color: AppColors.accent),
+                style: AppTypography.labelSm.copyWith(color: AppColors.accent),
               ),
             ),
         ],
@@ -335,12 +338,12 @@ class _CustomerCard extends StatelessWidget {
 class _HeaderCard extends StatelessWidget {
   const _HeaderCard({
     required this.tx,
-    required this.shortId,
+    required this.transactionNumber,
     required this.voided,
   });
 
   final TransactionRow tx;
-  final String shortId;
+  final String transactionNumber;
   final bool voided;
 
   @override
@@ -352,7 +355,7 @@ class _HeaderCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                '#$shortId',
+                '#$transactionNumber',
                 style: AppTypography.headlineLg.copyWith(
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
@@ -375,15 +378,15 @@ class _HeaderCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             formatDateTime(tx.clientCreatedAt),
-            style:
-                AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
+            style: AppTypography.bodyMd
+                .copyWith(color: context.colors.textSecondary),
           ),
           if (voided && tx.voidReason != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Alasan pembatalan: ${tx.voidReason}',
-              style:
-                  AppTypography.bodySm.copyWith(color: context.colors.textSecondary),
+              style: AppTypography.bodySm
+                  .copyWith(color: context.colors.textSecondary),
             ),
           ],
         ],
@@ -448,7 +451,8 @@ class _ItemRow extends StatelessWidget {
         const SizedBox(height: AppSpacing.xs),
         Text(
           '${formatRupiah(item.priceSnapshot)} per item',
-          style: AppTypography.bodySm.copyWith(color: context.colors.textSecondary),
+          style: AppTypography.bodySm
+              .copyWith(color: context.colors.textSecondary),
         ),
         // FEAT-001 — modifier snapshot list.
         if (options.isNotEmpty) ...[

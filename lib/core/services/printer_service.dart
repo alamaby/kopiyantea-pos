@@ -43,6 +43,7 @@ class ReceiptPayload {
     required this.paymentMethodLabel,
     this.branchAddress,
     this.branchPhone,
+    this.transactionNumber,
     this.showBranchName = true,
     this.paymentReceived,
     this.paymentChange,
@@ -58,6 +59,7 @@ class ReceiptPayload {
   });
 
   final String transactionId;
+  final String? transactionNumber;
   final DateTime timestamp;
   final String branchName;
   final String? branchAddress;

@@ -9,23 +9,26 @@ import 'customer_tables.dart';
 class Transactions extends Table {
   // UUID v7 — also serves as idempotency key (ADR-0001)
   TextColumn get id => text()();
-  TextColumn get branchId =>
-      text().references(Branches, #id)();
-  TextColumn get cashierId =>
-      text().references(AppUsers, #id)();
+
+  /// Human-readable business number for owner/cashier lookup.
+  ///
+  /// Format for new checkout rows: YYMMDDHHMI-XXX, where XXX is the
+  /// branch-local queue number for the transaction day. Nullable so legacy
+  /// synced rows and compensating void rows can safely fall back to UUID.
+  TextColumn get transactionNumber => text().nullable()();
+  TextColumn get branchId => text().references(Branches, #id)();
+  TextColumn get cashierId => text().references(AppUsers, #id)();
+
   /// Immutable snapshot of the cashier's full name at checkout time. Set
   /// on every new transaction; pre-migration legacy rows have NULL and
   /// fall back to a live `app_users.full_name` lookup in the UI.
   TextColumn get cashierNameSnapshot => text().nullable()();
-  TextColumn get customerId =>
-      text().nullable().references(Customers, #id)();
+  TextColumn get customerId => text().nullable().references(Customers, #id)();
 
   // Financials
   RealColumn get subtotal => real()();
-  RealColumn get discountAmount =>
-      real().withDefault(const Constant(0.0))();
-  RealColumn get taxAmount =>
-      real().withDefault(const Constant(0.0))();
+  RealColumn get discountAmount => real().withDefault(const Constant(0.0))();
+  RealColumn get taxAmount => real().withDefault(const Constant(0.0))();
   RealColumn get total => real()();
 
   // Tax snapshot — immutable, receipts must stay accurate even if rate changes
@@ -46,10 +49,12 @@ class Transactions extends Table {
       )();
   TextColumn get voidedByTransactionId => text().nullable()();
   TextColumn get voidReason => text().nullable()();
+
   /// FEAT-015 — bank account chosen at checkout when paymentMethod=transfer.
   /// Null for cash/QRIS/etc. Foreign key without DB-level constraint so
   /// owner deleting a bank account doesn't break historical transactions.
   TextColumn get bankAccountId => text().nullable()();
+
   /// FEAT-015 — immutable snapshot ("BCA 1234567890 - John Doe") so
   /// receipts + reports stay accurate even if bank account is later edited
   /// or deleted. Always set in tandem with `bankAccountId`.
@@ -66,8 +71,7 @@ class TransactionItems extends Table {
   TextColumn get id => text()();
   TextColumn get transactionId =>
       text().references(Transactions, #id, onDelete: KeyAction.cascade)();
-  TextColumn get productId =>
-      text().references(Products, #id)();
+  TextColumn get productId => text().references(Products, #id)();
   TextColumn get nameSnapshot => text()();
   RealColumn get priceSnapshot => real()(); // post LEVEL-2 discount
   RealColumn get quantity => real()();

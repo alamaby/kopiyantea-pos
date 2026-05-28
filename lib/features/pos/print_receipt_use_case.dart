@@ -85,6 +85,7 @@ class PrintReceiptUseCase {
 
     final payload = ReceiptPayload(
       transactionId: tx.id,
+      transactionNumber: tx.transactionNumber,
       timestamp: tx.clientCreatedAt,
       branchName: branch.name,
       branchAddress: branch.address,

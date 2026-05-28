@@ -79,7 +79,7 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              '#${result.transactionId.substring(0, 8).toUpperCase()}',
+              '#${result.transactionNumber}',
               style: AppTypography.bodySm.copyWith(
                 color: context.colors.textSecondary,
                 fontFeatures: const [FontFeature.tabularFigures()],
@@ -212,7 +212,7 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
 
     await Share.share(
       text,
-      subject: 'Struk #${result.transactionId.substring(0, 8).toUpperCase()}',
+      subject: 'Struk #${result.transactionNumber}',
     );
   }
 

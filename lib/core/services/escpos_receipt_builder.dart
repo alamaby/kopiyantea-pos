@@ -4,6 +4,7 @@ import 'package:esc_pos_utils_plus/esc_pos_utils_plus.dart';
 import 'package:image/image.dart' as img;
 
 import '../utils/formatters.dart';
+import '../utils/transaction_numbers.dart';
 import 'printer_service.dart';
 
 /// Pure function: [ReceiptPayload] → ESC/POS byte stream for a thermal printer.
@@ -66,11 +67,14 @@ class EscPosReceiptBuilder {
     bytes += g.hr();
 
     // ── Transaction meta ──
-    final shortId = p.transactionId.substring(0, 8).toUpperCase();
+    final transactionNumber = displayTransactionNumber(
+      id: p.transactionId,
+      transactionNumber: p.transactionNumber,
+    );
     bytes += g.row([
       PosColumn(text: 'No:', width: 3, styles: _normalStyle),
       PosColumn(
-        text: '#$shortId',
+        text: '#$transactionNumber',
         width: 9,
         styles: const PosStyles(
           align: PosAlign.right,

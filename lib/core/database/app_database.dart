@@ -63,7 +63,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -134,6 +134,10 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(
                 receiptSettings, receiptSettings.showCustomerName);
             await m.addColumn(receiptSettings, receiptSettings.showBranchName);
+          }
+          if (from < 14) {
+            // Human-readable transaction number for receipts and owner lookup.
+            await m.addColumn(transactions, transactions.transactionNumber);
           }
         },
         beforeOpen: (_) async {

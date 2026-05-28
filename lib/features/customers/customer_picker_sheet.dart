@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/theme/colors.dart';
@@ -9,6 +8,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import 'customer_form_screen.dart';
 import 'customer_providers.dart';
 
 /// Bottom sheet for selecting (or clearing) the cart's customer.
@@ -78,8 +78,7 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                 child: Row(
                   children: [
                     Text('Pilih Pelanggan', style: AppTypography.headlineLg),
@@ -87,18 +86,14 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
                     IconButton(
                       icon: const Icon(Icons.person_add_outlined),
                       tooltip: 'Tambah Pelanggan',
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        context.push('/more/customers/new');
-                      },
+                      onPressed: () => _createCustomer(context),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: AppSpacing.sm),
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                 child: TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
@@ -130,8 +125,7 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
                   data: (customers) => _List(
                     query: _query,
                     customers: customers,
-                    onPick: (c) =>
-                        Navigator.of(context).pop(CustomerPick(c)),
+                    onPick: (c) => Navigator.of(context).pop(CustomerPick(c)),
                   ),
                 ),
               ),
@@ -140,6 +134,18 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
         ),
       ),
     );
+  }
+
+  Future<void> _createCustomer(BuildContext context) async {
+    final created =
+        await Navigator.of(context, rootNavigator: true).push<CustomerRow>(
+      MaterialPageRoute(
+        builder: (_) => const CustomerFormScreen(),
+        fullscreenDialog: true,
+      ),
+    );
+    if (!mounted || created == null) return;
+    Navigator.of(context).pop(CustomerPick(created));
   }
 }
 
@@ -269,7 +275,8 @@ class _Tile extends StatelessWidget {
               if (trailing != null)
                 Text(
                   trailing!,
-                  style: AppTypography.labelSm.copyWith(color: AppColors.accent),
+                  style:
+                      AppTypography.labelSm.copyWith(color: AppColors.accent),
                 ),
             ],
           ),

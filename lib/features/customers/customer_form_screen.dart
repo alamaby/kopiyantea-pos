@@ -111,9 +111,11 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
 
     final now = DateTime.now();
     final dao = ref.read(customerDaoProvider);
+    late final String savedCustomerId;
     if (_existing == null) {
+      savedCustomerId = const Uuid().v7();
       await dao.upsertCustomer(CustomersCompanion.insert(
-        id: const Uuid().v7(),
+        id: savedCustomerId,
         name: name,
         phone: Value(phone),
         email: Value(email),
@@ -121,8 +123,9 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
         updatedAt: now,
       ));
     } else {
+      savedCustomerId = _existing!.id;
       await dao.updateById(
-        _existing!.id,
+        savedCustomerId,
         CustomersCompanion(
           name: Value(name),
           phone: Value(phone),
@@ -131,8 +134,9 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
         ),
       );
     }
+    final savedCustomer = await dao.getById(savedCustomerId);
     if (!mounted) return;
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(savedCustomer);
   }
 
   static bool _isLikelyEmail(String value) {

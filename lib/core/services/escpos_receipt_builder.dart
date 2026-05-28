@@ -248,7 +248,7 @@ class EscPosReceiptBuilder {
       if (logoCmd != null) bytes += logoCmd;
     }
 
-    bytes += g.feed(2);
+    bytes += g.feed(1);
     bytes += g.cut();
 
     return bytes;

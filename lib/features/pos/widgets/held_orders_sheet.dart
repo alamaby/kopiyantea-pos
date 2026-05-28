@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -71,8 +73,7 @@ class HeldOrdersSheet extends ConsumerWidget {
                   return const AppEmptyState(
                     title: 'Tidak ada pesanan tertahan',
                     icon: Icons.pause_circle_outline,
-                    message:
-                        'Tap "Tahan Pesanan" di keranjang untuk menyimpan '
+                    message: 'Tap "Tahan Pesanan" di keranjang untuk menyimpan '
                         'cart sementara.',
                   );
                 }
@@ -98,6 +99,7 @@ class _HeldOrderTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final previewAsync = ref.watch(heldOrderPreviewProvider(row));
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: context.colors.border),
@@ -130,7 +132,43 @@ class _HeldOrderTile extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(row.label, style: AppTypography.titleMd),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              row.label,
+                              style: AppTypography.titleMd,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            previewAsync.maybeWhen(
+                              data: (preview) => formatRupiah(preview.total),
+                              orElse: () => '...',
+                            ),
+                            style: AppTypography.titleMd.copyWith(
+                              color: AppColors.primary,
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        previewAsync.maybeWhen(
+                          data: (preview) => preview.firstItemName,
+                          orElse: () => 'Memuat item...',
+                        ),
+                        style: AppTypography.bodySm.copyWith(
+                          color: context.colors.textPrimary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         formatDateTime(row.createdAt),
@@ -197,7 +235,7 @@ class _HeldOrderTile extends ConsumerWidget {
       return;
     }
     notifier.restoreState(restored);
-    await svc.discard(row.id);
+    ref.read(activeHeldOrderIdProvider.notifier).state = row.id;
     nav.pop();
     messenger.showSnackBar(
       SnackBar(content: Text('Pesanan "${row.label}" dilanjutkan')),

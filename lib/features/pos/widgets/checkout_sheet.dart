@@ -13,6 +13,7 @@ import '../../../core/widgets/app_button.dart';
 import '../../bank_accounts/bank_account_picker_sheet.dart';
 import '../cart_provider.dart';
 import '../checkout_use_case.dart';
+import '../held_order_service.dart';
 import 'qris_display.dart';
 import 'receipt_summary_sheet.dart';
 
@@ -197,6 +198,7 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
     switch (result) {
       case Ok(:final value):
         HapticFeedback.mediumImpact();
+        await _discardActiveHeldOrder();
         ref.read(cartNotifierProvider.notifier).clear();
 
         // Capture root navigator BEFORE popping — `context` becomes stale
@@ -230,9 +232,15 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
         CheckoutError.invalidPayment => 'Pembayaran tidak mencukupi',
         CheckoutError.bankAccountMissing =>
           'Pilih rekening tujuan transfer dulu',
-        CheckoutError.databaseError =>
-          'Gagal menyimpan transaksi. Coba lagi.',
+        CheckoutError.databaseError => 'Gagal menyimpan transaksi. Coba lagi.',
       };
+
+  Future<void> _discardActiveHeldOrder() async {
+    final heldOrderId = ref.read(activeHeldOrderIdProvider);
+    if (heldOrderId == null) return;
+    await ref.read(heldOrderServiceProvider).discard(heldOrderId);
+    ref.read(activeHeldOrderIdProvider.notifier).state = null;
+  }
 }
 
 /// FEAT-015 — Transfer payment: cashier picks one of owner's bank accounts.
@@ -269,8 +277,8 @@ class _BankAccountSection extends ConsumerWidget {
             Text(
               'Pilih rekening yang akan menerima transfer. '
               'Owner mengatur daftar rekening di Pengaturan → Rekening Bank.',
-              style: AppTypography.bodySm
-                  .copyWith(color: AppColors.primaryDark),
+              style:
+                  AppTypography.bodySm.copyWith(color: AppColors.primaryDark),
             )
           else
             Container(
@@ -309,8 +317,7 @@ class _BankAccountSection extends ConsumerWidget {
                 selectedId: selected?.id,
               );
               if (picked != null) {
-                ref.read(cartNotifierProvider.notifier)
-                    .setBankAccount(picked);
+                ref.read(cartNotifierProvider.notifier).setBankAccount(picked);
               }
             },
             fullWidth: true,
@@ -365,8 +372,7 @@ class _QrisSection extends ConsumerWidget {
                     'tap "Pembayaran Diterima".'
                 : 'Cabang ini belum upload QRIS. Owner perlu mengaturnya '
                     'di Pengaturan → QRIS Statis.',
-            style: AppTypography.bodySm
-                .copyWith(color: AppColors.primaryDark),
+            style: AppTypography.bodySm.copyWith(color: AppColors.primaryDark),
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton(
@@ -402,7 +408,8 @@ class _TotalDisplay extends StatelessWidget {
       children: [
         Text(
           'Total',
-          style: AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
+          style: AppTypography.bodyMd
+              .copyWith(color: context.colors.textSecondary),
         ),
         Text(
           formatRupiah(total),
@@ -508,9 +515,7 @@ class _ChangeDisplay extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: insufficient
-            ? const Color(0xFFFEE2E2)
-            : const Color(0xFFE0F2FE),
+        color: insufficient ? const Color(0xFFFEE2E2) : const Color(0xFFE0F2FE),
         borderRadius: AppRadius.radiusMd,
       ),
       child: Row(

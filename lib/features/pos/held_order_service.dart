@@ -7,6 +7,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
+import '../../core/pricing/pricing.dart';
 import '../auth/auth_provider.dart';
 import 'cart_state.dart';
 
@@ -28,6 +29,23 @@ Stream<int> heldOrdersCount(HeldOrdersCountRef ref, String branchId) {
       .watch(heldOrderDaoProvider)
       .watchForBranch(branchId)
       .map((rows) => rows.length);
+}
+
+final activeHeldOrderIdProvider = StateProvider<String?>((ref) => null);
+
+final heldOrderPreviewProvider = FutureProvider.autoDispose
+    .family<HeldOrderPreview, HeldOrderRow>((ref, row) {
+  return ref.watch(heldOrderServiceProvider).preview(row);
+});
+
+class HeldOrderPreview {
+  const HeldOrderPreview({
+    required this.firstItemName,
+    required this.total,
+  });
+
+  final String firstItemName;
+  final double total;
 }
 
 /// Service: serialize a [CartState] into a held-order row, and restore a
@@ -120,6 +138,58 @@ class HeldOrderService {
     );
   }
 
+  Future<HeldOrderPreview> preview(HeldOrderRow row) async {
+    final decoded = jsonDecode(row.payloadJson) as Map<String, dynamic>;
+    final itemsJson =
+        ((decoded['items'] as List?) ?? const []).cast<Map<String, dynamic>>();
+
+    final firstItemName = await _resolveFirstItemName(itemsJson);
+    final subtotal = itemsJson.fold<double>(0, (sum, item) {
+      final price = (item['priceSnapshot'] as num?)?.toDouble() ?? 0.0;
+      final quantity = item['quantity'] as int? ?? 0;
+      final options =
+          ((item['options'] as List?) ?? const []).cast<Map<String, dynamic>>();
+      final optionDelta = options.fold<double>(
+        0,
+        (optionSum, option) =>
+            optionSum + ((option['priceDelta'] as num?)?.toDouble() ?? 0.0),
+      );
+      return sum + ((price + optionDelta) * quantity);
+    });
+    final discount =
+        (decoded['manualDiscountAmount'] as num?)?.toDouble() ?? 0.0;
+    final branch =
+        await _ref.read(branchDaoProvider).getBranchById(row.branchId);
+    final total = branch == null
+        ? (subtotal - discount).clamp(0.0, double.infinity).toDouble()
+        : computeTotals(
+            subtotal: subtotal,
+            manualDiscountAmount: discount,
+            taxPercentage: branch.taxPercentage,
+            taxInclusive: branch.taxInclusive,
+          ).total;
+
+    return HeldOrderPreview(
+      firstItemName: firstItemName,
+      total: total,
+    );
+  }
+
+  Future<String> _resolveFirstItemName(
+      List<Map<String, dynamic>> itemsJson) async {
+    if (itemsJson.isEmpty) return 'Tidak ada item';
+    final first = itemsJson.first;
+    final snapshotName = first['productName'] as String?;
+    if (snapshotName != null && snapshotName.trim().isNotEmpty) {
+      return snapshotName.trim();
+    }
+    final productId = first['productId'] as String?;
+    if (productId == null) return 'Item tidak tersedia';
+    final product =
+        await _ref.read(catalogDaoProvider).getProductById(productId);
+    return product?.name ?? 'Item tidak tersedia';
+  }
+
   Future<void> discard(String heldOrderId) =>
       _ref.read(heldOrderDaoProvider).deleteById(heldOrderId);
 
@@ -136,6 +206,7 @@ class HeldOrderService {
           for (final i in state.items)
             {
               'productId': i.product.id,
+              'productName': i.branchProduct.customName ?? i.product.name,
               'priceSnapshot': i.priceSnapshot,
               'quantity': i.quantity,
               'notes': i.notes,

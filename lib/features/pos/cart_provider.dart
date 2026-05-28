@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/database/app_database.dart';
 import '../../core/pricing/pricing.dart';
 import 'cart_state.dart';
+import 'held_order_service.dart';
 
 part 'cart_provider.g.dart';
 
@@ -52,7 +53,8 @@ class CartNotifier extends _$CartNotifier {
     );
 
     if (idx >= 0) {
-      _replaceAt(idx, state.items[idx].copyWith(quantity: state.items[idx].quantity + 1));
+      _replaceAt(idx,
+          state.items[idx].copyWith(quantity: state.items[idx].quantity + 1));
     } else {
       state = state.copyWith(items: [
         ...state.items,
@@ -126,6 +128,9 @@ class CartNotifier extends _$CartNotifier {
   void removeItem(int index) {
     final items = [...state.items]..removeAt(index);
     state = state.copyWith(items: items);
+    if (items.isEmpty) {
+      ref.read(activeHeldOrderIdProvider.notifier).state = null;
+    }
   }
 
   /// Re-inserts [item] at [index]. Used by the undo snackbar after a delete.
@@ -143,7 +148,10 @@ class CartNotifier extends _$CartNotifier {
   void setManualDiscount(double amount) =>
       state = state.copyWith(manualDiscountAmount: amount);
 
-  void clear() => state = CartState(branch: state.branch);
+  void clear() {
+    state = CartState(branch: state.branch);
+    ref.read(activeHeldOrderIdProvider.notifier).state = null;
+  }
 
   /// FEAT-009 — replace the entire cart state in one shot. Used when
   /// restoring a held order so items, customer, and manual discount all
@@ -158,8 +166,7 @@ class CartNotifier extends _$CartNotifier {
         (sum, item) => sum + item.lineSubtotal,
       );
 
-  int get itemCount =>
-      state.items.fold(0, (sum, item) => sum + item.quantity);
+  int get itemCount => state.items.fold(0, (sum, item) => sum + item.quantity);
 
   /// Returns null when no branch is set on the cart.
   TotalsResult? get totals {

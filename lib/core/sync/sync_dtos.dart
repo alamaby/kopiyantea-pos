@@ -317,7 +317,10 @@ T _enumByName<T extends Enum>(List<T> values, String name) =>
 
 String _toSupabaseTimestamp(DateTime value) => value.toUtc().toIso8601String();
 
-DateTime _fromSupabaseTimestamp(Object raw) {
+DateTime _fromSupabaseTimestamp(Object? raw) {
+  if (raw == null) {
+    throw const FormatException('Supabase timestamp cannot be null');
+  }
   final value = raw is DateTime ? raw : DateTime.parse(raw as String);
   return value.toLocal();
 }

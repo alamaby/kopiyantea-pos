@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/database/daos/dao_providers.dart';
@@ -69,15 +70,15 @@ Future<TelemetrySnapshot> telemetrySnapshot(
   final allOutbox = await outboxDao.watchAll().first;
   final pending =
       allOutbox.where((r) => r.status == OutboxStatus.pending).length;
-  final failed =
-      allOutbox.where((r) => r.status == OutboxStatus.failed).length;
+  final failed = allOutbox.where((r) => r.status == OutboxStatus.failed).length;
   final done = allOutbox.where((r) => r.status == OutboxStatus.done).length;
 
   final syncState = ref.watch(syncProvider);
+  final packageInfo = await PackageInfo.fromPlatform();
 
   return TelemetrySnapshot(
-    appName: 'KopiyanteaPOS',
-    appVersion: '0.1.0+1',
+    appName: packageInfo.appName,
+    appVersion: '${packageInfo.version}+${packageInfo.buildNumber}',
     dbSizeBytes: dbSize,
     transactionCount: txCount,
     transactionItemCount: txItemCount,
@@ -88,4 +89,3 @@ Future<TelemetrySnapshot> telemetrySnapshot(
     lastSyncAt: syncState.lastSyncAt,
   );
 }
-

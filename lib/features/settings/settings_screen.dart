@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/config/app_constants.dart';
 import '../../core/database/app_database.dart';
@@ -517,25 +518,41 @@ class _BackupSection extends ConsumerWidget {
   }
 }
 
-class _AboutSection extends StatelessWidget {
+class _AboutSection extends StatefulWidget {
   const _AboutSection();
+
+  @override
+  State<_AboutSection> createState() => _AboutSectionState();
+}
+
+class _AboutSectionState extends State<_AboutSection> {
+  late final Future<PackageInfo> _packageInfo = PackageInfo.fromPlatform();
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const _SectionHeader(label: 'Tentang'),
-          const SizedBox(height: AppSpacing.sm),
-          _SettingsNavTile(
-            icon: Icons.info_outline,
-            title: 'Tentang Aplikasi',
-            subtitle:
-                '${AppConstants.appName} ${AppConstants.appVersion}+${AppConstants.appBuildNumber}',
-            route: '/more/settings/about',
-          ),
-        ],
+      child: FutureBuilder<PackageInfo>(
+        future: _packageInfo,
+        builder: (context, snapshot) {
+          final packageInfo = snapshot.data;
+          final appName = packageInfo?.appName ?? AppConstants.appName;
+          final version = packageInfo == null
+              ? 'Memuat...'
+              : '${packageInfo.version}+${packageInfo.buildNumber}';
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SectionHeader(label: 'Tentang'),
+              const SizedBox(height: AppSpacing.sm),
+              _SettingsNavTile(
+                icon: Icons.info_outline,
+                title: 'Tentang Aplikasi',
+                subtitle: '$appName $version',
+                route: '/more/settings/about',
+              ),
+            ],
+          );
+        },
       ),
     );
   }

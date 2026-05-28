@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../core/config/app_constants.dart';
 import '../../core/theme/colors.dart';
@@ -27,38 +28,63 @@ class AboutAppScreen extends StatelessWidget {
   }
 }
 
-class _ApplicationInfoCard extends StatelessWidget {
+class _ApplicationInfoCard extends StatefulWidget {
   const _ApplicationInfoCard();
+
+  @override
+  State<_ApplicationInfoCard> createState() => _ApplicationInfoCardState();
+}
+
+class _ApplicationInfoCardState extends State<_ApplicationInfoCard> {
+  late final Future<PackageInfo> _packageInfo = PackageInfo.fromPlatform();
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _SectionHeader(label: 'Aplikasi'),
-          SizedBox(height: AppSpacing.sm),
-          _InfoRow(label: 'Nama aplikasi', value: AppConstants.appName),
-          _InfoRow(label: 'Versi', value: AppConstants.appVersion),
-          _InfoRow(label: 'Build number', value: AppConstants.appBuildNumber),
-          _InfoRow(label: 'Lisensi', value: AppConstants.appLicense),
-          Divider(height: AppSpacing.xl),
-          _LinkRow(
-            icon: Icons.privacy_tip_outlined,
-            label: 'Privacy Policy',
-            url: AppLinks.privacyPolicy,
-          ),
-          _LinkRow(
-            icon: Icons.description_outlined,
-            label: 'Term of Service',
-            url: AppLinks.termsOfService,
-          ),
-          _LinkRow(
-            icon: Icons.feedback_outlined,
-            label: 'Submit Feedback',
-            url: AppLinks.submitFeedback,
-          ),
-        ],
+      child: FutureBuilder<PackageInfo>(
+        future: _packageInfo,
+        builder: (context, snapshot) {
+          final packageInfo = snapshot.data;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _SectionHeader(label: 'Aplikasi'),
+              const SizedBox(height: AppSpacing.sm),
+              _InfoRow(
+                label: 'Nama aplikasi',
+                value: packageInfo?.appName ?? AppConstants.appName,
+              ),
+              _InfoRow(
+                label: 'Versi',
+                value: packageInfo?.version ?? 'Memuat...',
+              ),
+              _InfoRow(
+                label: 'Build number',
+                value: packageInfo?.buildNumber ?? 'Memuat...',
+              ),
+              const _InfoRow(
+                label: 'Lisensi',
+                value: AppConstants.appLicense,
+              ),
+              const Divider(height: AppSpacing.xl),
+              const _LinkRow(
+                icon: Icons.privacy_tip_outlined,
+                label: 'Privacy Policy',
+                url: AppLinks.privacyPolicy,
+              ),
+              const _LinkRow(
+                icon: Icons.description_outlined,
+                label: 'Term of Service',
+                url: AppLinks.termsOfService,
+              ),
+              const _LinkRow(
+                icon: Icons.feedback_outlined,
+                label: 'Submit Feedback',
+                url: AppLinks.submitFeedback,
+              ),
+            ],
+          );
+        },
       ),
     );
   }

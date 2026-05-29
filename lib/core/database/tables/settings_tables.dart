@@ -32,6 +32,10 @@ class ReceiptSettings extends Table {
   BoolColumn get showBranchName =>
       boolean().withDefault(const Constant(true))();
 
+  /// Print customer loyalty point earn/balance information on payment receipts.
+  BoolColumn get showLoyaltyPoints =>
+      boolean().withDefault(const Constant(true))();
+
   /// ENH-004 — print the branch's static QRIS image on the receipt when
   /// the payment method is QRIS. Useful for "pay later" flows (takeaway,
   /// delivery, pro-forma invoice). Off by default — most flows complete

@@ -28,14 +28,17 @@ class ShareReceiptUseCase {
     final customer = tx.customerId == null
         ? null
         : await customerDao.getById(tx.customerId!);
-    final pointLedger = await _ref
-        .read(customerPointLedgerDaoProvider)
-        .getForTransaction(transactionId);
-    final earnedPoints = pointLedger.fold<int>(
-      0,
-      (sum, row) => row.pointsDelta > 0 ? sum + row.pointsDelta : sum,
-    );
     final setting = await _loadReceiptSetting(tx.branchId);
+    final showLoyaltyPoints = setting?.showLoyaltyPoints ?? true;
+    final earnedPoints = showLoyaltyPoints
+        ? (await _ref
+                .read(customerPointLedgerDaoProvider)
+                .getForTransaction(transactionId))
+            .fold<int>(
+            0,
+            (sum, row) => row.pointsDelta > 0 ? sum + row.pointsDelta : sum,
+          )
+        : 0;
     final optionsByItem = await optionDao.getSnapshotsForItems(
       items.map((i) => i.id).toList(),
     );
@@ -62,7 +65,7 @@ class ShareReceiptUseCase {
       'Tanggal: ${formatDateTime(tx.clientCreatedAt)}',
       if (customerLabel != null) 'Pelanggan: $customerLabel',
       if (cashierName?.isNotEmpty ?? false) 'Kasir: $cashierName',
-      if (earnedPoints > 0)
+      if (showLoyaltyPoints && earnedPoints > 0)
         'Poin: +$earnedPoints'
             '${customer == null ? '' : ' | Total Poin: ${customer.loyaltyPoints}'}',
       '--------------------------------',

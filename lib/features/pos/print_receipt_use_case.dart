@@ -49,16 +49,21 @@ class PrintReceiptUseCase {
     final items = await txDao.getItemsForTransaction(transactionId);
     final branch = await branchDao.getBranchById(tx.branchId);
     if (branch == null) return const Err(PrinterError.printFailed);
+    // FEAT-014 — per-branch receipt template settings.
+    final setting = await _loadReceiptSetting(tx.branchId);
+    final showLoyaltyPoints = setting?.showLoyaltyPoints ?? true;
     final customer = tx.customerId == null
         ? null
         : await customerDao.getById(tx.customerId!);
-    final pointLedger = await _ref
-        .read(customerPointLedgerDaoProvider)
-        .getForTransaction(transactionId);
-    final earnedPoints = pointLedger.fold<int>(
-      0,
-      (sum, row) => row.pointsDelta > 0 ? sum + row.pointsDelta : sum,
-    );
+    final earnedPoints = showLoyaltyPoints
+        ? (await _ref
+                .read(customerPointLedgerDaoProvider)
+                .getForTransaction(transactionId))
+            .fold<int>(
+            0,
+            (sum, row) => row.pointsDelta > 0 ? sum + row.pointsDelta : sum,
+          )
+        : 0;
 
     // FEAT-001 — fetch modifier snapshots for each item to render under
     // the line name on the receipt.
@@ -67,8 +72,6 @@ class PrintReceiptUseCase {
       items.map((i) => i.id).toList(),
     );
 
-    // FEAT-014 — per-branch receipt template settings.
-    final setting = await _loadReceiptSetting(tx.branchId);
     final logoBytes = await _maybeFetchLogo(setting);
 
     // FEAT-014b — cashier name. Prefer the immutable snapshot (set on
@@ -91,7 +94,6 @@ class PrintReceiptUseCase {
             branch.qrisImageUrl!.isNotEmpty)
         ? await _fetchCached(branch.qrisImageUrl!)
         : null;
-
     final payload = ReceiptPayload(
       transactionId: tx.id,
       transactionNumber: tx.transactionNumber,
@@ -128,8 +130,9 @@ class PrintReceiptUseCase {
               phone: customer?.phone,
             )
           : null,
-      loyaltyPointsEarned: earnedPoints > 0 ? earnedPoints : null,
-      loyaltyPointsBalance: customer?.loyaltyPoints,
+      loyaltyPointsEarned:
+          showLoyaltyPoints && earnedPoints > 0 ? earnedPoints : null,
+      loyaltyPointsBalance: showLoyaltyPoints ? customer?.loyaltyPoints : null,
       cashierName: cashierName,
       headerText: setting?.headerText,
       footerText: setting?.footerText,

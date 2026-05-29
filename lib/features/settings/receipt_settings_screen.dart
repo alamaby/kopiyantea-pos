@@ -76,6 +76,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
   bool _showCashierName = true;
   bool _showCustomerName = true;
   bool _showBranchName = true;
+  bool _showLoyaltyPoints = true;
   bool _printQrisOnReceipt = false;
 
   bool _loaded = false;
@@ -122,6 +123,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
         _showCashierName = row.showCashierName;
         _showCustomerName = row.showCustomerName;
         _showBranchName = row.showBranchName;
+        _showLoyaltyPoints = row.showLoyaltyPoints;
         _printQrisOnReceipt = row.printQrisOnReceipt;
       }
       _loaded = true;
@@ -146,6 +148,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
       showCashierName: Value(_showCashierName),
       showCustomerName: Value(_showCustomerName),
       showBranchName: Value(_showBranchName),
+      showLoyaltyPoints: Value(_showLoyaltyPoints),
       printQrisOnReceipt: Value(_printQrisOnReceipt),
       updatedAt: Value(now),
     );
@@ -252,6 +255,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
             showCashierName: _showCashierName,
             showCustomerName: _showCustomerName,
             showBranchName: _showBranchName,
+            showLoyaltyPoints: _showLoyaltyPoints,
             printQrisOnReceipt: _printQrisOnReceipt,
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -453,6 +457,20 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
             activeColor: AppColors.primary,
           ),
 
+          SwitchListTile(
+            value: _showLoyaltyPoints,
+            onChanged: (v) => setState(() => _showLoyaltyPoints = v),
+            title: Text('Tampilkan poin loyalti', style: AppTypography.titleMd),
+            subtitle: Text(
+              'Cetak poin yang didapat dan total poin pelanggan pada struk pembayaran',
+              style: AppTypography.bodySm.copyWith(
+                color: context.colors.textSecondary,
+              ),
+            ),
+            contentPadding: EdgeInsets.zero,
+            activeColor: AppColors.primary,
+          ),
+
           // ENH-004 — print static QRIS on receipt.
           SwitchListTile(
             value: _printQrisOnReceipt,
@@ -509,6 +527,7 @@ class _ReceiptPreview extends StatelessWidget {
     required this.showCashierName,
     required this.showCustomerName,
     required this.showBranchName,
+    required this.showLoyaltyPoints,
     required this.printQrisOnReceipt,
   });
 
@@ -522,6 +541,7 @@ class _ReceiptPreview extends StatelessWidget {
   final bool showCashierName;
   final bool showCustomerName;
   final bool showBranchName;
+  final bool showLoyaltyPoints;
   final bool printQrisOnReceipt;
 
   @override
@@ -595,6 +615,11 @@ class _ReceiptPreview extends StatelessWidget {
                           const _PreviewRow(
                             label: 'Kasir:',
                             value: 'Kasir Demo',
+                          ),
+                        if (showLoyaltyPoints)
+                          const _PreviewRow(
+                            label: 'Poin:',
+                            value: '+5 / 125 poin',
                           ),
                         const _ReceiptRule(),
                         const Text('Kopi Susu Aren x 1'),

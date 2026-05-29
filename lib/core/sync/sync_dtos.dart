@@ -206,6 +206,7 @@ extension ReceiptSettingSyncDto on ReceiptSettingRow {
         'show_cashier_name': showCashierName,
         'show_customer_name': showCustomerName,
         'show_branch_name': showBranchName,
+        'show_loyalty_points': showLoyaltyPoints,
         'print_qris_on_receipt': printQrisOnReceipt,
         'updated_at': _toSupabaseTimestamp(updatedAt),
       };
@@ -579,6 +580,7 @@ ReceiptSettingsCompanion receiptSettingFromJson(Map<String, dynamic> json) =>
       showCashierName: Value(json['show_cashier_name'] as bool? ?? true),
       showCustomerName: Value(json['show_customer_name'] as bool? ?? true),
       showBranchName: Value(json['show_branch_name'] as bool? ?? true),
+      showLoyaltyPoints: Value(json['show_loyalty_points'] as bool? ?? true),
       printQrisOnReceipt:
           Value(json['print_qris_on_receipt'] as bool? ?? false),
       locale: Value(json['locale'] as String? ?? 'id_ID'),

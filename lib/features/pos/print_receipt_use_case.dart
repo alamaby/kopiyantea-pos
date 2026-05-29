@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:drift/drift.dart' show Variable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:logger/logger.dart';
@@ -27,6 +28,7 @@ class PrintReceiptUseCase {
   PrintReceiptUseCase(this._ref);
 
   final Ref _ref;
+  static const _kFallbackBillQueue = 0;
 
   static final Logger _log = Logger();
   static const billingFooterText =
@@ -159,9 +161,13 @@ class PrintReceiptUseCase {
         ? _ref.read(currentUserProvider)?.fullName
         : null;
 
+    final now = DateTime.now();
+    final transactionNumber = await _previewTransactionNumber(branch.id, now);
+
     final payload = ReceiptPayload(
       transactionId: const Uuid().v7(),
-      timestamp: DateTime.now(),
+      transactionNumber: transactionNumber,
+      timestamp: now,
       branchName: branch.name,
       branchAddress: branch.address,
       branchPhone: branch.phone,
@@ -202,6 +208,30 @@ class PrintReceiptUseCase {
 
     return _printWithAutoReconnect(payload);
   }
+
+  Future<String> _previewTransactionNumber(
+      String branchId, DateTime now) async {
+    final start = DateTime(now.year, now.month, now.day);
+    final end = start.add(const Duration(days: 1));
+    final db = _ref.read(databaseProvider);
+    final result = await db.customSelect(
+      'SELECT COUNT(*) AS count FROM transactions '
+      'WHERE branch_id = ? '
+      'AND voided_by_transaction_id IS NULL '
+      'AND client_created_at >= ? '
+      'AND client_created_at < ?',
+      variables: [
+        Variable<String>(branchId),
+        Variable<DateTime>(start),
+        Variable<DateTime>(end),
+      ],
+    ).getSingleOrNull();
+    final count = result?.read<int>('count') ?? _kFallbackBillQueue;
+    return '${_two(now.year % 100)}${_two(now.month)}${_two(now.day)}'
+        '${_two(now.hour)}${_two(now.minute)}-${(count + 1).toString().padLeft(3, '0')}';
+  }
+
+  String _two(int value) => value.toString().padLeft(2, '0');
 
   Future<Result<Unit, PrinterError>> _printWithAutoReconnect(
     ReceiptPayload payload,

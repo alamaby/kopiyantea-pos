@@ -12,10 +12,12 @@ class TransactionDetailData {
     required this.transaction,
     required this.items,
     required this.optionsByItemId,
+    required this.pointLedger,
   });
   final TransactionRow transaction;
   final List<TransactionItemRow> items;
   final Map<String, List<TransactionItemOptionRow>> optionsByItemId;
+  final List<CustomerPointLedgerRow> pointLedger;
 }
 
 /// Reactive paginated list of transactions for the active branch.
@@ -43,9 +45,14 @@ Future<TransactionDetailData?> transactionDetail(
   final options = await optionDao.getSnapshotsForItems(
     items.map((i) => i.id).toList(),
   );
+  final pointLedger =
+      await ref.watch(customerPointLedgerDaoProvider).getForTransaction(
+            transactionId,
+          );
   return TransactionDetailData(
     transaction: tx,
     items: items,
     optionsByItemId: options,
+    pointLedger: pointLedger,
   );
 }

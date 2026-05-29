@@ -50,6 +50,13 @@ class PrintReceiptUseCase {
     final customer = tx.customerId == null
         ? null
         : await customerDao.getById(tx.customerId!);
+    final pointLedger = await _ref
+        .read(customerPointLedgerDaoProvider)
+        .getForTransaction(transactionId);
+    final earnedPoints = pointLedger.fold<int>(
+      0,
+      (sum, row) => row.pointsDelta > 0 ? sum + row.pointsDelta : sum,
+    );
 
     // FEAT-001 — fetch modifier snapshots for each item to render under
     // the line name on the receipt.
@@ -119,6 +126,8 @@ class PrintReceiptUseCase {
               phone: customer?.phone,
             )
           : null,
+      loyaltyPointsEarned: earnedPoints > 0 ? earnedPoints : null,
+      loyaltyPointsBalance: customer?.loyaltyPoints,
       cashierName: cashierName,
       headerText: setting?.headerText,
       footerText: setting?.footerText,

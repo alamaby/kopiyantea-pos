@@ -14,6 +14,8 @@ import 'cart_state.dart';
 
 // TODO(Phase 6): replace with the authenticated user ID from authProvider.
 const String _kFallbackCashierId = '00000000-0000-0000-0000-000000000012';
+const int _kRupiahPerLoyaltyPoint = 10000;
+const String _kPointReasonEarn = 'earn';
 
 enum CheckoutError {
   noBranch,
@@ -34,6 +36,8 @@ class CheckoutResult {
     required this.paymentReceived,
     required this.paymentChange,
     required this.timestamp,
+    required this.loyaltyPointsEarned,
+    required this.loyaltyPointsBalance,
   });
 
   final String transactionId;
@@ -43,6 +47,8 @@ class CheckoutResult {
   final double? paymentReceived;
   final double? paymentChange;
   final DateTime timestamp;
+  final int loyaltyPointsEarned;
+  final int? loyaltyPointsBalance;
 }
 
 /// Saves a cart as an immutable [Transaction] with full atomic semantics:
@@ -99,6 +105,11 @@ class CheckoutUseCase {
     final now = DateTime.now();
     final txId = uuid.v7();
     final transactionNumber = await _buildTransactionNumber(branch.id, now);
+    final customer = cart.customer;
+    final earnedPoints = customer == null ? 0 : _loyaltyPointsFor(totals.total);
+    final pointLedgerId = earnedPoints > 0 ? uuid.v7() : null;
+    final loyaltyPointsBalance =
+        customer == null ? null : customer.loyaltyPoints + earnedPoints;
     final change = isCash ? (paymentReceived! - totals.total) : null;
 
     final movements = await _buildInventoryMovements(
@@ -152,6 +163,29 @@ class CheckoutUseCase {
           await db.into(db.inventoryMovements).insert(mov);
         }
 
+        if (customer != null && earnedPoints > 0 && pointLedgerId != null) {
+          await db.into(db.customerPointLedgers).insert(
+                CustomerPointLedgersCompanion.insert(
+                  id: pointLedgerId,
+                  customerId: customer.id,
+                  transactionId: Value(txId),
+                  pointsDelta: earnedPoints,
+                  reason: _kPointReasonEarn,
+                  createdAt: now,
+                ),
+              );
+          await db.customUpdate(
+            'UPDATE customers SET loyalty_points = loyalty_points + ?, '
+            'updated_at = ? WHERE id = ?',
+            variables: [
+              Variable<int>(earnedPoints),
+              Variable<DateTime>(now),
+              Variable<String>(customer.id),
+            ],
+            updates: {db.customers},
+          );
+        }
+
         // Local cached_stock reconciliation — keeps the offline UI accurate.
         // Source of truth remains the movements table (ADR-0003); Supabase's
         // server trigger does the same arithmetic at sync time, so client
@@ -173,6 +207,21 @@ class CheckoutUseCase {
         await db.into(db.outboxItems).insert(
               _buildOutboxCompanion(txId: txId, branchId: branch.id, now: now),
             );
+        if (pointLedgerId != null) {
+          await db.into(db.outboxItems).insert(
+                OutboxItemsCompanion.insert(
+                  id: uuid.v7(),
+                  entityType: OutboxEntityType.customerPointLedger,
+                  payload: jsonEncode({
+                    'kind': 'customer_point_ledger',
+                    'id': pointLedgerId,
+                    'transactionId': txId,
+                    'customerId': customer!.id,
+                  }),
+                  createdAt: now,
+                ),
+              );
+        }
       });
     } catch (_) {
       return const Err(CheckoutError.databaseError);
@@ -187,9 +236,14 @@ class CheckoutUseCase {
         paymentReceived: paymentReceived,
         paymentChange: change,
         timestamp: now,
+        loyaltyPointsEarned: earnedPoints,
+        loyaltyPointsBalance: loyaltyPointsBalance,
       ),
     );
   }
+
+  int _loyaltyPointsFor(double total) =>
+      total < _kRupiahPerLoyaltyPoint ? 0 : total ~/ _kRupiahPerLoyaltyPoint;
 
   // ── Companion builders ──────────────────────────────────────────────────────
 

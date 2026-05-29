@@ -365,6 +365,18 @@ class SyncRepository {
               .insertOnConflictUpdate(inventoryMovementFromJson(json));
           upserted++;
         }
+
+        // ── customer_point_ledger (transaction-linked loyalty audit) ──
+        final pointRows = await sb
+            .from('customer_point_ledger')
+            .select()
+            .inFilter('transaction_id', txIds);
+        for (final json in (pointRows as List).cast<Map<String, dynamic>>()) {
+          await _db
+              .into(_db.customerPointLedgers)
+              .insertOnConflictUpdate(customerPointLedgerFromJson(json));
+          upserted++;
+        }
       }
 
       _log.i(
@@ -470,6 +482,8 @@ class SyncRepository {
             await _pushBankAccount(id!);
           case OutboxEntityType.category:
             await _pushCategory(id!);
+          case OutboxEntityType.customerPointLedger:
+            await _pushCustomerPointLedger(id!);
           case OutboxEntityType.transactionItem:
             // Children of a transaction; rides on parent push.
             break;
@@ -511,6 +525,8 @@ class SyncRepository {
       case OutboxEntityType.customer:
       case OutboxEntityType.bankAccount:
         return 20;
+      case OutboxEntityType.customerPointLedger:
+        return 45;
       case OutboxEntityType.category:
       case OutboxEntityType.product:
       case OutboxEntityType.branchProduct:
@@ -579,6 +595,16 @@ class SyncRepository {
             ignoreDuplicates: true,
           );
     }
+
+    final pointRows = await (_db.select(_db.customerPointLedgers)
+          ..where((l) => l.transactionId.equals(txId)))
+        .get();
+    if (pointRows.isNotEmpty) {
+      await sb.from('customer_point_ledger').upsert(
+            pointRows.map((l) => l.toSupabaseJson()).toList(),
+            ignoreDuplicates: true,
+          );
+    }
   }
 
   Future<void> _pushCustomer(String customerId) async {
@@ -590,6 +616,21 @@ class SyncRepository {
     }
     // Customers use LWW — let upsert update existing rows.
     await sb.from('customers').upsert(c.toSupabaseJson());
+  }
+
+  Future<void> _pushCustomerPointLedger(String id) async {
+    final sb = _sb!;
+    final row = await (_db.select(_db.customerPointLedgers)
+          ..where((l) => l.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) {
+      throw StateError('CustomerPointLedger $id not found in local DB');
+    }
+    await _pushCustomer(row.customerId);
+    await sb.from('customer_point_ledger').upsert(
+          row.toSupabaseJson(),
+          ignoreDuplicates: true,
+        );
   }
 
   Future<void> _pushBranch(String branchId) async {

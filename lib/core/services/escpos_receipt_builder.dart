@@ -119,6 +119,22 @@ class EscPosReceiptBuilder {
         ),
       ]);
     }
+    if (p.loyaltyPointsEarned != null && p.loyaltyPointsEarned! > 0) {
+      final balance = p.loyaltyPointsBalance == null
+          ? '+${p.loyaltyPointsEarned} poin'
+          : '+${p.loyaltyPointsEarned} / ${p.loyaltyPointsBalance} poin';
+      bytes += g.row([
+        PosColumn(text: 'Poin:', width: 3, styles: _normalStyle),
+        PosColumn(
+          text: balance,
+          width: 9,
+          styles: const PosStyles(
+            align: PosAlign.right,
+            fontType: PosFontType.fontA,
+          ),
+        ),
+      ]);
+    }
     bytes += _resetText(g);
     bytes += g.hr();
 

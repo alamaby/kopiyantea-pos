@@ -21,6 +21,9 @@ enum VoidError {
   databaseError,
 }
 
+const String _kPointReasonEarn = 'earn';
+const String _kPointReasonVoidReversal = 'void_reversal';
+
 /// ENH-008 — Void/Refund flow (append-only per ADR-0007).
 ///
 /// Voiding does NOT update the original transaction. Instead it inserts a
@@ -61,6 +64,22 @@ class VoidTransactionUseCase {
     // Mirror original line items as negatives. UI/reports stay consistent —
     // sum of (completed + voided) for a refunded transaction nets to zero.
     final originalItems = await txDao.getItemsForTransaction(originalId);
+    final pointLedgerDao = _ref.read(customerPointLedgerDaoProvider);
+    final earnedPointLedger = original.customerId == null
+        ? null
+        : await pointLedgerDao.getForTransactionReason(
+            transactionId: originalId,
+            reason: _kPointReasonEarn,
+          );
+    final existingPointReversal = original.customerId == null
+        ? null
+        : await pointLedgerDao.getForTransactionReason(
+            transactionId: originalId,
+            reason: _kPointReasonVoidReversal,
+          );
+    final pointsToReverse =
+        existingPointReversal == null ? earnedPointLedger?.pointsDelta ?? 0 : 0;
+    final pointReversalId = pointsToReverse > 0 ? uuid.v7() : null;
 
     // Reverse inventory movements: positive deltas (opposite sign of the
     // original sale movements). We re-query original movements by
@@ -99,9 +118,8 @@ class VoidTransactionUseCase {
                 ),
                 status: TransactionStatus.voided,
                 voidedByTransactionId: Value(originalId),
-                voidReason: Value(reason == null || reason.isEmpty
-                    ? null
-                    : reason),
+                voidReason:
+                    Value(reason == null || reason.isEmpty ? null : reason),
                 clientCreatedAt: now,
               ),
             );
@@ -151,6 +169,32 @@ class VoidTransactionUseCase {
           );
         }
 
+        if (original.customerId != null &&
+            pointsToReverse > 0 &&
+            pointReversalId != null) {
+          await _db.into(_db.customerPointLedgers).insert(
+                CustomerPointLedgersCompanion.insert(
+                  id: pointReversalId,
+                  customerId: original.customerId!,
+                  transactionId: Value(originalId),
+                  pointsDelta: -pointsToReverse,
+                  reason: _kPointReasonVoidReversal,
+                  createdAt: now,
+                ),
+              );
+          await _db.customUpdate(
+            'UPDATE customers '
+            'SET loyalty_points = MAX(0, loyalty_points - ?), updated_at = ? '
+            'WHERE id = ?',
+            variables: [
+              Variable<int>(pointsToReverse),
+              Variable<DateTime>(now),
+              Variable<String>(original.customerId!),
+            ],
+            updates: {_db.customers},
+          );
+        }
+
         // Outbox push — rides the standard transaction path.
         await _db.into(_db.outboxItems).insert(
               OutboxItemsCompanion.insert(
@@ -165,6 +209,22 @@ class VoidTransactionUseCase {
                 createdAt: now,
               ),
             );
+        if (pointReversalId != null) {
+          await _db.into(_db.outboxItems).insert(
+                OutboxItemsCompanion.insert(
+                  id: uuid.v7(),
+                  entityType: OutboxEntityType.customerPointLedger,
+                  payload: jsonEncode({
+                    'kind': 'customer_point_ledger',
+                    'id': pointReversalId,
+                    'transactionId': originalId,
+                    'customerId': original.customerId,
+                    'reason': _kPointReasonVoidReversal,
+                  }),
+                  createdAt: now,
+                ),
+              );
+        }
       });
       return Ok(voidId);
     } catch (_) {
@@ -185,7 +245,5 @@ Stream<TransactionRow?> voidForTransaction(
   VoidForTransactionRef ref,
   String originalId,
 ) {
-  return ref
-      .watch(transactionDaoProvider)
-      .watchVoidForTransaction(originalId);
+  return ref.watch(transactionDaoProvider).watchVoidForTransaction(originalId);
 }

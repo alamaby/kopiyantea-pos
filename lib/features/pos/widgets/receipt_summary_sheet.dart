@@ -126,6 +126,13 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
                       value: formatRupiah(result.paymentChange!),
                       tone: AppColors.success,
                     ),
+                  if (result.loyaltyPointsEarned > 0)
+                    _Row(
+                      label: 'Poin',
+                      value: '+${result.loyaltyPointsEarned}'
+                          '${result.loyaltyPointsBalance == null ? '' : ' / ${result.loyaltyPointsBalance}'}',
+                      tone: AppColors.success,
+                    ),
                 ],
               ),
             ),

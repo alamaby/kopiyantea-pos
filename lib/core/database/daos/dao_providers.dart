@@ -6,6 +6,7 @@ import 'branch_dao.dart';
 import 'catalog_dao.dart';
 import 'category_dao.dart';
 import 'customer_dao.dart';
+import 'customer_point_ledger_dao.dart';
 import 'held_order_dao.dart';
 import 'inventory_dao.dart';
 import 'option_dao.dart';
@@ -39,6 +40,10 @@ final transactionDaoProvider = Provider<TransactionDao>(
 
 final customerDaoProvider = Provider<CustomerDao>(
   (ref) => CustomerDao(ref.watch(databaseProvider)),
+);
+
+final customerPointLedgerDaoProvider = Provider<CustomerPointLedgerDao>(
+  (ref) => CustomerPointLedgerDao(ref.watch(databaseProvider)),
 );
 
 final outboxDaoProvider = Provider<OutboxDao>(

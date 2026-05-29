@@ -342,6 +342,7 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.productRecipe => 'Resep',
         OutboxEntityType.bankAccount => 'Rekening Bank',
         OutboxEntityType.category => 'Kategori',
+        OutboxEntityType.customerPointLedger => 'Poin Pelanggan',
       };
 
   static IconData _iconFor(OutboxEntityType t) => switch (t) {
@@ -363,6 +364,7 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.productRecipe => Icons.menu_book_outlined,
         OutboxEntityType.bankAccount => Icons.account_balance_outlined,
         OutboxEntityType.category => Icons.category_outlined,
+        OutboxEntityType.customerPointLedger => Icons.stars_outlined,
       };
 
   static String _payloadPreview(OutboxItemRow row) {

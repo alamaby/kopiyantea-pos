@@ -84,7 +84,10 @@ class _DetailBody extends ConsumerWidget {
                 ? const SizedBox.shrink()
                 : Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                    child: _CustomerCard(customer: c),
+                    child: _CustomerCard(
+                      customer: c,
+                      transactionPoints: _transactionPointDelta(data),
+                    ),
                   ),
             orElse: () => const SizedBox.shrink(),
           ),
@@ -99,6 +102,9 @@ class _DetailBody extends ConsumerWidget {
     );
   }
 }
+
+int _transactionPointDelta(TransactionDetailData data) =>
+    data.pointLedger.fold<int>(0, (sum, row) => sum + row.pointsDelta);
 
 // ── Actions (ENH-007 Reprint + ENH-008 Void) ─────────────────────────────────
 
@@ -267,9 +273,13 @@ class _ActionsCard extends ConsumerWidget {
 }
 
 class _CustomerCard extends StatelessWidget {
-  const _CustomerCard({required this.customer});
+  const _CustomerCard({
+    required this.customer,
+    required this.transactionPoints,
+  });
 
   final CustomerRow customer;
+  final int transactionPoints;
 
   @override
   Widget build(BuildContext context) {
@@ -305,6 +315,13 @@ class _CustomerCard extends StatelessWidget {
                 if (customer.phone != null)
                   Text(
                     customer.phone!,
+                    style: AppTypography.bodySm.copyWith(
+                      color: context.colors.textSecondary,
+                    ),
+                  ),
+                if (transactionPoints != 0)
+                  Text(
+                    'Poin transaksi: ${transactionPoints > 0 ? '+' : ''}$transactionPoints',
                     style: AppTypography.bodySm.copyWith(
                       color: context.colors.textSecondary,
                     ),

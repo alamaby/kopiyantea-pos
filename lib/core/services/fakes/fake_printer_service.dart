@@ -60,6 +60,13 @@ class FakePrinterService implements PrinterService {
       )}',
     );
     _log.i(formatDateTime(payload.timestamp));
+    if (payload.loyaltyPointsEarned != null &&
+        payload.loyaltyPointsEarned! > 0) {
+      _log.i(
+        'Poin: +${payload.loyaltyPointsEarned}'
+        '${payload.loyaltyPointsBalance == null ? '' : ' / ${payload.loyaltyPointsBalance}'}',
+      );
+    }
     for (final item in payload.items) {
       _log.i(
           '  ${item.name} × ${item.quantity}  ${formatRupiah(item.subtotal)}');

@@ -48,6 +48,8 @@ class ReceiptPayload {
     this.paymentReceived,
     this.paymentChange,
     this.customerName,
+    this.loyaltyPointsEarned,
+    this.loyaltyPointsBalance,
     this.cashierName,
     this.headerText,
     this.footerText,
@@ -75,6 +77,8 @@ class ReceiptPayload {
   final double? paymentReceived;
   final double? paymentChange;
   final String? customerName;
+  final int? loyaltyPointsEarned;
+  final int? loyaltyPointsBalance;
 
   /// FEAT-014b — staff who processed this tx. Null when the receipt
   /// setting `showCashierName` is off, or when the lookup failed.

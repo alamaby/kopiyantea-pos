@@ -80,6 +80,17 @@ extension CustomerSyncDto on CustomerRow {
       };
 }
 
+extension CustomerPointLedgerSyncDto on CustomerPointLedgerRow {
+  Map<String, dynamic> toSupabaseJson() => {
+        'id': id,
+        'customer_id': customerId,
+        'transaction_id': transactionId,
+        'points_delta': pointsDelta,
+        'reason': reason,
+        'created_at': _toSupabaseTimestamp(createdAt),
+      };
+}
+
 // ── FEAT-004 / 005 / 006 / 001 — additional push DTOs ─────────────────────────
 
 extension BranchSyncDto on BranchRow {
@@ -475,6 +486,18 @@ CustomersCompanion customerFromJson(Map<String, dynamic> json) =>
       loyaltyPoints: Value(json['loyalty_points'] as int? ?? 0),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
+    );
+
+CustomerPointLedgersCompanion customerPointLedgerFromJson(
+  Map<String, dynamic> json,
+) =>
+    CustomerPointLedgersCompanion.insert(
+      id: json['id'] as String,
+      customerId: json['customer_id'] as String,
+      transactionId: Value(json['transaction_id'] as String?),
+      pointsDelta: (json['points_delta'] as num).toInt(),
+      reason: json['reason'] as String,
+      createdAt: _fromSupabaseTimestamp(json['created_at']),
     );
 
 TransactionsCompanion transactionFromJson(Map<String, dynamic> json) =>

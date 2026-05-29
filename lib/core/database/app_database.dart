@@ -12,6 +12,7 @@ import 'tables/branch_tables.dart';
 import 'tables/catalog_tables.dart';
 import 'tables/category_table.dart';
 import 'tables/customer_tables.dart';
+import 'tables/customer_point_ledger_table.dart';
 import 'tables/held_order_table.dart';
 import 'tables/inventory_tables.dart';
 import 'tables/option_tables.dart';
@@ -39,6 +40,7 @@ part 'app_database.g.dart';
     Customers,
     Transactions,
     TransactionItems,
+    CustomerPointLedgers,
     ReceiptSettings,
     OutboxItems,
     // FEAT-001 — modifier system (added at schemaVersion 2)
@@ -63,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -138,6 +140,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 14) {
             // Human-readable transaction number for receipts and owner lookup.
             await m.addColumn(transactions, transactions.transactionNumber);
+          }
+          if (from < 15) {
+            // Append-only loyalty point audit ledger.
+            await m.createTable(customerPointLedgers);
           }
         },
         beforeOpen: (_) async {

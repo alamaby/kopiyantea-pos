@@ -45,4 +45,6 @@ enum OutboxEntityType {
   bankAccount,
   // Tier 1 — product category registry sync.
   category,
+  // Loyalty point audit ledger.
+  customerPointLedger,
 }

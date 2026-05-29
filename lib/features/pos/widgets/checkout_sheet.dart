@@ -475,10 +475,7 @@ class _QuickAmountRow extends StatelessWidget {
 
   List<double> _suggest() {
     final exact = total.ceilToDouble();
-    final rounded50k = (total / 50000).ceil() * 50000.0;
-    final rounded100k = (total / 100000).ceil() * 100000.0;
-    final next100k = rounded100k + 100000;
-    final suggestions = <double>{exact, rounded50k, rounded100k, next100k}
+    final suggestions = <double>{exact, 20000, 50000, 100000}
         .where((v) => v >= total)
         .toList()
       ..sort();

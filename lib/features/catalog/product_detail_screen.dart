@@ -1,13 +1,17 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/daos/inventory_dao.dart';
+import '../../core/domain/enums.dart';
 import '../../core/pricing/pricing.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
@@ -87,8 +91,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       _isLoading = false;
       if (bp != null) {
         _customNameCtrl.text = bp.customName ?? '';
-        _priceOverrideCtrl.text =
-            bp.priceOverride == null ? '' : bp.priceOverride!.toStringAsFixed(0);
+        _priceOverrideCtrl.text = bp.priceOverride == null
+            ? ''
+            : bp.priceOverride!.toStringAsFixed(0);
         _discountCtrl.text = bp.discountPercentage.toStringAsFixed(0);
         _discountValidUntil = bp.discountValidUntil;
         _isAvailable = bp.isAvailable;
@@ -141,6 +146,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             priceOverride: Value(priceOverride),
             discountPercentage: Value(discount),
             discountValidUntil: Value(_discountValidUntil),
+          ),
+        );
+    await ref.read(outboxDaoProvider).enqueue(
+          OutboxItemsCompanion.insert(
+            id: const Uuid().v7(),
+            entityType: OutboxEntityType.branchProduct,
+            payload: jsonEncode({
+              'product_id': widget.productId,
+              'branch_id': _branch!.id,
+            }),
+            createdAt: DateTime.now(),
           ),
         );
     if (!mounted) return;
@@ -199,10 +215,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          _MasterCard(product: product, onEdit: () async {
-            await context.push('/products/${product.id}/master');
-            if (mounted) _load();
-          }),
+          _MasterCard(
+              product: product,
+              onEdit: () async {
+                await context.push('/products/${product.id}/master');
+                if (mounted) _load();
+              }),
           const SizedBox(height: AppSpacing.lg),
           _PreviewCard(
             effective: effective,
@@ -276,8 +294,7 @@ class _RecipeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final recipesAsync =
-        ref.watch(productRecipesProvider(productId, branchId));
+    final recipesAsync = ref.watch(productRecipesProvider(productId, branchId));
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -355,9 +372,8 @@ class _RecipeCard extends ConsumerWidget {
                           context: context,
                           productId: productId,
                           branchId: branchId,
-                          existingIngredientIds: recipes
-                              .map((x) => x.item.id)
-                              .toSet(),
+                          existingIngredientIds:
+                              recipes.map((x) => x.item.id).toSet(),
                           existing: r,
                         ),
                       ),
@@ -426,8 +442,7 @@ class _RecipeRow extends StatelessWidget {
               ),
               Text(
                 formatStock(recipe.recipe.quantityRequired, recipe.item.unit),
-                style: AppTypography.titleMd
-                    .copyWith(color: AppColors.primary),
+                style: AppTypography.titleMd.copyWith(color: AppColors.primary),
               ),
               const SizedBox(width: AppSpacing.sm),
               Icon(
@@ -567,7 +582,8 @@ class _PreviewCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.point_of_sale_outlined, color: AppColors.primaryDark),
+          const Icon(Icons.point_of_sale_outlined,
+              color: AppColors.primaryDark),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(

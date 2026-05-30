@@ -190,8 +190,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
               if (result.errors.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
                 Text('${result.errors.length} kesalahan (dilewati):',
-                    style:
-                        const TextStyle(fontWeight: FontWeight.w600)),
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: AppSpacing.xs),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 200),
@@ -237,13 +236,10 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     }..removeWhere((s) => s.isEmpty);
     if (csvCategories.isNotEmpty) {
       final existing = await categoryDao.getAll();
-      final existingLower =
-          existing.map((c) => c.name.toLowerCase()).toSet();
+      final existingLower = existing.map((c) => c.name.toLowerCase()).toSet();
       var nextOrder = existing.isEmpty
           ? 0
-          : (existing
-                  .map((c) => c.sortOrder)
-                  .reduce((a, b) => a > b ? a : b) +
+          : (existing.map((c) => c.sortOrder).reduce((a, b) => a > b ? a : b) +
               1);
       for (final name in csvCategories) {
         if (existingLower.contains(name.toLowerCase())) continue;
@@ -278,7 +274,8 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     if (!context.mounted) return;
     messenger.showSnackBar(
       SnackBar(
-        content: Text('${result.ok.length} produk diimpor & diantrekan untuk sinkron'),
+        content: Text(
+            '${result.ok.length} produk diimpor & diantrekan untuk sinkron'),
       ),
     );
   }
@@ -335,7 +332,8 @@ class _List extends ConsumerWidget {
   ) {
     if (query.isEmpty) return list;
     return list.where((bp) {
-      final name = (bp.branchProduct.customName ?? bp.product.name).toLowerCase();
+      final name =
+          (bp.branchProduct.customName ?? bp.product.name).toLowerCase();
       final category = (bp.product.category ?? '').toLowerCase();
       return name.contains(query) || category.contains(query);
     }).toList();
@@ -365,8 +363,7 @@ class _Tile extends ConsumerWidget {
     final hasReducedPrice = effective < original;
 
     final discountActive = bp.discountPercentage > 0 &&
-        (bp.discountValidUntil == null ||
-            bp.discountValidUntil!.isAfter(now));
+        (bp.discountValidUntil == null || bp.discountValidUntil!.isAfter(now));
 
     final inactive = !product.isActive;
 
@@ -496,6 +493,17 @@ class _Tile extends ConsumerWidget {
                                 productId: product.id,
                                 branchId: branchId,
                                 isAvailable: v,
+                              );
+                          await ref.read(outboxDaoProvider).enqueue(
+                                OutboxItemsCompanion.insert(
+                                  id: const Uuid().v7(),
+                                  entityType: OutboxEntityType.branchProduct,
+                                  payload: jsonEncode({
+                                    'product_id': product.id,
+                                    'branch_id': branchId,
+                                  }),
+                                  createdAt: DateTime.now(),
+                                ),
                               );
                         },
                 ),

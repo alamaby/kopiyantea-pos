@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:drift/drift.dart' show Variable;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -13,7 +14,9 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/database_provider.dart';
+import '../../core/domain/enums.dart';
 import '../../core/pricing/pricing.dart';
+import '../../core/services/printer_service.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/labels.dart';
 import '../../core/utils/transaction_numbers.dart';
@@ -26,18 +29,23 @@ class ShareReceiptUseCase {
   ShareReceiptUseCase(this._ref);
 
   final Ref _ref;
+  static final Map<String, Uint8List> _imageCache = {};
 
   Future<bool> sharePaymentReceiptImage(
     String transactionId, {
     Rect? sharePositionOrigin,
   }) async {
-    final lines = await _buildPaymentReceiptLines(transactionId);
-    if (lines == null || lines.isEmpty) return false;
+    final payload = await _buildPaymentReceiptPayload(transactionId);
+    if (payload == null || payload.items.isEmpty) return false;
+    final transactionNumber = displayTransactionNumber(
+      id: payload.transactionId,
+      transactionNumber: payload.transactionNumber,
+    );
 
-    await _shareLinesAsImage(
-      lines: lines,
-      subject: 'Struk #${lines.transactionNumber}',
-      filePrefix: 'struk-${lines.transactionNumber}',
+    await _shareReceiptAsImage(
+      payload: payload,
+      subject: 'Struk #$transactionNumber',
+      filePrefix: 'struk-$transactionNumber',
       sharePositionOrigin: sharePositionOrigin,
     );
     return true;
@@ -48,19 +56,25 @@ class ShareReceiptUseCase {
     required TotalsResult totals,
     Rect? sharePositionOrigin,
   }) async {
-    final lines = await _buildBillReceiptLines(cart: cart, totals: totals);
-    if (lines == null || lines.isEmpty) return false;
+    final payload = await _buildBillReceiptPayload(cart: cart, totals: totals);
+    if (payload == null || payload.items.isEmpty) return false;
+    final transactionNumber = displayTransactionNumber(
+      id: payload.transactionId,
+      transactionNumber: payload.transactionNumber,
+    );
 
-    await _shareLinesAsImage(
-      lines: lines,
-      subject: 'Tagihan #${lines.transactionNumber}',
-      filePrefix: 'tagihan-${lines.transactionNumber}',
+    await _shareReceiptAsImage(
+      payload: payload,
+      subject: 'Tagihan #$transactionNumber',
+      filePrefix: 'tagihan-$transactionNumber',
       sharePositionOrigin: sharePositionOrigin,
     );
     return true;
   }
 
-  Future<_ReceiptLines?> _buildPaymentReceiptLines(String transactionId) async {
+  Future<ReceiptPayload?> _buildPaymentReceiptPayload(
+    String transactionId,
+  ) async {
     final txDao = _ref.read(transactionDaoProvider);
     final branchDao = _ref.read(branchDaoProvider);
     final customerDao = _ref.read(customerDaoProvider);
@@ -77,6 +91,14 @@ class ShareReceiptUseCase {
         ? null
         : await customerDao.getById(tx.customerId!);
     final setting = await _loadReceiptSetting(tx.branchId);
+    final logoBytes = await _maybeFetchLogo(setting);
+    final printQris = setting?.printQrisOnReceipt ?? false;
+    final qrisBytes = (printQris &&
+            tx.paymentMethod == PaymentMethod.qris &&
+            branch.qrisImageUrl != null &&
+            branch.qrisImageUrl!.isNotEmpty)
+        ? await _fetchCached(branch.qrisImageUrl!)
+        : null;
     final showLoyaltyPoints = setting?.showLoyaltyPoints ?? true;
     final earnedPoints = showLoyaltyPoints
         ? (await _ref
@@ -107,50 +129,52 @@ class ShareReceiptUseCase {
         : null;
     final transactionNumber = displayTransactionRowNumber(tx);
 
-    return _ReceiptLines(
+    return ReceiptPayload(
+      transactionId: tx.id,
       transactionNumber: transactionNumber,
-      lines: [
-        if (setting?.showBranchName ?? true) branch.name,
-        if (branch.address?.isNotEmpty ?? false) branch.address!,
-        if (branch.phone?.isNotEmpty ?? false) branch.phone!,
-        if (setting?.headerText?.isNotEmpty ?? false) setting!.headerText!,
-        _ReceiptImageRenderer.separator,
-        'No: #$transactionNumber',
-        'Tanggal: ${formatDateTime(tx.clientCreatedAt)}',
-        if (customerLabel != null) 'Pelanggan: $customerLabel',
-        if (cashierName?.isNotEmpty ?? false) 'Kasir: $cashierName',
-        if (showLoyaltyPoints && earnedPoints > 0)
-          'Poin: +$earnedPoints'
-              '${customer == null ? '' : ' | Total Poin: ${customer.loyaltyPoints}'}',
-        _ReceiptImageRenderer.separator,
-        for (final item in items)
-          ..._transactionItemLines(
-            item,
-            modifierFilter.transactionOptionLabels(optionsByItem[item.id]),
-          ),
-        _ReceiptImageRenderer.separator,
-        'Subtotal: ${formatRupiah(tx.subtotal)}',
-        if (tx.discountAmount > 0)
-          'Diskon: -${formatRupiah(tx.discountAmount)}',
-        if (tx.taxAmount > 0)
-          'Pajak (${tx.taxLabelSnapshot}): ${formatRupiah(tx.taxAmount)}',
-        'TOTAL: ${formatRupiah(tx.total)}',
-        _ReceiptImageRenderer.separator,
-        'Bayar: ${paymentMethodLabel(tx.paymentMethod)}',
-        if (tx.bankAccountSnapshot?.isNotEmpty ?? false)
-          'Rekening: ${tx.bankAccountSnapshot}',
-        if (tx.paymentReceived != null)
-          'Diterima: ${formatRupiah(tx.paymentReceived!)}',
-        if (tx.paymentChange != null && tx.paymentChange! > 0)
-          'Kembalian: ${formatRupiah(tx.paymentChange!)}',
-        '',
-        if (setting?.footerText?.isNotEmpty ?? false) setting!.footerText!,
-        'Terima Kasih',
-      ],
+      timestamp: tx.clientCreatedAt,
+      branchName: branch.name,
+      branchAddress: branch.address,
+      branchPhone: branch.phone,
+      showBranchName: setting?.showBranchName ?? true,
+      items: items
+          .map(
+            (it) => ReceiptItem(
+              name: it.nameSnapshot,
+              quantity: it.quantity,
+              priceSnapshot: it.priceSnapshot,
+              subtotal: it.subtotal,
+              notes: it.notes,
+              options: modifierFilter.transactionOptionLabels(
+                optionsByItem[it.id],
+              ),
+            ),
+          )
+          .toList(growable: false),
+      subtotal: tx.subtotal,
+      discountAmount: tx.discountAmount,
+      taxLabel: tx.taxLabelSnapshot,
+      taxAmount: tx.taxAmount,
+      total: tx.total,
+      paymentMethodLabel: paymentMethodLabel(tx.paymentMethod),
+      paymentReceived: tx.paymentReceived,
+      paymentChange: tx.paymentChange,
+      customerName: customerLabel,
+      loyaltyPointsEarned:
+          showLoyaltyPoints && earnedPoints > 0 ? earnedPoints : null,
+      loyaltyPointsBalance: showLoyaltyPoints ? customer?.loyaltyPoints : null,
+      cashierName: cashierName,
+      headerText: setting?.headerText,
+      footerText: setting?.footerText,
+      paperWidthMm: setting?.paperWidthMm ?? 58,
+      logoBytes: logoBytes,
+      logoPosition: setting?.logoPosition ?? 'top',
+      bankAccountSnapshot: tx.bankAccountSnapshot,
+      qrisImageBytes: qrisBytes,
     );
   }
 
-  Future<_ReceiptLines?> _buildBillReceiptLines({
+  Future<ReceiptPayload?> _buildBillReceiptPayload({
     required CartState cart,
     required TotalsResult totals,
   }) async {
@@ -158,6 +182,7 @@ class ShareReceiptUseCase {
     if (branch == null || cart.items.isEmpty) return null;
 
     final setting = await _loadReceiptSetting(branch.id);
+    final logoBytes = await _maybeFetchLogo(setting);
     final modifierFilter = await ReceiptModifierFilter.load(
       _ref.read(databaseProvider),
     );
@@ -173,46 +198,49 @@ class ShareReceiptUseCase {
           )
         : null;
 
-    return _ReceiptLines(
+    return ReceiptPayload(
+      transactionId: transactionNumber,
       transactionNumber: transactionNumber,
-      lines: [
-        if (setting?.showBranchName ?? true) branch.name,
-        if (branch.address?.isNotEmpty ?? false) branch.address!,
-        if (branch.phone?.isNotEmpty ?? false) branch.phone!,
-        if (setting?.headerText?.isNotEmpty ?? false) setting!.headerText!,
-        _ReceiptImageRenderer.separator,
-        'TAGIHAN',
-        'No: #$transactionNumber',
-        'Tanggal: ${formatDateTime(now)}',
-        if (customerLabel != null) 'Pelanggan: $customerLabel',
-        if (cashierName?.isNotEmpty ?? false) 'Kasir: $cashierName',
-        _ReceiptImageRenderer.separator,
-        for (final item in cart.items)
-          ..._cartItemLines(
-            item,
-            modifierFilter.cartOptionLabels(item.selectedOptions),
-          ),
-        _ReceiptImageRenderer.separator,
-        'Subtotal: ${formatRupiah(totals.subtotal)}',
-        if (cart.manualDiscountAmount > 0)
-          'Diskon: -${formatRupiah(cart.manualDiscountAmount)}',
-        if (totals.taxAmount > 0)
-          'Pajak (${branch.taxLabel}): ${formatRupiah(totals.taxAmount)}',
-        'TOTAL: ${formatRupiah(totals.total)}',
-        _ReceiptImageRenderer.separator,
-        PrintReceiptUseCase.billingFooterText,
-        'Terima Kasih',
-      ],
+      timestamp: now,
+      branchName: branch.name,
+      branchAddress: branch.address,
+      branchPhone: branch.phone,
+      showBranchName: setting?.showBranchName ?? true,
+      items: cart.items
+          .map(
+            (it) => ReceiptItem(
+              name: it.branchProduct.customName ?? it.product.name,
+              quantity: it.quantity.toDouble(),
+              priceSnapshot: it.effectiveUnitPrice,
+              subtotal: it.lineSubtotal,
+              notes: it.notes,
+              options: modifierFilter.cartOptionLabels(it.selectedOptions),
+            ),
+          )
+          .toList(growable: false),
+      subtotal: totals.subtotal,
+      discountAmount: cart.manualDiscountAmount,
+      taxLabel: branch.taxLabel,
+      taxAmount: totals.taxAmount,
+      total: totals.total,
+      paymentMethodLabel: 'Tagihan',
+      customerName: customerLabel,
+      cashierName: cashierName,
+      headerText: setting?.headerText,
+      footerText: PrintReceiptUseCase.billingFooterText,
+      paperWidthMm: setting?.paperWidthMm ?? 58,
+      logoBytes: logoBytes,
+      logoPosition: setting?.logoPosition ?? 'top',
     );
   }
 
-  Future<void> _shareLinesAsImage({
-    required _ReceiptLines lines,
+  Future<void> _shareReceiptAsImage({
+    required ReceiptPayload payload,
     required String subject,
     required String filePrefix,
     Rect? sharePositionOrigin,
   }) async {
-    final bytes = await const _ReceiptImageRenderer().renderPng(lines.lines);
+    final bytes = await const _ReceiptImageRenderer().renderPng(payload);
     final dir = await getTemporaryDirectory();
     final safePrefix = filePrefix.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '-');
     final fileName = '$safePrefix-${DateTime.now().millisecondsSinceEpoch}.png';
@@ -226,33 +254,6 @@ class ShareReceiptUseCase {
       sharePositionOrigin: sharePositionOrigin,
     );
   }
-
-  List<String> _transactionItemLines(
-    TransactionItemRow item,
-    List<String> options,
-  ) {
-    final qty = _formatQty(item.quantity);
-    return [
-      '${item.nameSnapshot} x $qty',
-      '  ${formatRupiah(item.priceSnapshot)} = ${formatRupiah(item.subtotal)}',
-      for (final option in options) '  - $option',
-      if (item.notes?.isNotEmpty ?? false) '  * ${item.notes}',
-    ];
-  }
-
-  List<String> _cartItemLines(CartItem item, List<String> options) {
-    final qty = _formatQty(item.quantity.toDouble());
-    return [
-      '${item.branchProduct.customName ?? item.product.name} x $qty',
-      '  ${formatRupiah(item.effectiveUnitPrice)} = ${formatRupiah(item.lineSubtotal)}',
-      for (final option in options) '  - $option',
-      if (item.notes?.isNotEmpty ?? false) '  * ${item.notes}',
-    ];
-  }
-
-  String _formatQty(double quantity) => quantity == quantity.roundToDouble()
-      ? quantity.toStringAsFixed(0)
-      : quantity.toString();
 
   Future<String> _previewTransactionNumber(
       String branchId, DateTime now) async {
@@ -285,6 +286,26 @@ class ShareReceiptUseCase {
         .getSingleOrNull();
   }
 
+  Future<Uint8List?> _maybeFetchLogo(ReceiptSettingRow? setting) async {
+    if (setting == null || !setting.showLogo) return null;
+    final url = setting.logoUrl;
+    if (url == null || url.isEmpty) return null;
+    return _fetchCached(url);
+  }
+
+  Future<Uint8List?> _fetchCached(String url) async {
+    if (_imageCache.containsKey(url)) return _imageCache[url];
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) return null;
+      final bytes = response.bodyBytes;
+      _imageCache[url] = bytes;
+      return bytes;
+    } catch (_) {
+      return null;
+    }
+  }
+
   String? _customerReceiptLabel({
     required String? name,
     required String? phone,
@@ -309,128 +330,390 @@ class ShareReceiptUseCase {
   }
 }
 
-class _ReceiptLines {
-  const _ReceiptLines({
-    required this.transactionNumber,
-    required this.lines,
-  });
-
-  final String transactionNumber;
-  final List<String> lines;
-
-  bool get isEmpty => lines.isEmpty;
-}
-
 class _ReceiptImageRenderer {
   const _ReceiptImageRenderer();
 
-  static const separator = '--------------------------------';
-  static const double _width = 720;
-  static const double _padding = 44;
-  static const double _lineGap = 6;
   static const Color _background = Color(0xFFE5E7EB);
   static const Color _paper = Colors.white;
   static const Color _text = Color(0xFF111827);
   static const Color _muted = Color(0xFF6B7280);
 
-  Future<Uint8List> renderPng(List<String> sourceLines) async {
-    final lines = sourceLines.expand(_wrapLine).toList(growable: false);
-    final height = _heightFor(lines).ceil();
+  Future<Uint8List> renderPng(ReceiptPayload payload) async {
+    final logo = payload.logoBytes == null
+        ? null
+        : await _decodeImage(payload.logoBytes!);
+    final qris = payload.qrisImageBytes == null
+        ? null
+        : await _decodeImage(payload.qrisImageBytes!);
+    final layout = _ReceiptImageLayout(payload, logo, qris);
+    final height = layout.measure().ceil();
+    final width = layout.width.toInt();
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    _paint(canvas, lines, height.toDouble());
-    final image = await recorder.endRecording().toImage(_width.toInt(), height);
+    layout.paint(canvas, height.toDouble());
+    final image = await recorder.endRecording().toImage(width, height);
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
     if (data == null) throw StateError('Gagal membuat gambar struk');
     return data.buffer.asUint8List();
   }
 
-  double _heightFor(List<String> lines) {
-    var y = _padding;
-    for (final line in lines) {
-      y += _lineHeight(line) + _lineGap;
+  static Future<ui.Image?> _decodeImage(Uint8List bytes) async {
+    try {
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      return frame.image;
+    } catch (_) {
+      return null;
     }
-    return y + _padding;
+  }
+}
+
+class _ReceiptImageLayout {
+  _ReceiptImageLayout(this.payload, this.logo, this.qris);
+
+  final ReceiptPayload payload;
+  final ui.Image? logo;
+  final ui.Image? qris;
+
+  late Canvas _canvas;
+  var _hasCanvas = false;
+  var _y = 0.0;
+
+  double get width => payload.paperWidthMm == 80 ? 900 : 720;
+  double get _paperInset => 24;
+  double get _padding => payload.paperWidthMm == 80 ? 56 : 44;
+  double get _contentWidth => width - (_padding * 2);
+  double get _lineGap => 6;
+  double get _sectionGap => 14;
+  int get _footerChars => payload.paperWidthMm == 80 ? 46 : 30;
+
+  double measure() {
+    _hasCanvas = false;
+    _y = _padding;
+    _layout();
+    return _y + _padding;
   }
 
-  void _paint(Canvas canvas, List<String> lines, double height) {
+  void paint(Canvas canvas, double height) {
+    _canvas = canvas;
+    _hasCanvas = true;
+    _y = _padding;
     canvas.drawRect(
-      Rect.fromLTWH(0, 0, _width, height),
-      Paint()..color = _background,
+      Rect.fromLTWH(0, 0, width, height),
+      Paint()..color = _ReceiptImageRenderer._background,
     );
     final paperRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(24, 24, _width - 48, height - 48),
+      Rect.fromLTWH(
+        _paperInset,
+        _paperInset,
+        width - (_paperInset * 2),
+        height - (_paperInset * 2),
+      ),
       const Radius.circular(18),
     );
-    canvas.drawRRect(paperRect, Paint()..color = _paper);
+    canvas.drawRRect(paperRect, Paint()..color = _ReceiptImageRenderer._paper);
+    _layout();
+  }
 
-    var y = _padding;
-    for (final line in lines) {
-      final style = line == separator
-          ? const TextStyle(
-              color: _muted,
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'monospace',
-            )
-          : const TextStyle(
-              color: _text,
-              fontSize: 24,
-              height: 1.18,
-              fontFamily: 'monospace',
-            );
-      final height = _drawText(canvas, line, y, style);
-      y += height + _lineGap;
+  void _layout() {
+    if (payload.logoPosition == 'top') _logo();
+    if (payload.showBranchName && payload.branchName.isNotEmpty) {
+      _center(payload.branchName, _branchStyle);
+    }
+    _centerIfNotEmpty(payload.branchAddress);
+    _centerIfNotEmpty(payload.branchPhone);
+    _centerIfNotEmpty(payload.headerText);
+    _separator();
+
+    final transactionNumber = displayTransactionNumber(
+      id: payload.transactionId,
+      transactionNumber: payload.transactionNumber,
+    );
+    _row('No:', '#$transactionNumber');
+    _row('Tanggal:', formatDateTime(payload.timestamp));
+    _rowIfNotEmpty('Pelanggan:', payload.customerName);
+    _rowIfNotEmpty('Kasir:', payload.cashierName);
+    if (payload.loyaltyPointsEarned != null &&
+        payload.loyaltyPointsEarned! > 0) {
+      final value = payload.loyaltyPointsBalance == null
+          ? '+${payload.loyaltyPointsEarned} poin'
+          : '+${payload.loyaltyPointsEarned} / '
+              '${payload.loyaltyPointsBalance} poin';
+      _row('Poin:', value);
+    }
+    _separator();
+
+    for (final item in payload.items) {
+      _item(item);
+    }
+    _separator();
+
+    _kv('Subtotal', formatRupiah(payload.subtotal));
+    if (payload.discountAmount > 0) {
+      _kv('Diskon', '-${formatRupiah(payload.discountAmount)}');
+    }
+    _kv('Pajak (${payload.taxLabel})', formatRupiah(payload.taxAmount));
+    _separator();
+    _kv(
+      'TOTAL',
+      formatRupiah(payload.total),
+      style: _totalStyle,
+      minHeight: 44,
+    );
+    _separator();
+
+    _kv('Bayar', payload.paymentMethodLabel);
+    if (payload.bankAccountSnapshot != null &&
+        payload.bankAccountSnapshot!.isNotEmpty) {
+      _textLines('  ${payload.bankAccountSnapshot!}', _compactStyle);
+    }
+    if (payload.paymentReceived != null) {
+      _kv('Diterima', formatRupiah(payload.paymentReceived!));
+    }
+    if (payload.paymentChange != null && payload.paymentChange! > 0) {
+      _kv('Kembalian', formatRupiah(payload.paymentChange!));
+    }
+    _qris();
+
+    _spacer(_sectionGap);
+    _center('Terima Kasih', _footerTitleStyle);
+    _centerWrappedIfNotEmpty(payload.footerText, maxChars: _footerChars);
+    if (payload.logoPosition == 'bottom') {
+      _spacer(_sectionGap);
+      _logo();
     }
   }
 
-  Iterable<String> _wrapLine(String line) sync* {
-    const maxChars = 38;
-    final trimmedRight = line.trimRight();
-    if (trimmedRight.isEmpty) {
-      yield '';
-      return;
+  void _item(ReceiptItem item) {
+    final qty = item.quantity == item.quantity.roundToDouble()
+        ? item.quantity.toStringAsFixed(0)
+        : item.quantity.toString();
+    _textLines('${item.name} x $qty', _bodyStyle);
+    _kv(
+      '  ${formatRupiah(item.priceSnapshot)}',
+      formatRupiah(item.subtotal),
+    );
+    for (final option in item.options) {
+      _textLines('  - $option', _compactStyle);
     }
-    if (trimmedRight == separator) {
-      yield separator;
-      return;
+    if (item.notes != null && item.notes!.isNotEmpty) {
+      _textLines('  * ${item.notes}', _compactStyle);
     }
-
-    var remaining = trimmedRight;
-    final indent = RegExp(r'^\s*').stringMatch(trimmedRight) ?? '';
-    while (remaining.length > maxChars) {
-      var cut = remaining.lastIndexOf(' ', maxChars);
-      if (cut <= indent.length) cut = maxChars;
-      yield remaining.substring(0, cut).trimRight();
-      remaining = '$indent${remaining.substring(cut).trimLeft()}';
-    }
-    yield remaining;
   }
 
-  double _lineHeight(String line) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: line,
-        style: const TextStyle(
-          fontSize: 24,
-          height: 1.18,
-          fontFamily: 'monospace',
-        ),
-      ),
+  void _logo() {
+    if (logo == null) return;
+    _image(logo!, maxWidthRatio: 0.74, maxHeight: 160);
+  }
+
+  void _qris() {
+    if (qris == null) return;
+    _spacer(_sectionGap);
+    _center('SCAN QRIS UNTUK BAYAR', _footerTitleStyle);
+    _center('Masukkan nominal sesuai TOTAL di atas', _centerStyle);
+    _image(qris!, maxWidthRatio: 0.58, maxHeight: 260);
+  }
+
+  void _image(
+    ui.Image image, {
+    required double maxWidthRatio,
+    required double maxHeight,
+  }) {
+    final effectiveMaxWidth = _contentWidth * maxWidthRatio;
+    final effectiveMaxHeight =
+        payload.paperWidthMm == 80 ? maxHeight * 1.18 : maxHeight;
+    final scale = math
+        .min(
+          effectiveMaxWidth / image.width,
+          effectiveMaxHeight / image.height,
+        )
+        .toDouble();
+    final drawScale = math.min(scale, 1.0);
+    final drawWidth = image.width * drawScale;
+    final drawHeight = image.height * drawScale;
+    if (_hasCanvas) {
+      final dst = Rect.fromLTWH(
+        (width - drawWidth) / 2,
+        _y,
+        drawWidth,
+        drawHeight,
+      );
+      _canvas.drawImageRect(
+        image,
+        Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+        dst,
+        Paint()..filterQuality = FilterQuality.high,
+      );
+    }
+    _y += drawHeight + _sectionGap;
+  }
+
+  void _separator() {
+    _spacer(4);
+    final y = _y + 12;
+    if (_hasCanvas) {
+      final paint = Paint()
+        ..color = _ReceiptImageRenderer._muted.withOpacity(0.55)
+        ..strokeWidth = 2;
+      _canvas.drawLine(
+        Offset(_padding, y),
+        Offset(width - _padding, y),
+        paint,
+      );
+    }
+    _y += 28;
+  }
+
+  void _rowIfNotEmpty(String label, String? value) {
+    if (value == null || value.isEmpty) return;
+    _row(label, value);
+  }
+
+  void _row(String label, String value) => _kv(label, value);
+
+  void _kv(
+    String label,
+    String value, {
+    TextStyle? style,
+    double minHeight = 0,
+  }) {
+    final textStyle = style ?? _bodyStyle;
+    final labelPainter = _painter(label, textStyle);
+    final valuePainter = _painter(value, textStyle, textAlign: TextAlign.right);
+    final labelWidth = _contentWidth * 0.44;
+    final valueWidth = _contentWidth - labelWidth - 16;
+    labelPainter.layout(maxWidth: labelWidth);
+    valuePainter.layout(maxWidth: valueWidth);
+    final height = math.max(
+      minHeight,
+      math.max(labelPainter.height, valuePainter.height),
+    );
+
+    if (_hasCanvas) {
+      labelPainter.paint(_canvas, Offset(_padding, _y));
+      valuePainter.paint(
+        _canvas,
+        Offset(width - _padding - valuePainter.width, _y),
+      );
+    }
+    _y += height + _lineGap;
+  }
+
+  void _centerIfNotEmpty(String? text) {
+    if (text == null || text.isEmpty) return;
+    _centerWrappedIfNotEmpty(text);
+  }
+
+  void _centerWrappedIfNotEmpty(String? text, {int? maxChars}) {
+    if (text == null || text.isEmpty) return;
+    for (final line in _wrapText(text, maxChars: maxChars ?? _footerChars)) {
+      _center(line, _centerStyle);
+    }
+  }
+
+  void _center(String text, TextStyle style) {
+    final painter = _painter(text, style, textAlign: TextAlign.center);
+    painter.layout(maxWidth: _contentWidth);
+    if (_hasCanvas) {
+      painter.paint(_canvas, Offset((width - painter.width) / 2, _y));
+    }
+    _y += painter.height + _lineGap;
+  }
+
+  void _textLines(String text, TextStyle style) {
+    final maxChars = payload.paperWidthMm == 80 ? 46 : 32;
+    for (final line in _wrapText(text, maxChars: maxChars)) {
+      final painter = _painter(line, style);
+      painter.layout(maxWidth: _contentWidth);
+      if (_hasCanvas) {
+        painter.paint(_canvas, Offset(_padding, _y));
+      }
+      _y += painter.height + _lineGap;
+    }
+  }
+
+  void _spacer(double height) {
+    _y += height;
+  }
+
+  TextPainter _painter(
+    String text,
+    TextStyle style, {
+    TextAlign textAlign = TextAlign.left,
+  }) {
+    return TextPainter(
+      text: TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,
-    )..layout(maxWidth: _width - (_padding * 2));
-    return math.max(painter.height, 26);
+      textAlign: textAlign,
+    );
   }
 
-  double _drawText(Canvas canvas, String line, double y, TextStyle style) {
-    final painter = TextPainter(
-      text: TextSpan(text: line, style: style),
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: _width - (_padding * 2));
-    painter.paint(canvas, Offset(_padding, y));
-    return math.max(painter.height, 26);
+  static List<String> _wrapText(String text, {required int maxChars}) {
+    final result = <String>[];
+    for (final rawLine in text.split(RegExp(r'\r?\n'))) {
+      final indent = RegExp(r'^\s*').stringMatch(rawLine) ?? '';
+      final words = rawLine.trim().split(RegExp(r'\s+'));
+      var line = '';
+      for (final word in words.where((w) => w.isNotEmpty)) {
+        if (line.isEmpty) {
+          line = '$indent$word';
+        } else if ('$line $word'.length <= maxChars) {
+          line = '$line $word';
+        } else {
+          result.add(line);
+          line = '$indent$word';
+        }
+        while (line.length > maxChars) {
+          result.add(line.substring(0, maxChars));
+          line = '$indent${line.substring(maxChars).trimLeft()}';
+        }
+      }
+      if (line.isNotEmpty) result.add(line);
+    }
+    return result;
   }
+
+  static const _fontFamily = 'monospace';
+  static const _bodyStyle = TextStyle(
+    color: _ReceiptImageRenderer._text,
+    fontSize: 24,
+    height: 1.18,
+    fontFamily: _fontFamily,
+  );
+  static const _compactStyle = TextStyle(
+    color: _ReceiptImageRenderer._text,
+    fontSize: 22,
+    height: 1.16,
+    fontFamily: _fontFamily,
+  );
+  static const _centerStyle = TextStyle(
+    color: _ReceiptImageRenderer._text,
+    fontSize: 24,
+    height: 1.18,
+    fontFamily: _fontFamily,
+  );
+  static const _branchStyle = TextStyle(
+    color: _ReceiptImageRenderer._text,
+    fontSize: 34,
+    fontWeight: FontWeight.w800,
+    height: 1.12,
+    fontFamily: _fontFamily,
+  );
+  static const _totalStyle = TextStyle(
+    color: _ReceiptImageRenderer._text,
+    fontSize: 30,
+    fontWeight: FontWeight.w800,
+    height: 1.14,
+    fontFamily: _fontFamily,
+  );
+  static const _footerTitleStyle = TextStyle(
+    color: _ReceiptImageRenderer._text,
+    fontSize: 26,
+    fontWeight: FontWeight.w700,
+    height: 1.16,
+    fontFamily: _fontFamily,
+  );
 }
 
 final shareReceiptUseCaseProvider = Provider<ShareReceiptUseCase>(

@@ -14,6 +14,7 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/undo_snackbar.dart';
 import '../../customers/customer_picker_sheet.dart';
+import '../../modifiers/modifier_providers.dart';
 import '../cart_provider.dart';
 import '../cart_state.dart';
 import '../held_order_service.dart';
@@ -424,7 +425,7 @@ class _CustomerSection extends StatelessWidget {
 
 // ── Item tile ─────────────────────────────────────────────────────────────────
 
-class _CartItemTile extends StatelessWidget {
+class _CartItemTile extends ConsumerWidget {
   const _CartItemTile({
     required this.index,
     required this.item,
@@ -436,9 +437,13 @@ class _CartItemTile extends StatelessWidget {
   final CartNotifier notifier;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final subtotal = item.lineSubtotal;
     final hasNotes = item.notes != null && item.notes!.isNotEmpty;
+    final optionGroups =
+        ref.watch(productOptionGroupsProvider(item.product.id)).valueOrNull;
+    final hasModifierGroups =
+        item.selectedOptions.isNotEmpty || (optionGroups?.isNotEmpty ?? false);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -466,8 +471,7 @@ class _CartItemTile extends StatelessWidget {
                       style: AppTypography.bodySm
                           .copyWith(color: context.colors.textSecondary),
                     ),
-                    // FEAT-001 — modifier summary line. Tap to edit.
-                    if (item.selectedOptions.isNotEmpty)
+                    if (hasModifierGroups)
                       InkWell(
                         onTap: () => _editOptions(context),
                         child: Padding(
@@ -480,9 +484,11 @@ class _CartItemTile extends StatelessWidget {
                               const SizedBox(width: AppSpacing.xs),
                               Flexible(
                                 child: Text(
-                                  item.selectedOptions
-                                      .map((o) => o.optionName)
-                                      .join(' · '),
+                                  item.selectedOptions.isEmpty
+                                      ? 'Modifier'
+                                      : item.selectedOptions
+                                          .map((o) => o.optionName)
+                                          .join(' · '),
                                   style: AppTypography.labelSm.copyWith(
                                     color: AppColors.accent,
                                   ),

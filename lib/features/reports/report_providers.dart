@@ -43,6 +43,40 @@ extension DatePresetX on DatePreset {
   }
 }
 
+class ReportRangeSelection {
+  const ReportRangeSelection._({
+    required this.range,
+    this.preset,
+  });
+
+  factory ReportRangeSelection.preset(DatePreset preset, DateTime now) =>
+      ReportRangeSelection._(
+        preset: preset,
+        range: preset.range(now),
+      );
+
+  factory ReportRangeSelection.custom({
+    required DateTime start,
+    required DateTime end,
+  }) {
+    final startDay = DateTime(start.year, start.month, start.day);
+    final endDay = DateTime(end.year, end.month, end.day);
+    final firstDay = startDay.isAfter(endDay) ? endDay : startDay;
+    final lastDay = startDay.isAfter(endDay) ? startDay : endDay;
+    return ReportRangeSelection._(
+      range: DateTimeRange(
+        start: firstDay,
+        end: lastDay
+            .add(const Duration(days: 1))
+            .subtract(const Duration(milliseconds: 1)),
+      ),
+    );
+  }
+
+  final DatePreset? preset;
+  final DateTimeRange range;
+}
+
 // ── Report model ──────────────────────────────────────────────────────────────
 
 class DailyReport {
@@ -56,11 +90,12 @@ class DailyReport {
     required this.topItems,
   });
 
-  final DatePreset preset;
+  final DatePreset? preset;
   final DateTimeRange range;
   final int transactionCount;
   final double totalRevenue;
   final Map<PaymentMethod, PaymentStats> byPayment;
+
   /// FEAT-015 — breakdown of `PaymentMethod.transfer` revenue per
   /// destination bank account. Keyed by snapshot string (e.g.
   /// "BCA 1234567890 - John") for stability across owner edits.
@@ -94,7 +129,7 @@ class TopItem {
 // ── Pure aggregator ───────────────────────────────────────────────────────────
 
 DailyReport buildReport({
-  required DatePreset preset,
+  required DatePreset? preset,
   required DateTimeRange range,
   required List<TransactionRow> transactions,
   required List<TransactionItemRow> items,
@@ -172,9 +207,14 @@ class _ItemAcc {
 @riverpod
 class ReportRange extends _$ReportRange {
   @override
-  DatePreset build() => DatePreset.today;
+  ReportRangeSelection build() =>
+      ReportRangeSelection.preset(DatePreset.today, DateTime.now());
 
-  void set(DatePreset preset) => state = preset;
+  void setPreset(DatePreset preset) =>
+      state = ReportRangeSelection.preset(preset, DateTime.now());
+
+  void setCustom({required DateTime start, required DateTime end}) =>
+      state = ReportRangeSelection.custom(start: start, end: end);
 }
 
 /// Daily summary for the active branch + selected preset.
@@ -183,8 +223,8 @@ class ReportRange extends _$ReportRange {
 Future<DailyReport?> dailyReport(DailyReportRef ref) async {
   final branch = await ref.watch(selectedBranchProvider.future);
   if (branch == null) return null;
-  final preset = ref.watch(reportRangeProvider);
-  final range = preset.range(DateTime.now());
+  final selection = ref.watch(reportRangeProvider);
+  final range = selection.range;
 
   final dao = ref.watch(transactionDaoProvider);
   final txns = await dao.getCompletedInRange(
@@ -196,7 +236,7 @@ Future<DailyReport?> dailyReport(DailyReportRef ref) async {
       await dao.getItemsForTransactionIds(txns.map((t) => t.id).toList());
 
   return buildReport(
-    preset: preset,
+    preset: selection.preset,
     range: range,
     transactions: txns,
     items: items,

@@ -18,7 +18,7 @@ class ReportsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final preset = ref.watch(reportRangeProvider);
+    final selection = ref.watch(reportRangeProvider);
     final reportAsync = ref.watch(dailyReportProvider);
     final branchAsync = ref.watch(selectedBranchProvider);
 
@@ -43,11 +43,7 @@ class ReportsScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          _RangeChips(
-            selected: preset,
-            onSelect: (p) =>
-                ref.read(reportRangeProvider.notifier).set(p),
-          ),
+          _RangeControls(selection: selection),
           const Divider(height: 1),
           Expanded(
             child: reportAsync.when(
@@ -69,8 +65,7 @@ class ReportsScreen extends ConsumerWidget {
                   return const AppEmptyState(
                     title: 'Belum ada transaksi',
                     icon: Icons.bar_chart_outlined,
-                    message:
-                        'Tidak ada transaksi selesai di periode ini.',
+                    message: 'Tidak ada transaksi selesai di periode ini.',
                   );
                 }
                 return RefreshIndicator(
@@ -102,36 +97,89 @@ class ReportsScreen extends ConsumerWidget {
   }
 }
 
-// ── Range chips ───────────────────────────────────────────────────────────────
+// ── Range controls ────────────────────────────────────────────────────────────
 
-class _RangeChips extends StatelessWidget {
-  const _RangeChips({required this.selected, required this.onSelect});
+class _RangeControls extends ConsumerWidget {
+  const _RangeControls({required this.selection});
 
-  final DatePreset selected;
-  final ValueChanged<DatePreset> onSelect;
+  final ReportRangeSelection selection;
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.md,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final p in DatePreset.values) ...[
-            ChoiceChip(
-              label: Text(p.label),
-              selected: selected == p,
-              onSelected: (_) => onSelect(p),
-              selectedColor: AppColors.primarySurface,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final p in DatePreset.values) ...[
+                  ChoiceChip(
+                    label: Text(p.label),
+                    selected: selection.preset == p,
+                    onSelected: (_) =>
+                        ref.read(reportRangeProvider.notifier).setPreset(p),
+                    selectedColor: AppColors.primarySurface,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                ],
+              ],
             ),
-            const SizedBox(width: AppSpacing.sm),
-          ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                  label: Text(
+                    'Mulai: ${formatDate(selection.range.start)}',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onPressed: () => _pickCustomDate(context, ref, isStart: true),
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.event_outlined, size: 18),
+                  label: Text(
+                    'Selesai: ${formatDate(selection.range.end)}',
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onPressed: () =>
+                      _pickCustomDate(context, ref, isStart: false),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _pickCustomDate(
+    BuildContext context,
+    WidgetRef ref, {
+    required bool isStart,
+  }) async {
+    final current = selection.range;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isStart ? current.start : current.end,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (picked == null) return;
+    ref.read(reportRangeProvider.notifier).setCustom(
+          start: isStart ? picked : current.start,
+          end: isStart ? current.end : picked,
+        );
   }
 }
 
@@ -150,6 +198,13 @@ class _RevenueCard extends StatelessWidget {
         children: [
           _SectionLabel('Pendapatan'),
           const SizedBox(height: AppSpacing.xs),
+          Text(
+            _rangeLabel(report.range),
+            style: AppTypography.bodySm.copyWith(
+              color: context.colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             formatRupiah(report.totalRevenue),
             style: AppTypography.displayMd.copyWith(color: AppColors.primary),
@@ -176,6 +231,16 @@ class _RevenueCard extends StatelessWidget {
       ),
     );
   }
+
+  String _rangeLabel(DateTimeRange range) {
+    if (_sameDay(range.start, range.end)) {
+      return formatDayDate(range.start);
+    }
+    return '${formatDayDate(range.start)} - ${formatDayDate(range.end)}';
+  }
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 class _Stat extends StatelessWidget {
@@ -308,8 +373,7 @@ class _BankAccountRow extends StatelessWidget {
                   .copyWith(color: context.colors.textSecondary),
             ),
             const SizedBox(width: AppSpacing.md),
-            Text(formatRupiah(stats.revenue),
-                style: AppTypography.titleMd),
+            Text(formatRupiah(stats.revenue), style: AppTypography.titleMd),
           ],
         ),
         const SizedBox(height: AppSpacing.xs),
@@ -319,8 +383,7 @@ class _BankAccountRow extends StatelessWidget {
             value: fraction,
             minHeight: 6,
             backgroundColor: context.colors.surfaceAlt,
-            valueColor:
-                const AlwaysStoppedAnimation<Color>(AppColors.accent),
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
           ),
         ),
       ],
@@ -374,8 +437,7 @@ class _PaymentRow extends StatelessWidget {
             value: fraction,
             minHeight: 6,
             backgroundColor: context.colors.surfaceAlt,
-            valueColor:
-                const AlwaysStoppedAnimation<Color>(AppColors.primary),
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
           ),
         ),
       ],
@@ -449,8 +511,7 @@ class _TopItemRow extends StatelessWidget {
           ),
           child: Text(
             '$rank',
-            style:
-                AppTypography.labelSm.copyWith(color: AppColors.primaryDark),
+            style: AppTypography.labelSm.copyWith(color: AppColors.primaryDark),
           ),
         ),
         const SizedBox(width: AppSpacing.md),

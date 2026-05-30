@@ -65,7 +65,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -155,6 +155,10 @@ class AppDatabase extends _$AppDatabase {
             // Local-only share menu image layout settings.
             await _createMenuImageSettingsTable();
           }
+          if (from >= 17 && from < 18) {
+            // Configurable pixel width for sharper share menu images.
+            await _addMenuImageSettingsImageWidthColumn();
+          }
         },
         beforeOpen: (_) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -236,9 +240,18 @@ CREATE TABLE IF NOT EXISTS menu_image_settings (
   show_branch_address INTEGER NOT NULL DEFAULT 1,
   show_branch_phone INTEGER NOT NULL DEFAULT 1,
   columns INTEGER NOT NULL DEFAULT 3 CHECK (columns IN (2, 3)),
+  image_width_px INTEGER NOT NULL DEFAULT 3240 CHECK (image_width_px BETWEEN 1080 AND 4096),
   background_color_hex TEXT NOT NULL DEFAULT '#F8FAFC',
   updated_at DATETIME NOT NULL
 )
 ''');
+  }
+
+  Future<void> _addMenuImageSettingsImageWidthColumn() async {
+    await customStatement(
+      'ALTER TABLE menu_image_settings '
+      'ADD COLUMN image_width_px INTEGER NOT NULL DEFAULT 3240 '
+      'CHECK (image_width_px BETWEEN 1080 AND 4096)',
+    );
   }
 }

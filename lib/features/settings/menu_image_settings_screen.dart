@@ -60,6 +60,7 @@ class _BranchMenuImageCard extends ConsumerStatefulWidget {
 
 class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
   final _hexCtrl = TextEditingController();
+  final _widthCtrl = TextEditingController();
   var _showBranchName = true;
   var _showBranchAddress = true;
   var _showBranchPhone = true;
@@ -67,6 +68,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
   var _loaded = false;
   var _saving = false;
   String? _hexError;
+  String? _widthError;
 
   @override
   void initState() {
@@ -77,6 +79,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
   @override
   void dispose() {
     _hexCtrl.dispose();
+    _widthCtrl.dispose();
     super.dispose();
   }
 
@@ -90,22 +93,34 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
       _showBranchAddress = settings.showBranchAddress;
       _showBranchPhone = settings.showBranchPhone;
       _columns = settings.columns;
+      _widthCtrl.text = settings.imageWidthPx.toString();
       _hexCtrl.text = settings.backgroundColorHex;
       _hexError = null;
+      _widthError = null;
       _loaded = true;
     });
   }
 
   Future<void> _save() async {
     final normalized = normalizeMenuImageHex(_hexCtrl.text);
+    final parsedImageWidth = int.tryParse(_widthCtrl.text.trim());
     if (!isValidMenuImageHex(normalized)) {
       setState(() => _hexError = 'Gunakan format #RRGGBB');
       return;
     }
+    if (parsedImageWidth == null ||
+        parsedImageWidth < 1080 ||
+        parsedImageWidth > 4096) {
+      setState(() => _widthError = 'Gunakan angka 1080-4096');
+      return;
+    }
+    final imageWidth = normalizeMenuImageWidthPx(parsedImageWidth);
     setState(() {
       _saving = true;
       _hexError = null;
+      _widthError = null;
       _hexCtrl.text = normalized;
+      _widthCtrl.text = imageWidth.toString();
     });
     await ref.read(menuImageSettingsRepositoryProvider).save(
           widget.branch.id,
@@ -114,6 +129,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
             showBranchAddress: _showBranchAddress,
             showBranchPhone: _showBranchPhone,
             columns: _columns,
+            imageWidthPx: imageWidth,
             backgroundColorHex: normalized,
           ),
         );
@@ -193,6 +209,23 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
             selected: {_columns},
             onSelectionChanged: (value) =>
                 setState(() => _columns = value.first),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          Text('Lebar image menu (px)', style: AppTypography.labelSm),
+          const SizedBox(height: AppSpacing.sm),
+          TextField(
+            controller: _widthCtrl,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(4),
+            ],
+            decoration: InputDecoration(
+              hintText: '3240',
+              helperText: 'Rekomendasi 3240 atau 4096 untuk hasil lebih tajam.',
+              errorText: _widthError,
+            ),
+            onChanged: (_) => setState(() => _widthError = null),
           ),
           const SizedBox(height: AppSpacing.lg),
           Text('Background warna menu', style: AppTypography.labelSm),

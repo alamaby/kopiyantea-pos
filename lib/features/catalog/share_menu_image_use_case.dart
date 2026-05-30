@@ -66,7 +66,7 @@ class ShareMenuImageUseCase {
     final bytes = await const _ShareMenuImageRenderer().renderPng(payload);
     final dir = await getTemporaryDirectory();
     final fileName =
-        'menu-${branch.name.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '-')}-${DateTime.now().millisecondsSinceEpoch}.png';
+        'menu-${branch.name.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '-')}-${menuImageSettings.imageWidthPx}px-${DateTime.now().millisecondsSinceEpoch}.png';
     final file = File(p.join(dir.path, fileName));
     await file.writeAsBytes(bytes, flush: true);
 
@@ -180,11 +180,19 @@ class _ShareMenuImageRenderer {
       logo: logo,
       images: images,
     );
-    final height = layout.measure().ceil();
+    final logicalHeight = layout.measure();
+    final outputWidth =
+        normalizeMenuImageWidthPx(payload.settings.imageWidthPx);
+    final scale = outputWidth / _width;
+    final outputHeight = (logicalHeight * scale).ceil();
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    layout.paint(canvas, height.toDouble());
-    final image = await recorder.endRecording().toImage(_width.toInt(), height);
+    canvas.scale(scale);
+    layout.paint(canvas, logicalHeight);
+    final image = await recorder.endRecording().toImage(
+          outputWidth,
+          outputHeight,
+        );
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
     if (data == null) throw StateError('Gagal membuat gambar menu');
     return data.buffer.asUint8List();
@@ -255,7 +263,13 @@ class _ShareMenuImageLayout {
             (payload.branchWhatsapp?.isNotEmpty ?? false));
     if (logo == null && !hasText) return;
 
-    final headerHeight = logo == null ? 420.0 : 500.0;
+    final logoWidth = _contentWidth * 0.44;
+    final logoHeight = logo == null ? 0.0 : math.min(300.0, logoWidth * 0.36);
+    final headerHeight = logo == null
+        ? 420.0
+        : hasText
+            ? 820.0
+            : logoHeight + 96.0;
     final rect = RRect.fromRectAndRadius(
       Rect.fromLTWH(
         _ShareMenuImageRenderer._padding,
@@ -280,14 +294,14 @@ class _ShareMenuImageLayout {
         canvas,
         logo!,
         Rect.fromLTWH(
-          (_ShareMenuImageRenderer._width - 380) / 2,
+          (_ShareMenuImageRenderer._width - logoWidth) / 2,
           cursor,
-          380,
-          172,
+          logoWidth,
+          logoHeight,
         ),
         contain: true,
       );
-      cursor += 208;
+      cursor += logoHeight + 42;
     }
     if (payload.settings.showBranchName) {
       cursor += _text(

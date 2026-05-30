@@ -32,16 +32,19 @@ class MenuGrid extends ConsumerStatefulWidget {
 
 class _MenuGridState extends ConsumerState<MenuGrid> {
   static const _viewModePreferenceKey = 'posMenuViewMode';
+  static const _categoryPreferenceKey = 'posMenuCategoryFilter';
+  static const _recommendedFilter = '__recommended__';
 
   final _searchCtrl = TextEditingController();
   String _query = '';
-  String? _selectedCategory;
+  String _selectedFilter = '';
   _MenuViewMode _viewMode = _MenuViewMode.grid;
 
   @override
   void initState() {
     super.initState();
     _loadViewMode();
+    _loadCategoryFilter();
   }
 
   @override
@@ -64,9 +67,29 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
     await prefs.setString(_viewModePreferenceKey, mode.storageValue);
   }
 
+  Future<void> _loadCategoryFilter() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_categoryPreferenceKey);
+    if (saved == null || !mounted) return;
+    setState(() => _selectedFilter = saved);
+  }
+
+  Future<void> _setCategoryFilter(
+    String filter, {
+    bool persist = true,
+  }) async {
+    setState(() => _selectedFilter = filter);
+    if (!persist) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_categoryPreferenceKey, filter);
+  }
+
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(menuProductsProvider(widget.branchId));
+    final recommendedSales =
+        ref.watch(recommendedMenuSalesProvider(widget.branchId)).valueOrNull ??
+            const <String, double>{};
     final activeCategories = ref.watch(activeCategoriesProvider).valueOrNull;
     final categoryByName = ref.watch(categoryByNameProvider).valueOrNull;
 
@@ -87,20 +110,26 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
         }
 
         final categories = _categoriesFor(products, activeCategories);
-        if (_selectedCategory != null &&
-            !categories.contains(_selectedCategory)) {
+        if (_selectedFilter.isNotEmpty &&
+            _selectedFilter != _recommendedFilter &&
+            !categories.contains(_selectedFilter)) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _selectedCategory = null);
+            if (mounted) _setCategoryFilter('', persist: false);
           });
         }
 
         final filtered = products
             .where(
               (item) =>
-                  _matchesCategory(item, _selectedCategory) &&
+                  _matchesCategory(item, _selectedFilter) &&
                   _matchesQuery(item, _query),
             )
             .toList(growable: false);
+        if (_selectedFilter == _recommendedFilter) {
+          filtered.sort(
+            (a, b) => _compareRecommended(a, b, recommendedSales),
+          );
+        }
 
         return Column(
           children: [
@@ -108,7 +137,8 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
               controller: _searchCtrl,
               query: _query,
               viewMode: _viewMode,
-              selectedCategory: _selectedCategory,
+              selectedFilter: _selectedFilter,
+              recommendedFilter: _recommendedFilter,
               categories: categories,
               categoryByName: categoryByName,
               onQueryChanged: (value) {
@@ -119,7 +149,7 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
                 setState(() => _query = '');
               },
               onCategoryChanged: (category) {
-                setState(() => _selectedCategory = category);
+                _setCategoryFilter(category);
               },
               onViewModeChanged: (mode) {
                 _setViewMode(mode);
@@ -129,7 +159,7 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
               child: filtered.isEmpty
                   ? _FilteredEmptyState(
                       query: _query,
-                      selectedCategory: _selectedCategory,
+                      selectedFilter: _selectedFilter,
                     )
                   : switch (_viewMode) {
                       _MenuViewMode.grid => GridView.builder(
@@ -180,11 +210,26 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
 
   bool _matchesCategory(
     BranchProductWithProductRow item,
-    String? selectedCategory,
+    String selectedCategory,
   ) {
-    if (selectedCategory == null) return true;
+    if (selectedCategory.isEmpty || selectedCategory == _recommendedFilter) {
+      return true;
+    }
     return item.product.category?.toLowerCase() ==
         selectedCategory.toLowerCase();
+  }
+
+  int _compareRecommended(
+    BranchProductWithProductRow a,
+    BranchProductWithProductRow b,
+    Map<String, double> salesByProduct,
+  ) {
+    final soldCompare = (salesByProduct[b.product.id] ?? 0)
+        .compareTo(salesByProduct[a.product.id] ?? 0);
+    if (soldCompare != 0) return soldCompare;
+    final aName = (a.branchProduct.customName ?? a.product.name).toLowerCase();
+    final bName = (b.branchProduct.customName ?? b.product.name).toLowerCase();
+    return aName.compareTo(bName);
   }
 
   bool _matchesQuery(BranchProductWithProductRow item, String query) {
@@ -220,7 +265,8 @@ class _MenuFilters extends StatelessWidget {
     required this.controller,
     required this.query,
     required this.viewMode,
-    required this.selectedCategory,
+    required this.selectedFilter,
+    required this.recommendedFilter,
     required this.categories,
     required this.categoryByName,
     required this.onQueryChanged,
@@ -232,12 +278,13 @@ class _MenuFilters extends StatelessWidget {
   final TextEditingController controller;
   final String query;
   final _MenuViewMode viewMode;
-  final String? selectedCategory;
+  final String selectedFilter;
+  final String recommendedFilter;
   final List<String> categories;
   final Map<String, CategoryRow>? categoryByName;
   final ValueChanged<String> onQueryChanged;
   final VoidCallback onClearQuery;
-  final ValueChanged<String?> onCategoryChanged;
+  final ValueChanged<String> onCategoryChanged;
   final ValueChanged<_MenuViewMode> onViewModeChanged;
 
   @override
@@ -313,23 +360,33 @@ class _MenuFilters extends StatelessWidget {
                 height: 40,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: categories.length + 1,
+                  itemCount: categories.length + 2,
                   separatorBuilder: (_, __) =>
                       const SizedBox(width: AppSpacing.sm),
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return _CategoryChip(
                         label: 'Semua',
-                        selected: selectedCategory == null,
+                        selected: selectedFilter.isEmpty,
                         color: null,
-                        onSelected: () => onCategoryChanged(null),
+                        icon: Icons.apps_outlined,
+                        onSelected: () => onCategoryChanged(''),
                       );
                     }
-                    final category = categories[index - 1];
+                    if (index == 1) {
+                      return _CategoryChip(
+                        label: 'Rekomendasi',
+                        selected: selectedFilter == recommendedFilter,
+                        color: null,
+                        icon: Icons.trending_up_outlined,
+                        onSelected: () => onCategoryChanged(recommendedFilter),
+                      );
+                    }
+                    final category = categories[index - 2];
                     final row = categoryByName?[category.toLowerCase()];
                     return _CategoryChip(
                       label: category,
-                      selected: selectedCategory == category,
+                      selected: selectedFilter == category,
                       color: categoryColorFromStorage(row?.color),
                       onSelected: () => onCategoryChanged(category),
                     );
@@ -350,28 +407,32 @@ class _CategoryChip extends StatelessWidget {
     required this.selected,
     required this.color,
     required this.onSelected,
+    this.icon,
   });
 
   final String label;
   final bool selected;
   final Color? color;
   final VoidCallback onSelected;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     return ChoiceChip(
       selected: selected,
       onSelected: (_) => onSelected(),
-      avatar: color == null
-          ? null
-          : Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
-            ),
+      avatar: icon != null
+          ? Icon(icon, size: 16)
+          : color == null
+              ? null
+              : Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
       label: Text(
         label,
         overflow: TextOverflow.ellipsis,
@@ -392,20 +453,20 @@ class _CategoryChip extends StatelessWidget {
 class _FilteredEmptyState extends StatelessWidget {
   const _FilteredEmptyState({
     required this.query,
-    required this.selectedCategory,
+    required this.selectedFilter,
   });
 
   final String query;
-  final String? selectedCategory;
+  final String selectedFilter;
 
   @override
   Widget build(BuildContext context) {
     final hasQuery = query.isNotEmpty;
-    final hasCategory = selectedCategory != null;
+    final hasCategory = selectedFilter.isNotEmpty;
     final message = switch ((hasQuery, hasCategory)) {
-      (true, true) => 'Tidak ada menu $selectedCategory untuk "$query".',
+      (true, true) => 'Tidak ada menu $selectedFilter untuk "$query".',
       (true, false) => 'Tidak ada menu untuk "$query".',
-      (false, true) => 'Tidak ada menu di kategori $selectedCategory.',
+      (false, true) => 'Tidak ada menu di filter $selectedFilter.',
       (false, false) => 'Tidak ada menu yang cocok.',
     };
 

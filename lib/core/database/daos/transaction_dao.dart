@@ -55,6 +55,32 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
                 t.clientCreatedAt.isBetweenValues(start, end)))
           .watch();
 
+  /// Aggregate sold quantity by product for recommendation sorting.
+  Stream<Map<String, double>> watchSoldQuantityByProductInRange({
+    required String branchId,
+    required DateTime start,
+    required DateTime end,
+  }) {
+    final query = select(transactions).join([
+      innerJoin(
+        transactionItems,
+        transactionItems.transactionId.equalsExp(transactions.id),
+      ),
+    ])
+      ..where(transactions.branchId.equals(branchId))
+      ..where(transactions.status.equalsValue(TransactionStatus.completed))
+      ..where(transactions.clientCreatedAt.isBetweenValues(start, end));
+
+    return query.watch().map((rows) {
+      final result = <String, double>{};
+      for (final row in rows) {
+        final item = row.readTable(transactionItems);
+        result[item.productId] = (result[item.productId] ?? 0) + item.quantity;
+      }
+      return result;
+    });
+  }
+
   /// Fetches items for a batch of transaction ids — used by the Reports
   /// aggregator to compute top sellers without a join.
   Future<List<TransactionItemRow>> getItemsForTransactionIds(

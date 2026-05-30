@@ -779,7 +779,7 @@ Future<void> _addMenuItemToCart(
   WidgetRef ref,
   BranchProductWithProductRow item,
 ) async {
-  FocusScope.of(context).unfocus();
+  _dismissMenuSearchKeyboard();
   HapticFeedback.selectionClick();
   final product = item.product;
   final bp = item.branchProduct;
@@ -793,6 +793,7 @@ Future<void> _addMenuItemToCart(
           product: product,
           branchProduct: bp,
         );
+    _dismissMenuSearchKeyboardAfterFrame();
     return;
   }
 
@@ -801,10 +802,26 @@ Future<void> _addMenuItemToCart(
     productId: product.id,
     productName: bp.customName ?? product.name,
   );
-  if (picked == null) return;
+  _dismissMenuSearchKeyboard();
+  if (picked == null) {
+    _dismissMenuSearchKeyboardAfterFrame();
+    return;
+  }
   ref.read(cartNotifierProvider.notifier).addItem(
         product: product,
         branchProduct: bp,
         selectedOptions: picked,
       );
+  _dismissMenuSearchKeyboardAfterFrame();
+}
+
+void _dismissMenuSearchKeyboard() {
+  FocusManager.instance.primaryFocus?.unfocus();
+}
+
+void _dismissMenuSearchKeyboardAfterFrame() {
+  _dismissMenuSearchKeyboard();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _dismissMenuSearchKeyboard();
+  });
 }

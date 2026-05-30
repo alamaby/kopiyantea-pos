@@ -98,24 +98,32 @@ class CartPanel extends ConsumerWidget {
                   icon: Icons.payment_outlined,
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  label: 'Cetak Tagihan',
-                  icon: Icons.receipt_long_outlined,
-                  variant: AppButtonVariant.secondary,
-                  onPressed: totals == null
-                      ? null
-                      : () => _printBill(context, ref, cartState, totals),
-                  fullWidth: true,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                AppButton(
-                  label: 'Tahan Pesanan',
-                  icon: Icons.pause_circle_outline,
-                  variant: AppButtonVariant.secondary,
-                  onPressed: cartState.branch == null
-                      ? null
-                      : () => _holdOrder(context, ref, cartState),
-                  fullWidth: true,
+                Row(
+                  children: [
+                    Expanded(
+                      child: AppButton(
+                        label: 'Cetak Tagihan',
+                        icon: Icons.receipt_long_outlined,
+                        variant: AppButtonVariant.secondary,
+                        onPressed: totals == null
+                            ? null
+                            : () => _printBill(context, ref, cartState, totals),
+                        fullWidth: true,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: AppButton(
+                        label: 'Tahan Pesanan',
+                        icon: Icons.pause_circle_outline,
+                        variant: AppButtonVariant.secondary,
+                        onPressed: cartState.branch == null
+                            ? null
+                            : () => _holdOrder(context, ref, cartState),
+                        fullWidth: true,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -774,10 +782,11 @@ class _CartTotalsView extends StatelessWidget {
               ),
             ),
           ),
-          _TotalRow(
-            label: 'Pajak ($taxLabel)',
-            value: formatRupiah(t.taxAmount),
-          ),
+          if (t.taxAmount > 0)
+            _TotalRow(
+              label: 'Pajak ($taxLabel)',
+              value: formatRupiah(t.taxAmount),
+            ),
           const Divider(height: AppSpacing.lg),
           _TotalRow(
             label: 'Total',

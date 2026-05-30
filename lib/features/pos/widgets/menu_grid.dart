@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/daos/catalog_dao.dart';
@@ -30,15 +31,37 @@ class MenuGrid extends ConsumerStatefulWidget {
 }
 
 class _MenuGridState extends ConsumerState<MenuGrid> {
+  static const _viewModePreferenceKey = 'posMenuViewMode';
+
   final _searchCtrl = TextEditingController();
   String _query = '';
   String? _selectedCategory;
   _MenuViewMode _viewMode = _MenuViewMode.grid;
 
   @override
+  void initState() {
+    super.initState();
+    _loadViewMode();
+  }
+
+  @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadViewMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getString(_viewModePreferenceKey);
+    final mode = _MenuViewMode.fromStorage(saved);
+    if (mode == null || !mounted) return;
+    setState(() => _viewMode = mode);
+  }
+
+  Future<void> _setViewMode(_MenuViewMode mode) async {
+    setState(() => _viewMode = mode);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_viewModePreferenceKey, mode.storageValue);
   }
 
   @override
@@ -99,7 +122,7 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
                 setState(() => _selectedCategory = category);
               },
               onViewModeChanged: (mode) {
-                setState(() => _viewMode = mode);
+                _setViewMode(mode);
               },
             ),
             Expanded(
@@ -176,7 +199,21 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
   }
 }
 
-enum _MenuViewMode { grid, detail }
+enum _MenuViewMode {
+  grid('grid'),
+  detail('detail');
+
+  const _MenuViewMode(this.storageValue);
+
+  final String storageValue;
+
+  static _MenuViewMode? fromStorage(String? value) {
+    for (final mode in values) {
+      if (mode.storageValue == value) return mode;
+    }
+    return null;
+  }
+}
 
 class _MenuFilters extends StatelessWidget {
   const _MenuFilters({

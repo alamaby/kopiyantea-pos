@@ -65,12 +65,13 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+          await _createMenuImageSettingsTable();
         },
         onUpgrade: (m, from, to) async {
           // ADR-0008 — non-destructive migrations only.
@@ -150,6 +151,10 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(
                 receiptSettings, receiptSettings.showLoyaltyPoints);
           }
+          if (from < 17) {
+            // Local-only share menu image layout settings.
+            await _createMenuImageSettingsTable();
+          }
         },
         beforeOpen: (_) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -221,5 +226,19 @@ class AppDatabase extends _$AppDatabase {
       'UPDATE categories SET color = CAST(color AS INTEGER) & 16777215 '
       'WHERE color IS NOT NULL',
     );
+  }
+
+  Future<void> _createMenuImageSettingsTable() async {
+    await customStatement('''
+CREATE TABLE IF NOT EXISTS menu_image_settings (
+  branch_id TEXT PRIMARY KEY NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+  show_branch_name INTEGER NOT NULL DEFAULT 1,
+  show_branch_address INTEGER NOT NULL DEFAULT 1,
+  show_branch_phone INTEGER NOT NULL DEFAULT 1,
+  columns INTEGER NOT NULL DEFAULT 3 CHECK (columns IN (2, 3)),
+  background_color_hex TEXT NOT NULL DEFAULT '#F8FAFC',
+  updated_at DATETIME NOT NULL
+)
+''');
   }
 }

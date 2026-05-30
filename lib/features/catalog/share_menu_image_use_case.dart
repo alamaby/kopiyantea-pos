@@ -16,6 +16,7 @@ import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/database_provider.dart';
 import '../../core/pricing/pricing.dart';
 import '../../core/utils/formatters.dart';
+import '../settings/menu_image_settings.dart';
 
 class ShareMenuImageUseCase {
   ShareMenuImageUseCase(this._ref);
@@ -34,6 +35,10 @@ class ShareMenuImageUseCase {
     if (rows.isEmpty) return false;
 
     final setting = await _loadReceiptSetting(branch.id);
+    final menuImageSettings =
+        await _ref.read(menuImageSettingsRepositoryProvider).getForBranch(
+              branch.id,
+            );
     final logoBytes = await _fetchImage(setting?.logoUrl);
     final items = await Future.wait(
       rows.map(
@@ -56,6 +61,7 @@ class ShareMenuImageUseCase {
       branchWhatsapp: branch.phone,
       logoBytes: logoBytes,
       items: items,
+      settings: menuImageSettings,
     );
     final bytes = await const _ShareMenuImageRenderer().renderPng(payload);
     final dir = await getTemporaryDirectory();
@@ -102,6 +108,7 @@ class _ShareMenuPayload {
     required this.branchWhatsapp,
     required this.logoBytes,
     required this.items,
+    required this.settings,
   });
 
   final String branchName;
@@ -109,6 +116,7 @@ class _ShareMenuPayload {
   final String? branchWhatsapp;
   final Uint8List? logoBytes;
   final List<_ShareMenuItem> items;
+  final MenuImageSettings settings;
 }
 
 class _ShareMenuItem {
@@ -148,12 +156,10 @@ class _ShareMenuItem {
 class _ShareMenuImageRenderer {
   const _ShareMenuImageRenderer();
 
-  static const double _width = 1080;
-  static const double _padding = 56;
-  static const double _gap = 24;
-  static const double _cardGap = 18;
-  static const int _columns = 3;
-  static const Color _background = Color(0xFFF8FAFC);
+  static const double _width = 2160;
+  static const double _padding = 112;
+  static const double _gap = 48;
+  static const double _cardGap = 36;
   static const Color _surface = Colors.white;
   static const Color _surfaceAlt = Color(0xFFEFF6F4);
   static const Color _primary = Color(0xFF0F766E);
@@ -215,10 +221,10 @@ class _ShareMenuImageLayout {
   double get _cardWidth =>
       (_contentWidth -
           (_ShareMenuImageRenderer._cardGap *
-              (_ShareMenuImageRenderer._columns - 1).toDouble())) /
-      _ShareMenuImageRenderer._columns.toDouble();
+              (payload.settings.columns - 1).toDouble())) /
+      payload.settings.columns.toDouble();
 
-  double get _cardHeight => 348;
+  double get _cardHeight => payload.settings.columns == 2 ? 820 : 696;
 
   double measure() {
     _y = _ShareMenuImageRenderer._padding;
@@ -229,7 +235,8 @@ class _ShareMenuImageLayout {
   void paint(Canvas canvas, double height) {
     canvas.drawRect(
       Rect.fromLTWH(0, 0, _ShareMenuImageRenderer._width, height),
-      Paint()..color = _ShareMenuImageRenderer._background,
+      Paint()
+        ..color = colorFromMenuImageHex(payload.settings.backgroundColorHex),
     );
     _y = _ShareMenuImageRenderer._padding;
     _layout(canvas);
@@ -241,7 +248,14 @@ class _ShareMenuImageLayout {
   }
 
   void _header(Canvas? canvas) {
-    final headerHeight = logo == null ? 210.0 : 250.0;
+    final hasText = payload.settings.showBranchName ||
+        (payload.settings.showBranchAddress &&
+            (payload.branchAddress?.isNotEmpty ?? false)) ||
+        (payload.settings.showBranchPhone &&
+            (payload.branchWhatsapp?.isNotEmpty ?? false));
+    if (logo == null && !hasText) return;
+
+    final headerHeight = logo == null ? 420.0 : 500.0;
     final rect = RRect.fromRectAndRadius(
       Rect.fromLTWH(
         _ShareMenuImageRenderer._padding,
@@ -249,7 +263,7 @@ class _ShareMenuImageLayout {
         _contentWidth,
         headerHeight,
       ),
-      const Radius.circular(28),
+      const Radius.circular(56),
     );
     canvas?.drawRRect(rect, Paint()..color = _ShareMenuImageRenderer._surface);
     canvas?.drawRRect(
@@ -266,59 +280,63 @@ class _ShareMenuImageLayout {
         canvas,
         logo!,
         Rect.fromLTWH(
-          (_ShareMenuImageRenderer._width - 190) / 2,
+          (_ShareMenuImageRenderer._width - 380) / 2,
           cursor,
-          190,
-          86,
+          380,
+          172,
         ),
         contain: true,
       );
-      cursor += 104;
+      cursor += 208;
     }
-    cursor += _text(
-      canvas,
-      payload.branchName,
-      x: _ShareMenuImageRenderer._padding + 32,
-      y: cursor,
-      maxWidth: _contentWidth - 64,
-      textAlign: TextAlign.center,
-      maxLines: 2,
-      style: const TextStyle(
-        color: _ShareMenuImageRenderer._text,
-        fontSize: 42,
-        fontWeight: FontWeight.w800,
-      ),
-    );
-    cursor += 8;
-    if (payload.branchAddress?.isNotEmpty ?? false) {
+    if (payload.settings.showBranchName) {
+      cursor += _text(
+        canvas,
+        payload.branchName,
+        x: _ShareMenuImageRenderer._padding + 64,
+        y: cursor,
+        maxWidth: _contentWidth - 128,
+        textAlign: TextAlign.center,
+        maxLines: 2,
+        style: const TextStyle(
+          color: _ShareMenuImageRenderer._text,
+          fontSize: 84,
+          fontWeight: FontWeight.w800,
+        ),
+      );
+      cursor += 16;
+    }
+    if (payload.settings.showBranchAddress &&
+        (payload.branchAddress?.isNotEmpty ?? false)) {
       cursor += _text(
         canvas,
         payload.branchAddress!,
-        x: _ShareMenuImageRenderer._padding + 48,
+        x: _ShareMenuImageRenderer._padding + 96,
         y: cursor,
-        maxWidth: _contentWidth - 96,
+        maxWidth: _contentWidth - 192,
         textAlign: TextAlign.center,
         maxLines: 2,
         style: const TextStyle(
           color: _ShareMenuImageRenderer._muted,
-          fontSize: 22,
+          fontSize: 44,
           fontWeight: FontWeight.w500,
         ),
       );
-      cursor += 6;
+      cursor += 12;
     }
-    if (payload.branchWhatsapp?.isNotEmpty ?? false) {
+    if (payload.settings.showBranchPhone &&
+        (payload.branchWhatsapp?.isNotEmpty ?? false)) {
       _text(
         canvas,
         'WhatsApp: ${payload.branchWhatsapp!}',
-        x: _ShareMenuImageRenderer._padding + 48,
+        x: _ShareMenuImageRenderer._padding + 96,
         y: cursor,
-        maxWidth: _contentWidth - 96,
+        maxWidth: _contentWidth - 192,
         textAlign: TextAlign.center,
         maxLines: 1,
         style: const TextStyle(
           color: _ShareMenuImageRenderer._primary,
-          fontSize: 23,
+          fontSize: 46,
           fontWeight: FontWeight.w700,
         ),
       );
@@ -328,15 +346,15 @@ class _ShareMenuImageLayout {
 
   void _grid(Canvas? canvas) {
     for (var i = 0; i < payload.items.length; i++) {
-      final row = i ~/ 3;
-      final column = i % 3;
+      final row = i ~/ payload.settings.columns;
+      final column = i % payload.settings.columns;
       final x = _ShareMenuImageRenderer._padding +
           column.toDouble() * (_cardWidth + _ShareMenuImageRenderer._cardGap);
       final y =
           _y + row.toDouble() * (_cardHeight + _ShareMenuImageRenderer._gap);
       _menuCard(canvas, payload.items[i], x, y, _cardWidth, _cardHeight);
     }
-    final rows = (payload.items.length / 3).ceil();
+    final rows = (payload.items.length / payload.settings.columns).ceil();
     final rowGapCount = math.max(0, rows - 1).toDouble();
     _y += rows.toDouble() * _cardHeight +
         rowGapCount * _ShareMenuImageRenderer._gap;
@@ -352,7 +370,7 @@ class _ShareMenuImageLayout {
   ) {
     final rect = RRect.fromRectAndRadius(
       Rect.fromLTWH(x, y, width, height),
-      const Radius.circular(18),
+      const Radius.circular(36),
     );
     canvas?.drawRRect(rect, Paint()..color = _ShareMenuImageRenderer._surface);
     canvas?.drawRRect(
@@ -360,11 +378,12 @@ class _ShareMenuImageLayout {
       Paint()
         ..color = _ShareMenuImageRenderer._border
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.25,
+        ..strokeWidth = 2.5,
     );
 
-    final imageRect = Rect.fromLTWH(x + 14, y + 14, width - 28, 188);
-    final clip = RRect.fromRectAndRadius(imageRect, const Radius.circular(14));
+    final imageHeight = payload.settings.columns == 2 ? 460.0 : 376.0;
+    final imageRect = Rect.fromLTWH(x + 28, y + 28, width - 56, imageHeight);
+    final clip = RRect.fromRectAndRadius(imageRect, const Radius.circular(28));
     canvas?.save();
     canvas?.clipRRect(clip);
     final image = images[item];
@@ -377,14 +396,14 @@ class _ShareMenuImageLayout {
         canvas,
         'MENU',
         x: imageRect.left,
-        y: imageRect.top + 70,
+        y: imageRect.top + (imageRect.height / 2) - 28,
         maxWidth: imageRect.width,
         textAlign: TextAlign.center,
         style: const TextStyle(
           color: _ShareMenuImageRenderer._primary,
-          fontSize: 28,
+          fontSize: 56,
           fontWeight: FontWeight.w800,
-          letterSpacing: 1.4,
+          letterSpacing: 2.8,
         ),
       );
     } else {
@@ -395,13 +414,13 @@ class _ShareMenuImageLayout {
     _text(
       canvas,
       item.name,
-      x: x + 18,
-      y: y + 222,
-      maxWidth: width - 36,
+      x: x + 36,
+      y: y + imageHeight + 64,
+      maxWidth: width - 72,
       maxLines: 2,
       style: const TextStyle(
         color: _ShareMenuImageRenderer._text,
-        fontSize: 24,
+        fontSize: 48,
         fontWeight: FontWeight.w800,
         height: 1.1,
       ),
@@ -409,13 +428,13 @@ class _ShareMenuImageLayout {
     _text(
       canvas,
       formatRupiah(item.price),
-      x: x + 18,
-      y: y + height - 58,
-      maxWidth: width - 36,
+      x: x + 36,
+      y: y + height - 116,
+      maxWidth: width - 72,
       maxLines: 1,
       style: const TextStyle(
         color: _ShareMenuImageRenderer._accent,
-        fontSize: 27,
+        fontSize: 54,
         fontWeight: FontWeight.w900,
       ),
     );
@@ -430,9 +449,10 @@ class _ShareMenuImageLayout {
     if (canvas == null) return;
     final imageWidth = image.width.toDouble();
     final imageHeight = image.height.toDouble();
-    final scale = contain
-        ? math.min(dst.width / imageWidth, dst.height / imageHeight)
-        : math.max(dst.width / imageWidth, dst.height / imageHeight);
+    final scale = (contain
+            ? math.min(dst.width / imageWidth, dst.height / imageHeight)
+            : math.max(dst.width / imageWidth, dst.height / imageHeight))
+        .toDouble();
     final sourceWidth = contain ? imageWidth : dst.width / scale;
     final sourceHeight = contain ? imageHeight : dst.height / scale;
     final source = Rect.fromLTWH(

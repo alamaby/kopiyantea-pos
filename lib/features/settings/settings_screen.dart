@@ -403,6 +403,42 @@ class _DeviceSection extends ConsumerWidget {
               ),
             ),
           ),
+          const Divider(),
+          InkWell(
+            onTap: () => GoRouter.of(context).push('/more/settings/menu-image'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.image_outlined,
+                    color: context.colors.textSecondary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Image Menu', style: AppTypography.titleMd),
+                        Text(
+                          'Konten, kolom, dan warna share menu',
+                          style: AppTypography.bodySm.copyWith(
+                            color: context.colors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: context.colors.textTertiary,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );

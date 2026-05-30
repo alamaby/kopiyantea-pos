@@ -26,6 +26,7 @@ import 'features/modifiers/option_group_form_screen.dart';
 import 'features/modifiers/option_groups_screen.dart';
 import 'features/modifiers/product_options_screen.dart';
 import 'features/settings/about_app_screen.dart';
+import 'features/settings/menu_image_settings_screen.dart';
 import 'features/settings/outbox_queue_screen.dart';
 import 'features/shift/shift_closing_screen.dart';
 import 'features/settings/printer_settings_screen.dart';
@@ -267,6 +268,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/settings/receipt',
         name: 'receiptSettings',
         builder: (_, __) => const ReceiptSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/more/settings/menu-image',
+        name: 'menuImageSettings',
+        builder: (_, __) => const MenuImageSettingsScreen(),
       ),
       // FEAT-015 — global bank accounts for transfer payment.
       GoRoute(

@@ -1,0 +1,103 @@
+import 'package:drift/drift.dart' show Variable;
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/database/app_database.dart';
+import '../../core/database/database_provider.dart';
+
+class MenuImageSettings {
+  const MenuImageSettings({
+    required this.showBranchName,
+    required this.showBranchAddress,
+    required this.showBranchPhone,
+    required this.columns,
+    required this.backgroundColorHex,
+  });
+
+  final bool showBranchName;
+  final bool showBranchAddress;
+  final bool showBranchPhone;
+  final int columns;
+  final String backgroundColorHex;
+
+  static const defaults = MenuImageSettings(
+    showBranchName: true,
+    showBranchAddress: true,
+    showBranchPhone: true,
+    columns: 3,
+    backgroundColorHex: '#F8FAFC',
+  );
+}
+
+class MenuImageSettingsRepository {
+  const MenuImageSettingsRepository(this._db);
+
+  final AppDatabase _db;
+
+  Future<MenuImageSettings> getForBranch(String branchId) async {
+    final row = await _db.customSelect(
+      'SELECT show_branch_name, show_branch_address, show_branch_phone, '
+      'columns, background_color_hex '
+      'FROM menu_image_settings WHERE branch_id = ?',
+      variables: [Variable<String>(branchId)],
+    ).getSingleOrNull();
+    if (row == null) return MenuImageSettings.defaults;
+    return MenuImageSettings(
+      showBranchName: row.read<int>('show_branch_name') == 1,
+      showBranchAddress: row.read<int>('show_branch_address') == 1,
+      showBranchPhone: row.read<int>('show_branch_phone') == 1,
+      columns: row.read<int>('columns').clamp(2, 3).toInt(),
+      backgroundColorHex: normalizeMenuImageHex(
+        row.read<String>('background_color_hex'),
+      ),
+    );
+  }
+
+  Future<void> save(String branchId, MenuImageSettings settings) async {
+    await _db.customStatement(
+      'INSERT INTO menu_image_settings '
+      '(branch_id, show_branch_name, show_branch_address, show_branch_phone, '
+      'columns, background_color_hex, updated_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?) '
+      'ON CONFLICT(branch_id) DO UPDATE SET '
+      'show_branch_name = excluded.show_branch_name, '
+      'show_branch_address = excluded.show_branch_address, '
+      'show_branch_phone = excluded.show_branch_phone, '
+      'columns = excluded.columns, '
+      'background_color_hex = excluded.background_color_hex, '
+      'updated_at = excluded.updated_at',
+      [
+        branchId,
+        settings.showBranchName ? 1 : 0,
+        settings.showBranchAddress ? 1 : 0,
+        settings.showBranchPhone ? 1 : 0,
+        settings.columns.clamp(2, 3).toInt(),
+        normalizeMenuImageHex(settings.backgroundColorHex),
+        DateTime.now().toIso8601String(),
+      ],
+    );
+  }
+}
+
+final menuImageSettingsRepositoryProvider =
+    Provider<MenuImageSettingsRepository>(
+  (ref) => MenuImageSettingsRepository(ref.watch(databaseProvider)),
+);
+
+String normalizeMenuImageHex(String value) {
+  final trimmed = value.trim();
+  final noPrefix = trimmed.startsWith('#') ? trimmed.substring(1) : trimmed;
+  if (noPrefix.length != 6) return trimmed.toUpperCase();
+  return '#${noPrefix.toUpperCase()}';
+}
+
+bool isValidMenuImageHex(String value) =>
+    RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(value);
+
+Color colorFromMenuImageHex(String value) {
+  final normalized = normalizeMenuImageHex(value);
+  if (!isValidMenuImageHex(normalized)) {
+    return colorFromMenuImageHex(MenuImageSettings.defaults.backgroundColorHex);
+  }
+  return Color(int.parse(normalized.substring(1), radix: 16) | 0xFF000000);
+}

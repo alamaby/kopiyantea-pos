@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../../core/domain/enums.dart';
 import '../../../core/services/printer_service.dart';
@@ -203,24 +202,24 @@ class _ReceiptSummarySheetState extends ConsumerState<ReceiptSummarySheet> {
 
   Future<void> _onShare() async {
     setState(() => _isSharing = true);
-    final text = await ref
-        .read(shareReceiptUseCaseProvider)
-        .buildText(result.transactionId);
+    var shared = false;
+    try {
+      shared = await ref
+          .read(shareReceiptUseCaseProvider)
+          .sharePaymentReceiptImage(result.transactionId);
+    } catch (_) {
+      shared = false;
+    }
     if (!mounted) return;
     setState(() => _isSharing = false);
 
     final messenger = ScaffoldMessenger.of(context);
-    if (text == null || text.isEmpty) {
+    if (!shared) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Gagal menyiapkan struk untuk dibagikan')),
       );
       return;
     }
-
-    await Share.share(
-      text,
-      subject: 'Struk #${result.transactionNumber}',
-    );
   }
 
   String _errorLabel(PrinterError e) => switch (e) {

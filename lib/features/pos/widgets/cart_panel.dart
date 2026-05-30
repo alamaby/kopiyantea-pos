@@ -19,14 +19,22 @@ import '../cart_provider.dart';
 import '../cart_state.dart';
 import '../held_order_service.dart';
 import '../print_receipt_use_case.dart';
+import '../share_receipt_use_case.dart';
 import 'checkout_sheet.dart';
 import 'option_picker_sheet.dart';
 
-class CartPanel extends ConsumerWidget {
+class CartPanel extends ConsumerStatefulWidget {
   const CartPanel({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CartPanel> createState() => _CartPanelState();
+}
+
+class _CartPanelState extends ConsumerState<CartPanel> {
+  bool _isSharingBill = false;
+
+  @override
+  Widget build(BuildContext context) {
     final cartState = ref.watch(cartNotifierProvider);
     final notifier = ref.read(cartNotifierProvider.notifier);
 
@@ -112,6 +120,13 @@ class CartPanel extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
+                    _ShareBillButton(
+                      isLoading: _isSharingBill,
+                      onPressed: totals == null || _isSharingBill
+                          ? null
+                          : () => _shareBill(context, cartState, totals),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: AppButton(
                         label: 'Tahan Pesanan',
@@ -131,6 +146,33 @@ class CartPanel extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _shareBill(
+    BuildContext context,
+    CartState cartState,
+    TotalsResult totals,
+  ) async {
+    setState(() => _isSharingBill = true);
+    var shared = false;
+    try {
+      shared =
+          await ref.read(shareReceiptUseCaseProvider).shareBillReceiptImage(
+                cart: cartState,
+                totals: totals,
+              );
+    } catch (_) {
+      shared = false;
+    }
+    if (!mounted) return;
+    setState(() => _isSharingBill = false);
+
+    if (!shared) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Gagal menyiapkan tagihan untuk dibagikan')),
+      );
+    }
   }
 
   Future<void> _printBill(
@@ -346,6 +388,49 @@ class _Header extends StatelessWidget {
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ShareBillButton extends StatelessWidget {
+  const _ShareBillButton({
+    required this.isLoading,
+    required this.onPressed,
+  });
+
+  final bool isLoading;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = onPressed == null || isLoading;
+    return Tooltip(
+      message: 'Bagikan tagihan',
+      child: Material(
+        color: disabled ? context.colors.disabled : AppColors.primarySurface,
+        borderRadius: AppRadius.radiusMd,
+        child: InkWell(
+          onTap: disabled ? null : onPressed,
+          borderRadius: AppRadius.radiusMd,
+          child: SizedBox(
+            width: AppTouchTarget.primaryTablet,
+            height: AppTouchTarget.primaryTablet,
+            child: Center(
+              child: isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(
+                      Icons.share_outlined,
+                      color: AppColors.primaryDark,
+                      size: 20,
+                    ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -25,6 +25,7 @@ import '../settings/branch_selection_provider.dart';
 import 'catalog_csv.dart';
 import 'catalog_providers.dart';
 import 'category_providers.dart';
+import 'share_menu_image_use_case.dart';
 
 class CatalogScreen extends ConsumerStatefulWidget {
   const CatalogScreen({super.key});
@@ -36,6 +37,7 @@ class CatalogScreen extends ConsumerStatefulWidget {
 class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
+  bool _isSharingMenuImage = false;
 
   @override
   void dispose() {
@@ -66,6 +68,19 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           orElse: () => const Text('Menu'),
         ),
         actions: [
+          if (branchAsync.valueOrNull != null)
+            IconButton(
+              icon: _isSharingMenuImage
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.ios_share_outlined),
+              tooltip: 'Bagikan menu PNG',
+              onPressed: _isSharingMenuImage
+                  ? null
+                  : () => _shareMenuImage(context, branchAsync.valueOrNull!),
+            ),
           if (ref.watch(currentUserProvider)?.globalRole == GlobalRole.owner)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
@@ -148,6 +163,30 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
   }
 
   // ── ENH-010 CSV import/export ───────────────────────────────────────────────
+
+  Future<void> _shareMenuImage(BuildContext context, BranchRow branch) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isSharingMenuImage = true);
+    try {
+      final shared = await ref.read(shareMenuImageUseCaseProvider).share(
+            branch: branch,
+          );
+      if (!context.mounted) return;
+      if (!shared) {
+        messenger.showSnackBar(
+          const SnackBar(
+              content: Text('Belum ada menu tersedia untuk dishare')),
+        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal membuat image menu: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSharingMenuImage = false);
+    }
+  }
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);

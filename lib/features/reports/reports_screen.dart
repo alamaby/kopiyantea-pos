@@ -12,6 +12,7 @@ import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import '../settings/branch_selection_provider.dart';
 import 'report_providers.dart';
+import 'share_report_image_use_case.dart';
 
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
@@ -40,6 +41,9 @@ class ReportsScreen extends ConsumerWidget {
           ),
           orElse: () => const Text('Laporan'),
         ),
+        actions: const [
+          _ShareReportButton(),
+        ],
       ),
       body: Column(
         children: [
@@ -94,6 +98,61 @@ class ReportsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+class _ShareReportButton extends ConsumerStatefulWidget {
+  const _ShareReportButton();
+
+  @override
+  ConsumerState<_ShareReportButton> createState() => _ShareReportButtonState();
+}
+
+class _ShareReportButtonState extends ConsumerState<_ShareReportButton> {
+  bool _isSharing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final report = ref.watch(dailyReportProvider).valueOrNull;
+    final branch = ref.watch(selectedBranchProvider).valueOrNull;
+    final enabled = report != null && branch != null && !_isSharing;
+
+    return IconButton(
+      tooltip: 'Bagikan laporan sebagai gambar',
+      onPressed: enabled ? () => _share(context, report, branch.name) : null,
+      icon: _isSharing
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.ios_share_outlined),
+    );
+  }
+
+  Future<void> _share(
+    BuildContext context,
+    DailyReport report,
+    String branchName,
+  ) async {
+    setState(() => _isSharing = true);
+    final renderObject = context.findRenderObject();
+    final box = renderObject is RenderBox ? renderObject : null;
+    try {
+      await const ShareReportImageUseCase().share(
+        report: report,
+        branchName: branchName,
+        sharePositionOrigin:
+            box == null ? null : box.localToGlobal(Offset.zero) & box.size,
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal membagikan laporan: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
   }
 }
 

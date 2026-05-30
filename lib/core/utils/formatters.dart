@@ -12,11 +12,14 @@ final NumberFormat _idr = NumberFormat.currency(
 String formatRupiah(num amount) => _idr.format(amount);
 
 final DateFormat _dateTime = DateFormat('d MMM yyyy, HH:mm', 'id_ID');
+final DateFormat _dateTimeSeconds =
+    DateFormat('EEEE, d MMMM yyyy HH:mm:ss', 'id_ID');
 final DateFormat _date = DateFormat('d MMM yyyy', 'id_ID');
 final DateFormat _dayDate = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
 final DateFormat _time = DateFormat('HH:mm', 'id_ID');
 
 String formatDateTime(DateTime dt) => _dateTime.format(dt);
+String formatDateTimeSeconds(DateTime dt) => _dateTimeSeconds.format(dt);
 String formatDate(DateTime dt) => _date.format(dt);
 String formatDayDate(DateTime dt) => _dayDate.format(dt);
 String formatTime(DateTime dt) => _time.format(dt);

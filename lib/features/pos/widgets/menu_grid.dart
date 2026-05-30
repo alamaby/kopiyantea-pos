@@ -349,6 +349,7 @@ class _MenuFilters extends StatelessWidget {
                     ),
                   ),
                   onSelectionChanged: (selection) {
+                    FocusScope.of(context).unfocus();
                     onViewModeChanged(selection.first);
                   },
                 ),
@@ -370,7 +371,10 @@ class _MenuFilters extends StatelessWidget {
                         selected: selectedFilter.isEmpty,
                         color: null,
                         icon: Icons.apps_outlined,
-                        onSelected: () => onCategoryChanged(''),
+                        onSelected: () {
+                          FocusScope.of(context).unfocus();
+                          onCategoryChanged('');
+                        },
                       );
                     }
                     if (index == 1) {
@@ -379,7 +383,10 @@ class _MenuFilters extends StatelessWidget {
                         selected: selectedFilter == recommendedFilter,
                         color: null,
                         icon: Icons.trending_up_outlined,
-                        onSelected: () => onCategoryChanged(recommendedFilter),
+                        onSelected: () {
+                          FocusScope.of(context).unfocus();
+                          onCategoryChanged(recommendedFilter);
+                        },
                       );
                     }
                     final category = categories[index - 2];
@@ -388,7 +395,10 @@ class _MenuFilters extends StatelessWidget {
                       label: category,
                       selected: selectedFilter == category,
                       color: categoryColorFromStorage(row?.color),
-                      onSelected: () => onCategoryChanged(category),
+                      onSelected: () {
+                        FocusScope.of(context).unfocus();
+                        onCategoryChanged(category);
+                      },
                     );
                   },
                 ),
@@ -769,6 +779,7 @@ Future<void> _addMenuItemToCart(
   WidgetRef ref,
   BranchProductWithProductRow item,
 ) async {
+  FocusScope.of(context).unfocus();
   HapticFeedback.selectionClick();
   final product = item.product;
   final bp = item.branchProduct;

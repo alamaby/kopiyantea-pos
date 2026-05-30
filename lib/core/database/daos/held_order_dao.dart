@@ -20,8 +20,30 @@ class HeldOrderDao extends DatabaseAccessor<AppDatabase>
   Future<HeldOrderRow?> getById(String id) =>
       (select(heldOrders)..where((h) => h.id.equals(id))).getSingleOrNull();
 
+  Future<List<HeldOrderRow>> getAllByBranchAndLabel(
+    String branchId,
+    String label,
+  ) async {
+    final rows = await (select(heldOrders)
+          ..where((h) => h.branchId.equals(branchId))
+          ..orderBy([(h) => OrderingTerm.desc(h.createdAt)]))
+        .get();
+    final normalizedLabel = _normalizeLabel(label);
+    return rows
+        .where((row) => _normalizeLabel(row.label) == normalizedLabel)
+        .toList(growable: false);
+  }
+
+  String _normalizeLabel(String label) =>
+      label.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
+
   Future<void> insert(HeldOrdersCompanion companion) =>
       into(heldOrders).insert(companion);
+
+  Future<bool> updateById(String id, HeldOrdersCompanion companion) =>
+      (update(heldOrders)..where((h) => h.id.equals(id))).write(companion).then(
+            (rows) => rows > 0,
+          );
 
   Future<int> deleteById(String id) =>
       (delete(heldOrders)..where((h) => h.id.equals(id))).go();

@@ -68,19 +68,35 @@ class HeldOrderService {
       throw StateError('Cannot hold an empty cart');
     }
 
+    final normalizedLabel = _normalizeLabel(label);
+    if (normalizedLabel.isEmpty) {
+      throw StateError('Cannot hold a cart without a label');
+    }
+
     final payload = jsonEncode(_encodeCart(state));
     final userId = _ref.read(currentUserProvider)?.id;
+    final now = DateTime.now();
+    final dao = _ref.read(heldOrderDaoProvider);
+    final matches =
+        await dao.getAllByBranchAndLabel(branch.id, normalizedLabel);
+    final existing = matches.isEmpty ? null : matches.first;
+    final companion = HeldOrdersCompanion(
+      id: Value(existing?.id ?? const Uuid().v7()),
+      branchId: Value(branch.id),
+      label: Value(normalizedLabel),
+      payloadJson: Value(payload),
+      createdBy: Value(userId),
+      createdAt: Value(now),
+    );
 
-    await _ref.read(heldOrderDaoProvider).insert(
-          HeldOrdersCompanion.insert(
-            id: const Uuid().v7(),
-            branchId: branch.id,
-            label: label,
-            payloadJson: payload,
-            createdBy: Value(userId),
-            createdAt: DateTime.now(),
-          ),
-        );
+    if (existing == null) {
+      await dao.insert(companion);
+    } else {
+      await dao.updateById(existing.id, companion);
+      for (final duplicate in matches.skip(1)) {
+        await dao.deleteById(duplicate.id);
+      }
+    }
   }
 
   /// Restore a held-order [row] into a usable [CartState]. Skips items whose
@@ -198,6 +214,9 @@ class HeldOrderService {
     final cutoff = DateTime.now().subtract(maxAge);
     return _ref.read(heldOrderDaoProvider).deleteOlderThan(cutoff);
   }
+
+  String _normalizeLabel(String label) =>
+      label.trim().replaceAll(RegExp(r'\s+'), ' ');
 
   Map<String, dynamic> _encodeCart(CartState state) => {
         'manualDiscountAmount': state.manualDiscountAmount,

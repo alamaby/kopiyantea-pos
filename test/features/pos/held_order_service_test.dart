@@ -83,6 +83,23 @@ void main() {
       expect(rows.first.branchId, TestIds.branch);
       expect(rows.first.label, 'Meja 5');
     });
+
+    test('replaces existing hold order with the same label', () async {
+      final firstCart = await _buildCart(quantity: 1);
+      final replacementCart = await _buildCart(quantity: 4, discount: 3000);
+
+      await service.hold(state: firstCart, label: 'Meja 5');
+      await service.hold(state: replacementCart, label: ' Meja   5 ');
+
+      final rows = await db.select(db.heldOrders).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.label, 'Meja 5');
+
+      final restored = await service.restore(rows.single);
+      expect(restored, isNotNull);
+      expect(restored!.items.single.quantity, 4);
+      expect(restored.manualDiscountAmount, 3000.0);
+    });
   });
 
   group('restore roundtrip', () {

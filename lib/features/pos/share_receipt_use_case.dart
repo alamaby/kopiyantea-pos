@@ -6,6 +6,7 @@ import '../../core/database/database_provider.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/labels.dart';
 import '../../core/utils/transaction_numbers.dart';
+import 'receipt_modifier_filter.dart';
 
 class ShareReceiptUseCase {
   ShareReceiptUseCase(this._ref);
@@ -42,6 +43,9 @@ class ShareReceiptUseCase {
     final optionsByItem = await optionDao.getSnapshotsForItems(
       items.map((i) => i.id).toList(),
     );
+    final modifierFilter = await ReceiptModifierFilter.load(
+      _ref.read(databaseProvider),
+    );
 
     final cashierName = setting?.showCashierName ?? true
         ? (tx.cashierNameSnapshot?.isNotEmpty ?? false
@@ -69,7 +73,11 @@ class ShareReceiptUseCase {
         'Poin: +$earnedPoints'
             '${customer == null ? '' : ' | Total Poin: ${customer.loyaltyPoints}'}',
       '--------------------------------',
-      for (final item in items) ..._itemLines(item, optionsByItem[item.id]),
+      for (final item in items)
+        ..._itemLines(
+          item,
+          modifierFilter.transactionOptionLabels(optionsByItem[item.id]),
+        ),
       '--------------------------------',
       'Subtotal: ${formatRupiah(tx.subtotal)}',
       if (tx.discountAmount > 0) 'Diskon: -${formatRupiah(tx.discountAmount)}',
@@ -93,7 +101,7 @@ class ShareReceiptUseCase {
 
   List<String> _itemLines(
     TransactionItemRow item,
-    List<TransactionItemOptionRow>? options,
+    List<String> options,
   ) {
     final qty = item.quantity == item.quantity.roundToDouble()
         ? item.quantity.toStringAsFixed(0)
@@ -101,10 +109,7 @@ class ShareReceiptUseCase {
     return [
       '${item.nameSnapshot} x $qty',
       '  ${formatRupiah(item.priceSnapshot)} = ${formatRupiah(item.subtotal)}',
-      for (final option in options ?? const <TransactionItemOptionRow>[])
-        option.priceDeltaSnapshot == 0
-            ? '  - ${option.optionGroupNameSnapshot}: ${option.optionNameSnapshot}'
-            : '  - ${option.optionGroupNameSnapshot}: ${option.optionNameSnapshot} (+${option.priceDeltaSnapshot.toStringAsFixed(0)})',
+      for (final option in options) '  - $option',
       if (item.notes?.isNotEmpty ?? false) '  * ${item.notes}',
     ];
   }

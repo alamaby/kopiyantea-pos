@@ -18,6 +18,7 @@ import '../../core/utils/result.dart';
 import '../auth/auth_provider.dart';
 import '../settings/settings_provider.dart';
 import 'cart_state.dart';
+import 'receipt_modifier_filter.dart';
 
 /// Fetches transaction + items + branch + customer from local DB, builds a
 /// [ReceiptPayload], and forwards to the active [PrinterService].
@@ -71,6 +72,9 @@ class PrintReceiptUseCase {
     final optionsByItem = await optionDao.getSnapshotsForItems(
       items.map((i) => i.id).toList(),
     );
+    final modifierFilter = await ReceiptModifierFilter.load(
+      _ref.read(databaseProvider),
+    );
 
     final logoBytes = await _maybeFetchLogo(setting);
 
@@ -109,11 +113,9 @@ class PrintReceiptUseCase {
                 priceSnapshot: it.priceSnapshot,
                 subtotal: it.subtotal,
                 notes: it.notes,
-                options: (optionsByItem[it.id] ?? const [])
-                    .map((o) => o.priceDeltaSnapshot == 0
-                        ? '${o.optionGroupNameSnapshot}: ${o.optionNameSnapshot}'
-                        : '${o.optionGroupNameSnapshot}: ${o.optionNameSnapshot} (+${o.priceDeltaSnapshot.toStringAsFixed(0)})')
-                    .toList(growable: false),
+                options: modifierFilter.transactionOptionLabels(
+                  optionsByItem[it.id],
+                ),
               ))
           .toList(growable: false),
       subtotal: tx.subtotal,
@@ -166,6 +168,9 @@ class PrintReceiptUseCase {
 
     final now = DateTime.now();
     final transactionNumber = await _previewTransactionNumber(branch.id, now);
+    final modifierFilter = await ReceiptModifierFilter.load(
+      _ref.read(databaseProvider),
+    );
 
     final payload = ReceiptPayload(
       transactionId: const Uuid().v7(),
@@ -182,11 +187,7 @@ class PrintReceiptUseCase {
                 priceSnapshot: it.effectiveUnitPrice,
                 subtotal: it.lineSubtotal,
                 notes: it.notes,
-                options: it.selectedOptions
-                    .map((o) => o.priceDelta == 0
-                        ? '${o.groupName}: ${o.optionName}'
-                        : '${o.groupName}: ${o.optionName} (+${o.priceDelta.toStringAsFixed(0)})')
-                    .toList(growable: false),
+                options: modifierFilter.cartOptionLabels(it.selectedOptions),
               ))
           .toList(growable: false),
       subtotal: totals.subtotal,

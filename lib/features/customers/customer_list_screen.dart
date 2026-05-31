@@ -7,6 +7,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import 'customer_providers.dart';
@@ -21,6 +22,7 @@ class CustomerListScreen extends ConsumerStatefulWidget {
 class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
   final _searchCtrl = TextEditingController();
   String _query = '';
+  _CustomerSort _sort = _CustomerSort.latestTransaction;
 
   @override
   void dispose() {
@@ -31,6 +33,8 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
   @override
   Widget build(BuildContext context) {
     final customersAsync = ref.watch(allCustomersProvider);
+    final latestTransactionAt =
+        ref.watch(customerLatestTransactionAtProvider).valueOrNull ?? const {};
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pelanggan')),
@@ -44,22 +48,46 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
-            child: TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'Cari nama atau telepon…',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _query.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchCtrl.clear();
-                          setState(() => _query = '');
-                        },
-                      ),
-              ),
-              onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _searchCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'Cari nama atau telepon…',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _query = '');
+                            },
+                          ),
+                  ),
+                  onChanged: (v) =>
+                      setState(() => _query = v.trim().toLowerCase()),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                SegmentedButton<_CustomerSort>(
+                  segments: const [
+                    ButtonSegment(
+                      value: _CustomerSort.latestTransaction,
+                      icon: Icon(Icons.schedule_outlined),
+                      label: Text('Terbaru'),
+                    ),
+                    ButtonSegment(
+                      value: _CustomerSort.points,
+                      icon: Icon(Icons.stars_outlined),
+                      label: Text('Poin'),
+                    ),
+                  ],
+                  selected: {_sort},
+                  onSelectionChanged: (value) =>
+                      setState(() => _sort = value.first),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -71,7 +99,10 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 message: e.toString(),
               ),
               data: (customers) {
-                final filtered = _filter(customers, _query);
+                final filtered = _sortCustomers(
+                  _filter(customers, _query),
+                  latestTransactionAt,
+                );
                 if (filtered.isEmpty) {
                   return AppEmptyState(
                     title: _query.isEmpty
@@ -95,7 +126,10 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) =>
                       const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (_, i) => _CustomerTile(customer: filtered[i]),
+                  itemBuilder: (_, i) => _CustomerTile(
+                    customer: filtered[i],
+                    latestTransactionAt: latestTransactionAt[filtered[i].id],
+                  ),
                 );
               },
             ),
@@ -113,12 +147,44 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
       return inName || inPhone;
     }).toList();
   }
+
+  List<CustomerRow> _sortCustomers(
+    List<CustomerRow> list,
+    Map<String, DateTime> latestTransactionAt,
+  ) {
+    final sorted = list.toList();
+    sorted.sort((a, b) {
+      final primary = switch (_sort) {
+        _CustomerSort.latestTransaction => _compareNullableDateDesc(
+            latestTransactionAt[a.id],
+            latestTransactionAt[b.id],
+          ),
+        _CustomerSort.points => b.loyaltyPoints.compareTo(a.loyaltyPoints),
+      };
+      if (primary != 0) return primary;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return sorted;
+  }
+
+  int _compareNullableDateDesc(DateTime? a, DateTime? b) {
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    return b.compareTo(a);
+  }
 }
 
+enum _CustomerSort { latestTransaction, points }
+
 class _CustomerTile extends StatelessWidget {
-  const _CustomerTile({required this.customer});
+  const _CustomerTile({
+    required this.customer,
+    required this.latestTransactionAt,
+  });
 
   final CustomerRow customer;
+  final DateTime? latestTransactionAt;
 
   @override
   Widget build(BuildContext context) {
@@ -160,6 +226,15 @@ class _CustomerTile extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (latestTransactionAt != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        'Transaksi terakhir: ${formatDateTime(latestTransactionAt!)}',
+                        style: AppTypography.bodySm.copyWith(
+                          color: context.colors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -175,8 +250,8 @@ class _CustomerTile extends StatelessWidget {
                   ),
                   child: Text(
                     '${customer.loyaltyPoints} poin',
-                    style: AppTypography.labelSm
-                        .copyWith(color: AppColors.accent),
+                    style:
+                        AppTypography.labelSm.copyWith(color: AppColors.accent),
                   ),
                 ),
               const SizedBox(width: AppSpacing.sm),

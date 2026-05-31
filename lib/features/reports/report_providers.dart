@@ -185,7 +185,7 @@ DailyReport buildReport({
     totalRevenue: totalRevenue,
     byPayment: byPayment,
     byBankAccount: byBankAccount,
-    topItems: topItems.take(5).toList(),
+    topItems: topItems.where((item) => item.totalQty > 0).toList(),
   );
 }
 

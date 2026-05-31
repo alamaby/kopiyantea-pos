@@ -7,11 +7,15 @@ import 'package:uuid/uuid.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/theme/colors.dart';
+import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/utils/transaction_numbers.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import 'customer_providers.dart';
 
 class CustomerFormScreen extends ConsumerStatefulWidget {
   const CustomerFormScreen({this.customerId, super.key});
@@ -209,7 +213,106 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
             size: AppButtonSize.primary,
             fullWidth: true,
           ),
+          if (_isEditing && _existing != null) ...[
+            const SizedBox(height: AppSpacing.xl),
+            _CustomerTransactionsList(customerId: _existing!.id),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _CustomerTransactionsList extends ConsumerWidget {
+  const _CustomerTransactionsList({required this.customerId});
+
+  final String customerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transactionsAsync =
+        ref.watch(customerTransactionsProvider(customerId));
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        borderRadius: AppRadius.radiusLg,
+        border: Border.all(color: context.colors.border),
+      ),
+      child: transactionsAsync.when(
+        loading: () => const Center(child: AppLoadingIndicator()),
+        error: (e, _) => Text(
+          'Gagal memuat transaksi pelanggan: $e',
+          style: AppTypography.bodySm.copyWith(color: AppColors.danger),
+        ),
+        data: (transactions) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Transaksi Pelanggan', style: AppTypography.titleMd),
+              const SizedBox(height: AppSpacing.sm),
+              if (transactions.isEmpty)
+                Text(
+                  'Belum ada transaksi untuk pelanggan ini.',
+                  style: AppTypography.bodySm.copyWith(
+                    color: context.colors.textSecondary,
+                  ),
+                )
+              else
+                for (var i = 0; i < transactions.length; i++) ...[
+                  if (i > 0) const Divider(height: AppSpacing.lg),
+                  _CustomerTransactionTile(transaction: transactions[i]),
+                ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CustomerTransactionTile extends StatelessWidget {
+  const _CustomerTransactionTile({required this.transaction});
+
+  final TransactionRow transaction;
+
+  @override
+  Widget build(BuildContext context) {
+    final number = displayTransactionRowNumber(transaction);
+    return InkWell(
+      onTap: () => context.push('/transactions/${transaction.id}'),
+      borderRadius: AppRadius.radiusMd,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+        child: Row(
+          children: [
+            const Icon(Icons.receipt_long_outlined, color: AppColors.primary),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('#$number', style: AppTypography.titleMd),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    formatDateTime(transaction.clientCreatedAt),
+                    style: AppTypography.bodySm.copyWith(
+                      color: context.colors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Text(
+              formatRupiah(transaction.total),
+              style: AppTypography.titleMd.copyWith(color: AppColors.primary),
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            Icon(Icons.chevron_right, color: context.colors.textTertiary),
+          ],
+        ),
       ),
     );
   }

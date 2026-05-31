@@ -121,9 +121,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/inventory',
-                name: 'inventory',
-                builder: (_, __) => const InventoryListScreen(),
+                path: '/reports',
+                name: 'reports',
+                builder: (_, __) => const ReportsScreen(),
               ),
             ],
           ),
@@ -204,6 +204,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
       GoRoute(
+        path: '/more/inventory',
+        name: 'inventory',
+        builder: (_, __) => const InventoryListScreen(),
+      ),
+      GoRoute(
         path: '/more/customers',
         name: 'customers',
         builder: (_, __) => const CustomerListScreen(),
@@ -221,8 +226,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/more/reports',
-        name: 'reports',
-        builder: (_, __) => const ReportsScreen(),
+        redirect: (_, __) => '/reports',
       ),
       // ENH-001 — daily cash reconciliation.
       GoRoute(

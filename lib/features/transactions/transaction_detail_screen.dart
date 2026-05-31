@@ -18,6 +18,7 @@ import '../../core/utils/result.dart';
 import '../auth/auth_provider.dart';
 import '../customers/customer_providers.dart';
 import '../pos/print_receipt_use_case.dart';
+import '../pos/share_receipt_use_case.dart';
 import 'transaction_providers.dart';
 import 'void_transaction_use_case.dart';
 
@@ -108,7 +109,7 @@ int _transactionPointDelta(TransactionDetailData data) =>
 
 // ── Actions (ENH-007 Reprint + ENH-008 Void) ─────────────────────────────────
 
-class _ActionsCard extends ConsumerWidget {
+class _ActionsCard extends ConsumerStatefulWidget {
   const _ActionsCard({required this.tx, required this.voided});
   final TransactionRow tx;
 
@@ -117,8 +118,17 @@ class _ActionsCard extends ConsumerWidget {
   final bool voided;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (voided) {
+  ConsumerState<_ActionsCard> createState() => _ActionsCardState();
+}
+
+class _ActionsCardState extends ConsumerState<_ActionsCard> {
+  bool _isSharing = false;
+  bool _isPrinting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final tx = widget.tx;
+    if (widget.voided) {
       // It's a void row — nothing to act on.
       return const SizedBox.shrink();
     }
@@ -171,10 +181,20 @@ class _ActionsCard extends ConsumerWidget {
             const SizedBox(height: AppSpacing.sm),
           ],
           AppButton(
+            label: 'Share Struk',
+            icon: Icons.ios_share_outlined,
+            variant: AppButtonVariant.secondary,
+            onPressed: _isSharing ? null : () => _share(context),
+            isLoading: _isSharing,
+            fullWidth: true,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton(
             label: 'Cetak Ulang Struk',
             icon: Icons.print_outlined,
             variant: AppButtonVariant.secondary,
-            onPressed: () => _reprint(context, ref),
+            onPressed: _isPrinting ? null : () => _reprint(context),
+            isLoading: _isPrinting,
             fullWidth: true,
           ),
           if (canVoid && !alreadyVoided) ...[
@@ -192,19 +212,54 @@ class _ActionsCard extends ConsumerWidget {
     );
   }
 
-  Future<void> _reprint(BuildContext context, WidgetRef ref) async {
+  Future<void> _share(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
-    final result = await ref.read(printReceiptUseCaseProvider).print(tx.id);
-    if (!context.mounted) return;
-    switch (result) {
-      case Ok():
+    setState(() => _isSharing = true);
+    final renderObject = context.findRenderObject();
+    final box = renderObject is RenderBox ? renderObject : null;
+    try {
+      final shared =
+          await ref.read(shareReceiptUseCaseProvider).sharePaymentReceiptImage(
+                widget.tx.id,
+                sharePositionOrigin: box == null
+                    ? null
+                    : box.localToGlobal(Offset.zero) & box.size,
+              );
+      if (!context.mounted) return;
+      if (!shared) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Struk dikirim ke printer')),
+          const SnackBar(content: Text('Struk tidak bisa dibagikan')),
         );
-      case Err(:final error):
-        messenger.showSnackBar(
-          SnackBar(content: Text('Gagal cetak: ${error.name}')),
-        );
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Gagal share struk: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
+  }
+
+  Future<void> _reprint(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isPrinting = true);
+    try {
+      final result =
+          await ref.read(printReceiptUseCaseProvider).print(widget.tx.id);
+      if (!context.mounted) return;
+      switch (result) {
+        case Ok():
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Struk dikirim ke printer')),
+          );
+        case Err(:final error):
+          messenger.showSnackBar(
+            SnackBar(content: Text('Gagal cetak: ${error.name}')),
+          );
+      }
+    } finally {
+      if (mounted) setState(() => _isPrinting = false);
     }
   }
 
@@ -221,7 +276,7 @@ class _ActionsCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Transaksi #${displayTransactionRowNumber(tx)} akan '
+              'Transaksi #${displayTransactionRowNumber(widget.tx)} akan '
               'dibatalkan. Stok bahan akan dikembalikan secara otomatis. '
               'Aksi ini tidak bisa dibatalkan.',
               style: AppTypography.bodySm,
@@ -253,14 +308,14 @@ class _ActionsCard extends ConsumerWidget {
     if (confirmed != true) return;
 
     final result = await ref.read(voidTransactionUseCaseProvider).voidTx(
-          originalId: tx.id,
+          originalId: widget.tx.id,
           reason: reasonCtrl.text.trim(),
         );
     if (!context.mounted) return;
     switch (result) {
       case Ok():
-        ref.invalidate(transactionDetailProvider(tx.id));
-        ref.invalidate(voidForTransactionProvider(tx.id));
+        ref.invalidate(transactionDetailProvider(widget.tx.id));
+        ref.invalidate(voidForTransactionProvider(widget.tx.id));
         messenger.showSnackBar(
           const SnackBar(content: Text('Transaksi dibatalkan')),
         );

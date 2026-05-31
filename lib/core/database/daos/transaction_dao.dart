@@ -25,6 +25,35 @@ class TransactionDao extends DatabaseAccessor<AppDatabase>
   Future<TransactionRow?> getTransactionById(String id) =>
       (select(transactions)..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  Stream<List<TransactionRow>> watchTransactionsForCustomer(
+    String customerId, {
+    int limit = 50,
+  }) =>
+      (select(transactions)
+            ..where((t) =>
+                t.customerId.equals(customerId) &
+                t.status.equalsValue(TransactionStatus.completed))
+            ..orderBy([(t) => OrderingTerm.desc(t.clientCreatedAt)])
+            ..limit(limit))
+          .watch();
+
+  Stream<Map<String, DateTime>> watchLatestCompletedTransactionAtByCustomer() =>
+      (select(transactions)
+            ..where((t) =>
+                t.customerId.isNotNull() &
+                t.status.equalsValue(TransactionStatus.completed))
+            ..orderBy([(t) => OrderingTerm.desc(t.clientCreatedAt)]))
+          .watch()
+          .map((rows) {
+        final latest = <String, DateTime>{};
+        for (final row in rows) {
+          final customerId = row.customerId;
+          if (customerId == null || latest.containsKey(customerId)) continue;
+          latest[customerId] = row.clientCreatedAt;
+        }
+        return latest;
+      });
+
   /// All completed transactions in [start..end] for the branch — used by
   /// the Reports aggregator. End is inclusive; pass end-of-day for daily reports.
   Future<List<TransactionRow>> getCompletedInRange({

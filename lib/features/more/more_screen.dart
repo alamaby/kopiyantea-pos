@@ -7,7 +7,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 
 /// "Lainnya" hub — entry point for secondary destinations (Pelanggan,
-/// Laporan, Pengaturan). Kept off the primary nav to avoid > 5 BottomNav
+/// Stok, Pengaturan). Kept off the primary nav to avoid > 5 BottomNav
 /// items on mobile.
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -19,9 +19,9 @@ class MoreScreen extends StatelessWidget {
       route: '/more/customers',
     ),
     _MoreItem(
-      label: 'Laporan',
-      icon: Icons.bar_chart_outlined,
-      route: '/more/reports',
+      label: 'Stok',
+      icon: Icons.inventory_2_outlined,
+      route: '/more/inventory',
     ),
     _MoreItem(
       label: 'Tutup Kas',

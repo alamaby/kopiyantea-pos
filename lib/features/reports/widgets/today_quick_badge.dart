@@ -30,10 +30,9 @@ class TodayQuickBadge extends ConsumerWidget {
         message: 'Lihat laporan hari ini',
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
-          onTap: () => context.push('/more/reports'),
+          onTap: () => context.push('/reports'),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
             child: AppBadge(
               label: label,
               icon: Icons.today_outlined,

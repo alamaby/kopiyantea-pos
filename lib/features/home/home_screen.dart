@@ -28,7 +28,8 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             'Phase 1 — fondasi aplikasi siap. Fitur dibangun pada Phase 2–4.',
-            style: AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
+            style: AppTypography.bodyMd
+                .copyWith(color: context.colors.textSecondary),
           ),
           const SizedBox(height: AppSpacing.xl),
           AppCard(
@@ -44,11 +45,11 @@ class HomeScreen extends StatelessWidget {
                     for (final entry in const [
                       ('Kasir', '/pos'),
                       ('Menu', '/products'),
-                      ('Stok', '/inventory'),
+                      ('Stok', '/more/inventory'),
                       ('Transaksi', '/transactions'),
-                      ('Pelanggan', '/customers'),
+                      ('Pelanggan', '/more/customers'),
                       ('Laporan', '/reports'),
-                      ('Pengaturan', '/settings'),
+                      ('Pengaturan', '/more/settings'),
                     ])
                       AppButton(
                         label: entry.$1,

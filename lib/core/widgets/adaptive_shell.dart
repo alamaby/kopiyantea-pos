@@ -32,9 +32,9 @@ class AdaptiveShell extends StatelessWidget {
       selectedIcon: Icons.restaurant_menu,
     ),
     _NavDestination(
-      label: 'Stok',
-      icon: Icons.inventory_2_outlined,
-      selectedIcon: Icons.inventory_2,
+      label: 'Laporan',
+      icon: Icons.bar_chart_outlined,
+      selectedIcon: Icons.bar_chart,
     ),
     _NavDestination(
       label: 'Transaksi',

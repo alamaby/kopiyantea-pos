@@ -16,3 +16,22 @@ Stream<List<CustomerRow>> allCustomers(AllCustomersRef ref) {
 Stream<CustomerRow?> customerById(CustomerByIdRef ref, String id) {
   return ref.watch(customerDaoProvider).watchById(id);
 }
+
+@riverpod
+Stream<List<TransactionRow>> customerTransactions(
+  CustomerTransactionsRef ref,
+  String customerId,
+) {
+  return ref
+      .watch(transactionDaoProvider)
+      .watchTransactionsForCustomer(customerId);
+}
+
+@riverpod
+Stream<Map<String, DateTime>> customerLatestTransactionAt(
+  CustomerLatestTransactionAtRef ref,
+) {
+  return ref
+      .watch(transactionDaoProvider)
+      .watchLatestCompletedTransactionAtByCustomer();
+}

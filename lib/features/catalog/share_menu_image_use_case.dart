@@ -263,6 +263,13 @@ class _ShareMenuImageLayout {
             (payload.branchWhatsapp?.isNotEmpty ?? false));
     if (logo == null && !hasText) return;
 
+    if (payload.settings.headerLayout == MenuImageHeaderLayout.split &&
+        logo != null &&
+        hasText) {
+      _splitHeader(canvas);
+      return;
+    }
+
     final logoWidth = _contentWidth * 0.44;
     final logoHeight = logo == null ? 0.0 : math.min(300.0, logoWidth * 0.36);
     final headerHeight = logo == null
@@ -342,7 +349,7 @@ class _ShareMenuImageLayout {
         (payload.branchWhatsapp?.isNotEmpty ?? false)) {
       _text(
         canvas,
-        'WhatsApp: ${payload.branchWhatsapp!}',
+        '📱 ${payload.branchWhatsapp!}',
         x: _ShareMenuImageRenderer._padding + 96,
         y: cursor,
         maxWidth: _contentWidth - 192,
@@ -351,6 +358,92 @@ class _ShareMenuImageLayout {
         style: const TextStyle(
           color: _ShareMenuImageRenderer._primary,
           fontSize: 46,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+    _y += headerHeight + 34;
+  }
+
+  void _splitHeader(Canvas? canvas) {
+    const headerHeight = 460.0;
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        _ShareMenuImageRenderer._padding,
+        _y,
+        _contentWidth,
+        headerHeight,
+      ),
+      const Radius.circular(56),
+    );
+    canvas?.drawRRect(rect, Paint()..color = _ShareMenuImageRenderer._surface);
+    canvas?.drawRRect(
+      rect,
+      Paint()
+        ..color = _ShareMenuImageRenderer._border
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+
+    final logoRect = Rect.fromLTWH(
+      _ShareMenuImageRenderer._padding + 72,
+      _y + 64,
+      _contentWidth * 0.42,
+      headerHeight - 128,
+    );
+    _drawImageFit(canvas, logo!, logoRect, contain: true);
+
+    final textX = logoRect.right + 72;
+    final textWidth = _ShareMenuImageRenderer._width -
+        textX -
+        _ShareMenuImageRenderer._padding -
+        72;
+    var cursor = _y + 78;
+    if (payload.settings.showBranchName) {
+      cursor += _text(
+        canvas,
+        payload.branchName,
+        x: textX,
+        y: cursor,
+        maxWidth: textWidth,
+        maxLines: 2,
+        style: const TextStyle(
+          color: _ShareMenuImageRenderer._text,
+          fontSize: 72,
+          fontWeight: FontWeight.w800,
+        ),
+      );
+      cursor += 14;
+    }
+    if (payload.settings.showBranchAddress &&
+        (payload.branchAddress?.isNotEmpty ?? false)) {
+      cursor += _text(
+        canvas,
+        payload.branchAddress!,
+        x: textX,
+        y: cursor,
+        maxWidth: textWidth,
+        maxLines: 2,
+        style: const TextStyle(
+          color: _ShareMenuImageRenderer._muted,
+          fontSize: 42,
+          fontWeight: FontWeight.w500,
+        ),
+      );
+      cursor += 10;
+    }
+    if (payload.settings.showBranchPhone &&
+        (payload.branchWhatsapp?.isNotEmpty ?? false)) {
+      _text(
+        canvas,
+        '📱 ${payload.branchWhatsapp!}',
+        x: textX,
+        y: cursor,
+        maxWidth: textWidth,
+        maxLines: 1,
+        style: const TextStyle(
+          color: _ShareMenuImageRenderer._primary,
+          fontSize: 44,
           fontWeight: FontWeight.w700,
         ),
       );
@@ -425,13 +518,14 @@ class _ShareMenuImageLayout {
     }
     canvas?.restore();
 
-    _text(
+    final textTop = y + imageHeight + 64;
+    final nameHeight = _text(
       canvas,
       item.name,
       x: x + 36,
-      y: y + imageHeight + 64,
+      y: textTop,
       maxWidth: width - 72,
-      maxLines: 2,
+      maxLines: 1,
       style: const TextStyle(
         color: _ShareMenuImageRenderer._text,
         fontSize: 48,
@@ -443,7 +537,7 @@ class _ShareMenuImageLayout {
       canvas,
       formatRupiah(item.price),
       x: x + 36,
-      y: y + height - 116,
+      y: textTop + nameHeight + 16,
       maxWidth: width - 72,
       maxLines: 1,
       style: const TextStyle(

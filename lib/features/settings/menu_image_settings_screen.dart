@@ -65,6 +65,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
   var _showBranchAddress = true;
   var _showBranchPhone = true;
   var _columns = 3;
+  var _headerLayout = MenuImageHeaderLayout.stacked;
   var _loaded = false;
   var _saving = false;
   String? _hexError;
@@ -93,6 +94,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
       _showBranchAddress = settings.showBranchAddress;
       _showBranchPhone = settings.showBranchPhone;
       _columns = settings.columns;
+      _headerLayout = settings.headerLayout;
       _widthCtrl.text = settings.imageWidthPx.toString();
       _hexCtrl.text = settings.backgroundColorHex;
       _hexError = null;
@@ -130,6 +132,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
             showBranchPhone: _showBranchPhone,
             columns: _columns,
             imageWidthPx: imageWidth,
+            headerLayout: _headerLayout,
             backgroundColorHex: normalized,
           ),
         );
@@ -165,6 +168,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
             showBranchAddress: _showBranchAddress,
             showBranchPhone: _showBranchPhone,
             columns: _columns,
+            headerLayout: _headerLayout,
             backgroundColor: previewColor,
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -189,6 +193,26 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
             title: Text('Tampilkan nomor cabang', style: AppTypography.titleMd),
             contentPadding: EdgeInsets.zero,
             activeColor: AppColors.primary,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text('Layout header', style: AppTypography.labelSm),
+          const SizedBox(height: AppSpacing.sm),
+          SegmentedButton<MenuImageHeaderLayout>(
+            segments: [
+              for (final layout in MenuImageHeaderLayout.values)
+                ButtonSegment(
+                  value: layout,
+                  label: Text(layout.label),
+                  icon: Icon(
+                    layout == MenuImageHeaderLayout.stacked
+                        ? Icons.view_stream_outlined
+                        : Icons.view_sidebar_outlined,
+                  ),
+                ),
+            ],
+            selected: {_headerLayout},
+            onSelectionChanged: (value) =>
+                setState(() => _headerLayout = value.first),
           ),
           const SizedBox(height: AppSpacing.md),
           Text('Jumlah card per baris', style: AppTypography.labelSm),
@@ -327,6 +351,7 @@ class _Preview extends StatelessWidget {
     required this.showBranchAddress,
     required this.showBranchPhone,
     required this.columns,
+    required this.headerLayout,
     required this.backgroundColor,
   });
 
@@ -335,6 +360,7 @@ class _Preview extends StatelessWidget {
   final bool showBranchAddress;
   final bool showBranchPhone;
   final int columns;
+  final MenuImageHeaderLayout headerLayout;
   final Color backgroundColor;
 
   @override
@@ -348,30 +374,50 @@ class _Preview extends StatelessWidget {
       ),
       child: Column(
         children: [
-          if (showBranchName)
-            Text(
-              branch.name,
+          if (headerLayout == MenuImageHeaderLayout.split)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: Container(
+                    height: 58,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      borderRadius: AppRadius.radiusSm,
+                      border: Border.all(color: context.colors.border),
+                    ),
+                    child: Text(
+                      'Logo',
+                      style: AppTypography.labelSm.copyWith(
+                        color: _readableMutedColor(backgroundColor),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  flex: 6,
+                  child: _PreviewBranchInfo(
+                    branch: branch,
+                    showBranchName: showBranchName,
+                    showBranchAddress: showBranchAddress,
+                    showBranchPhone: showBranchPhone,
+                    backgroundColor: backgroundColor,
+                    textAlign: TextAlign.left,
+                  ),
+                ),
+              ],
+            )
+          else
+            _PreviewBranchInfo(
+              branch: branch,
+              showBranchName: showBranchName,
+              showBranchAddress: showBranchAddress,
+              showBranchPhone: showBranchPhone,
+              backgroundColor: backgroundColor,
               textAlign: TextAlign.center,
-              style: AppTypography.titleMd.copyWith(
-                color: _readableTextColor(backgroundColor),
-              ),
-            ),
-          if (showBranchAddress && (branch.address?.isNotEmpty ?? false))
-            Text(
-              branch.address!,
-              textAlign: TextAlign.center,
-              style: AppTypography.bodySm.copyWith(
-                color: _readableMutedColor(backgroundColor),
-              ),
-            ),
-          if (showBranchPhone && (branch.phone?.isNotEmpty ?? false))
-            Text(
-              'WhatsApp: ${branch.phone!}',
-              textAlign: TextAlign.center,
-              style: AppTypography.bodySm.copyWith(
-                color: _readableTextColor(backgroundColor),
-                fontWeight: FontWeight.w600,
-              ),
             ),
           const SizedBox(height: AppSpacing.md),
           Row(
@@ -414,6 +460,64 @@ class _Preview extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PreviewBranchInfo extends StatelessWidget {
+  const _PreviewBranchInfo({
+    required this.branch,
+    required this.showBranchName,
+    required this.showBranchAddress,
+    required this.showBranchPhone,
+    required this.backgroundColor,
+    required this.textAlign,
+  });
+
+  final BranchRow branch;
+  final bool showBranchName;
+  final bool showBranchAddress;
+  final bool showBranchPhone;
+  final Color backgroundColor;
+  final TextAlign textAlign;
+
+  @override
+  Widget build(BuildContext context) {
+    final alignment = textAlign == TextAlign.left
+        ? CrossAxisAlignment.start
+        : CrossAxisAlignment.center;
+    return Column(
+      crossAxisAlignment: alignment,
+      children: [
+        if (showBranchName)
+          Text(
+            branch.name,
+            textAlign: textAlign,
+            style: AppTypography.titleMd.copyWith(
+              color: _readableTextColor(backgroundColor),
+            ),
+          ),
+        if (showBranchAddress && (branch.address?.isNotEmpty ?? false))
+          Text(
+            branch.address!,
+            textAlign: textAlign,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.bodySm.copyWith(
+              color: _readableMutedColor(backgroundColor),
+            ),
+          ),
+        if (showBranchPhone && (branch.phone?.isNotEmpty ?? false))
+          Text(
+            '📱 ${branch.phone!}',
+            textAlign: textAlign,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.bodySm.copyWith(
+              color: _readableTextColor(backgroundColor),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+      ],
     );
   }
 }

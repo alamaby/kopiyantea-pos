@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/database_provider.dart';
 
+enum MenuImageHeaderLayout { stacked, split }
+
 class MenuImageSettings {
   const MenuImageSettings({
     required this.showBranchName,
@@ -12,6 +14,7 @@ class MenuImageSettings {
     required this.showBranchPhone,
     required this.columns,
     required this.imageWidthPx,
+    required this.headerLayout,
     required this.backgroundColorHex,
   });
 
@@ -20,6 +23,7 @@ class MenuImageSettings {
   final bool showBranchPhone;
   final int columns;
   final int imageWidthPx;
+  final MenuImageHeaderLayout headerLayout;
   final String backgroundColorHex;
 
   static const defaults = MenuImageSettings(
@@ -28,6 +32,7 @@ class MenuImageSettings {
     showBranchPhone: true,
     columns: 3,
     imageWidthPx: 3240,
+    headerLayout: MenuImageHeaderLayout.stacked,
     backgroundColorHex: '#F8FAFC',
   );
 }
@@ -40,7 +45,7 @@ class MenuImageSettingsRepository {
   Future<MenuImageSettings> getForBranch(String branchId) async {
     final row = await _db.customSelect(
       'SELECT show_branch_name, show_branch_address, show_branch_phone, '
-      'columns, image_width_px, background_color_hex '
+      'columns, image_width_px, header_layout, background_color_hex '
       'FROM menu_image_settings WHERE branch_id = ?',
       variables: [Variable<String>(branchId)],
     ).getSingleOrNull();
@@ -53,6 +58,9 @@ class MenuImageSettingsRepository {
       imageWidthPx: normalizeMenuImageWidthPx(
         row.read<int>('image_width_px'),
       ),
+      headerLayout: menuImageHeaderLayoutFromDb(
+        row.read<String>('header_layout'),
+      ),
       backgroundColorHex: normalizeMenuImageHex(
         row.read<String>('background_color_hex'),
       ),
@@ -63,14 +71,16 @@ class MenuImageSettingsRepository {
     await _db.customStatement(
       'INSERT INTO menu_image_settings '
       '(branch_id, show_branch_name, show_branch_address, show_branch_phone, '
-      'columns, image_width_px, background_color_hex, updated_at) '
-      'VALUES (?, ?, ?, ?, ?, ?, ?, ?) '
+      'columns, image_width_px, header_layout, background_color_hex, '
+      'updated_at) '
+      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) '
       'ON CONFLICT(branch_id) DO UPDATE SET '
       'show_branch_name = excluded.show_branch_name, '
       'show_branch_address = excluded.show_branch_address, '
       'show_branch_phone = excluded.show_branch_phone, '
       'columns = excluded.columns, '
       'image_width_px = excluded.image_width_px, '
+      'header_layout = excluded.header_layout, '
       'background_color_hex = excluded.background_color_hex, '
       'updated_at = excluded.updated_at',
       [
@@ -80,6 +90,7 @@ class MenuImageSettingsRepository {
         settings.showBranchPhone ? 1 : 0,
         settings.columns.clamp(2, 3).toInt(),
         normalizeMenuImageWidthPx(settings.imageWidthPx),
+        settings.headerLayout.dbValue,
         normalizeMenuImageHex(settings.backgroundColorHex),
         DateTime.now().toIso8601String(),
       ],
@@ -103,6 +114,24 @@ bool isValidMenuImageHex(String value) =>
     RegExp(r'^#[0-9A-Fa-f]{6}$').hasMatch(value);
 
 int normalizeMenuImageWidthPx(int value) => value.clamp(1080, 4096).toInt();
+
+MenuImageHeaderLayout menuImageHeaderLayoutFromDb(String value) =>
+    switch (value) {
+      'split' => MenuImageHeaderLayout.split,
+      _ => MenuImageHeaderLayout.stacked,
+    };
+
+extension MenuImageHeaderLayoutX on MenuImageHeaderLayout {
+  String get dbValue => switch (this) {
+        MenuImageHeaderLayout.stacked => 'stacked',
+        MenuImageHeaderLayout.split => 'split',
+      };
+
+  String get label => switch (this) {
+        MenuImageHeaderLayout.stacked => 'Atas-bawah',
+        MenuImageHeaderLayout.split => 'Logo kiri',
+      };
+}
 
 Color colorFromMenuImageHex(String value) {
   final normalized = normalizeMenuImageHex(value);

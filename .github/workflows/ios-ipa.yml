@@ -1,0 +1,99 @@
+name: iOS IPA Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Build name, for example 0.11.0. Leave empty to use pubspec.yaml.'
+        required: false
+        default: ''
+      build_number:
+        description: 'Build number. Leave empty to use the GitHub run number.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  unsigned-ipa:
+    name: Build unsigned IPA for sideloading
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          PUBSPEC_VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+          DEFAULT_BUILD_NAME="${PUBSPEC_VERSION%%+*}"
+          BUILD_NAME="${{ github.event.inputs.version }}"
+          BUILD_NUMBER="${{ github.event.inputs.build_number }}"
+
+          if [ -z "$BUILD_NAME" ]; then
+            BUILD_NAME="$DEFAULT_BUILD_NAME"
+          fi
+
+          if [ -z "$BUILD_NUMBER" ]; then
+            BUILD_NUMBER="${{ github.run_number }}"
+          fi
+
+          echo "build_name=$BUILD_NAME" >> "$GITHUB_OUTPUT"
+          echo "build_number=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Resolved iOS version: $BUILD_NAME+$BUILD_NUMBER"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Write .env
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.ENV_FILE_BASE64 }}" ]; then
+            echo "::warning::ENV_FILE_BASE64 is not set. Using .env.example; the app may not connect to production services."
+            cp .env.example .env
+          else
+            echo "${{ secrets.ENV_FILE_BASE64 }}" | base64 --decode > .env
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run codegen
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build iOS app without signing
+        run: |
+          flutter build ios --release --no-codesign \
+            --build-name="${{ steps.version.outputs.build_name }}" \
+            --build-number="${{ steps.version.outputs.build_number }}"
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          APP_PATH="build/ios/iphoneos/Runner.app"
+          if [ ! -d "$APP_PATH" ]; then
+            echo "::error::Runner.app was not found at $APP_PATH"
+            exit 1
+          fi
+
+          VERSION="${{ steps.version.outputs.build_name }}"
+          BUILD="${{ steps.version.outputs.build_number }}"
+          mkdir -p dist/Payload
+          cp -R "$APP_PATH" dist/Payload/Runner.app
+          (cd dist && zip -qry "kopiyantea-pos-${VERSION}+${BUILD}-unsigned.ipa" Payload)
+          rm -rf dist/Payload
+          ls -lh dist
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned-ipa-${{ steps.version.outputs.build_name }}+${{ steps.version.outputs.build_number }}
+          path: dist/*.ipa
+          retention-days: 14

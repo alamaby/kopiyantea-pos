@@ -71,7 +71,12 @@ jobs:
       - name: Install Tcl/Tk for SQLite iOS build
         shell: bash
         run: |
-          brew install tcl-tk@8
+          if ! brew list tcl-tk@8 >/dev/null 2>&1; then
+            brew install tcl-tk@8
+          else
+            echo "tcl-tk@8 is already installed."
+          fi
+
           TCL_TK_PREFIX="$(brew --prefix tcl-tk@8)"
           TCL_CONFIG_SH="$(
             find "$TCL_TK_PREFIX" /opt/homebrew/opt/tcl-tk@8 /usr/local/opt/tcl-tk@8 \

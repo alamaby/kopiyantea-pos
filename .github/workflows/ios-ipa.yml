@@ -68,6 +68,30 @@ jobs:
       - name: Run codegen
         run: dart run build_runner build --delete-conflicting-outputs
 
+      - name: Install Tcl/Tk for SQLite iOS build
+        shell: bash
+        run: |
+          brew install tcl-tk
+          TCL_TK_PREFIX="$(brew --prefix tcl-tk)"
+          TCL_CONFIG_SH="$(find "$TCL_TK_PREFIX" -name tclConfig.sh -print -quit)"
+
+          if [ -z "$TCL_CONFIG_SH" ]; then
+            echo "::error::tclConfig.sh was not found after installing tcl-tk"
+            exit 1
+          fi
+
+          echo "$TCL_TK_PREFIX/bin" >> "$GITHUB_PATH"
+          {
+            echo "TCL_CONFIG_SH=$TCL_CONFIG_SH"
+            echo "TCL_LIBRARY=$TCL_TK_PREFIX/lib"
+            echo "PKG_CONFIG_PATH=$TCL_TK_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
+            echo "LDFLAGS=-L$TCL_TK_PREFIX/lib $LDFLAGS"
+            echo "CPPFLAGS=-I$TCL_TK_PREFIX/include $CPPFLAGS"
+          } >> "$GITHUB_ENV"
+
+          echo "Using Tcl/Tk from $TCL_TK_PREFIX"
+          echo "Using tclConfig.sh at $TCL_CONFIG_SH"
+
       - name: Build iOS app without signing
         run: |
           flutter build ios --release --no-codesign \

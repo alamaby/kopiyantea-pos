@@ -71,18 +71,26 @@ jobs:
       - name: Install Tcl/Tk for SQLite iOS build
         shell: bash
         run: |
-          brew install tcl-tk
-          TCL_TK_PREFIX="$(brew --prefix tcl-tk)"
-          TCL_CONFIG_SH="$(find "$TCL_TK_PREFIX" -name tclConfig.sh -print -quit)"
+          brew install tcl-tk@8
+          TCL_TK_PREFIX="$(brew --prefix tcl-tk@8)"
+          TCL_CONFIG_SH="$(
+            find "$TCL_TK_PREFIX" /opt/homebrew/opt/tcl-tk@8 /usr/local/opt/tcl-tk@8 \
+              -name tclConfig.sh -print -quit 2>/dev/null
+          )"
 
           if [ -z "$TCL_CONFIG_SH" ]; then
-            echo "::error::tclConfig.sh was not found after installing tcl-tk"
+            echo "::group::Tcl/Tk diagnostics"
+            brew list tcl-tk@8 || true
+            find "$TCL_TK_PREFIX" -maxdepth 4 -type f | sort || true
+            echo "::endgroup::"
+            echo "::error::tclConfig.sh was not found after installing tcl-tk@8"
             exit 1
           fi
 
           echo "$TCL_TK_PREFIX/bin" >> "$GITHUB_PATH"
           {
             echo "TCL_CONFIG_SH=$TCL_CONFIG_SH"
+            echo "TCLSH_CMD=$TCL_TK_PREFIX/bin/tclsh8.6"
             echo "TCL_LIBRARY=$TCL_TK_PREFIX/lib"
             echo "PKG_CONFIG_PATH=$TCL_TK_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
             echo "LDFLAGS=-L$TCL_TK_PREFIX/lib $LDFLAGS"

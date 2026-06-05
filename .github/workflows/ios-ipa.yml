@@ -79,25 +79,20 @@ jobs:
 
           TCL_TK_PREFIX="$(brew --prefix tcl-tk@8)"
           TCL_CONFIG_SH="$(
-            for dir in "$TCL_TK_PREFIX" /opt/homebrew/opt/tcl-tk@8 /usr/local/opt/tcl-tk@8; do
+            for dir in \
+              "$TCL_TK_PREFIX" \
+              /opt/homebrew/opt/tcl-tk@8 \
+              /usr/local/opt/tcl-tk@8 \
+              /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib \
+              /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib; do
               if [ -d "$dir" ]; then
                 find "$dir" -name tclConfig.sh -print -quit
               fi
             done | head -n 1
           )"
 
-          if [ -z "$TCL_CONFIG_SH" ]; then
-            echo "::group::Tcl/Tk diagnostics"
-            brew list tcl-tk@8 || true
-            find "$TCL_TK_PREFIX" -maxdepth 4 -type f | sort || true
-            echo "::endgroup::"
-            echo "::error::tclConfig.sh was not found after installing tcl-tk@8"
-            exit 1
-          fi
-
           echo "$TCL_TK_PREFIX/bin" >> "$GITHUB_PATH"
           {
-            echo "TCL_CONFIG_SH=$TCL_CONFIG_SH"
             echo "TCLSH_CMD=$TCL_TK_PREFIX/bin/tclsh8.6"
             echo "TCL_LIBRARY=$TCL_TK_PREFIX/lib"
             echo "PKG_CONFIG_PATH=$TCL_TK_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
@@ -106,7 +101,12 @@ jobs:
           } >> "$GITHUB_ENV"
 
           echo "Using Tcl/Tk from $TCL_TK_PREFIX"
-          echo "Using tclConfig.sh at $TCL_CONFIG_SH"
+          if [ -n "$TCL_CONFIG_SH" ]; then
+            echo "TCL_CONFIG_SH=$TCL_CONFIG_SH" >> "$GITHUB_ENV"
+            echo "Using tclConfig.sh at $TCL_CONFIG_SH"
+          else
+            echo "::warning::tclConfig.sh was not found. Continuing without TCL_CONFIG_SH so the iOS build can surface the real compiler error if one remains."
+          fi
 
       - name: Build iOS app without signing
         run: |

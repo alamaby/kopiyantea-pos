@@ -79,8 +79,11 @@ jobs:
 
           TCL_TK_PREFIX="$(brew --prefix tcl-tk@8)"
           TCL_CONFIG_SH="$(
-            find "$TCL_TK_PREFIX" /opt/homebrew/opt/tcl-tk@8 /usr/local/opt/tcl-tk@8 \
-              -name tclConfig.sh -print -quit 2>/dev/null
+            for dir in "$TCL_TK_PREFIX" /opt/homebrew/opt/tcl-tk@8 /usr/local/opt/tcl-tk@8; do
+              if [ -d "$dir" ]; then
+                find "$dir" -name tclConfig.sh -print -quit
+              fi
+            done | head -n 1
           )"
 
           if [ -z "$TCL_CONFIG_SH" ]; then

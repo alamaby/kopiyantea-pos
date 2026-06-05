@@ -68,46 +68,6 @@ jobs:
       - name: Run codegen
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Install Tcl/Tk for SQLite iOS build
-        shell: bash
-        run: |
-          if ! brew list tcl-tk@8 >/dev/null 2>&1; then
-            brew install tcl-tk@8
-          else
-            echo "tcl-tk@8 is already installed."
-          fi
-
-          TCL_TK_PREFIX="$(brew --prefix tcl-tk@8)"
-          TCL_CONFIG_SH="$(
-            for dir in \
-              "$TCL_TK_PREFIX" \
-              /opt/homebrew/opt/tcl-tk@8 \
-              /usr/local/opt/tcl-tk@8 \
-              /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib \
-              /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/lib; do
-              if [ -d "$dir" ]; then
-                find "$dir" -name tclConfig.sh -print -quit
-              fi
-            done | head -n 1
-          )"
-
-          echo "$TCL_TK_PREFIX/bin" >> "$GITHUB_PATH"
-          {
-            echo "TCLSH_CMD=$TCL_TK_PREFIX/bin/tclsh8.6"
-            echo "TCL_LIBRARY=$TCL_TK_PREFIX/lib"
-            echo "PKG_CONFIG_PATH=$TCL_TK_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
-            echo "LDFLAGS=-L$TCL_TK_PREFIX/lib $LDFLAGS"
-            echo "CPPFLAGS=-I$TCL_TK_PREFIX/include $CPPFLAGS"
-          } >> "$GITHUB_ENV"
-
-          echo "Using Tcl/Tk from $TCL_TK_PREFIX"
-          if [ -n "$TCL_CONFIG_SH" ]; then
-            echo "TCL_CONFIG_SH=$TCL_CONFIG_SH" >> "$GITHUB_ENV"
-            echo "Using tclConfig.sh at $TCL_CONFIG_SH"
-          else
-            echo "::warning::tclConfig.sh was not found. Continuing without TCL_CONFIG_SH so the iOS build can surface the real compiler error if one remains."
-          fi
-
       - name: Build iOS app without signing
         run: |
           flutter build ios --release --no-codesign \

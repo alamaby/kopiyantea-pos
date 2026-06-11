@@ -11,6 +11,7 @@ import 'core/config/env.dart';
 import 'core/database/app_database.dart';
 import 'core/database/daos/held_order_dao.dart';
 import 'core/database/database_provider.dart';
+import 'core/l10n/locale_provider.dart';
 import 'core/logging/app_logger.dart';
 import 'core/network/pinned_http_client.dart';
 import 'core/sync/background_sync.dart';
@@ -46,6 +47,7 @@ Future<void> main() async {
   }
 
   // 2. Local-first initialization — must succeed.
+  await initializeDateFormatting('en_US');
   await initializeDateFormatting('id_ID');
   final db = await AppDatabase.open();
   // SharedPreferences instance — touched here to surface any platform-channel
@@ -106,10 +108,11 @@ class KopiyanteaPosApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final themeMode = _resolveThemeMode(ref);
+    final locale = ref.watch(localeControllerProvider);
 
     return AppResumeSyncListener(
       child: MaterialApp.router(
-        title: 'KopiyanteaPOS',
+        onGenerateTitle: (context) => AppL10n.of(context).appTitle,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
@@ -117,7 +120,7 @@ class KopiyanteaPosApp extends ConsumerWidget {
         routerConfig: router,
         localizationsDelegates: AppL10n.localizationsDelegates,
         supportedLocales: AppL10n.supportedLocales,
-        locale: const Locale('id', 'ID'),
+        locale: locale,
       ),
     );
   }

@@ -5,6 +5,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// "Lainnya" hub — entry point for secondary destinations (Pelanggan,
 /// Stok, Pengaturan). Kept off the primary nav to avoid > 5 BottomNav
@@ -12,38 +13,44 @@ import '../../core/theme/typography.dart';
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
 
-  static const _items = <_MoreItem>[
-    _MoreItem(
-      label: 'Pelanggan',
-      icon: Icons.people_outline,
-      route: '/more/customers',
-    ),
-    _MoreItem(
-      label: 'Stok',
-      icon: Icons.inventory_2_outlined,
-      route: '/more/inventory',
-    ),
-    _MoreItem(
-      label: 'Tutup Kas',
-      icon: Icons.point_of_sale_outlined,
-      route: '/more/reports/closing',
-    ),
-    _MoreItem(
-      label: 'Pengaturan',
-      icon: Icons.settings_outlined,
-      route: '/more/settings',
-    ),
-  ];
+  List<_MoreItem> _items(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
+    return [
+      _MoreItem(
+        label: l10n.navCustomers,
+        icon: Icons.people_outline,
+        route: '/more/customers',
+      ),
+      _MoreItem(
+        label: l10n.navInventory,
+        icon: Icons.inventory_2_outlined,
+        route: '/more/inventory',
+      ),
+      _MoreItem(
+        label: isEnglish ? 'Shift Closing' : 'Tutup Kas',
+        icon: Icons.point_of_sale_outlined,
+        route: '/more/reports/closing',
+      ),
+      _MoreItem(
+        label: l10n.navSettings,
+        icon: Icons.settings_outlined,
+        route: '/more/settings',
+      ),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
+    final items = _items(context);
+    final l10n = AppL10n.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Lainnya')),
+      appBar: AppBar(title: Text(l10n.navMore)),
       body: ListView.separated(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        itemCount: _items.length,
+        itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (context, i) => _MoreTile(item: _items[i]),
+        itemBuilder: (context, i) => _MoreTile(item: items[i]),
       ),
     );
   }

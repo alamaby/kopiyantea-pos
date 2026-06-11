@@ -6,6 +6,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../reports/widgets/today_quick_badge.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -13,9 +14,11 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     return Scaffold(
       appBar: AppBar(
-        title: const Text('KopiyanteaPOS'),
+        title: Text(l10n.appTitle),
         actions: const [
           TodayQuickBadge(),
           SizedBox(width: AppSpacing.sm),
@@ -24,10 +27,13 @@ class HomeScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          Text('Selamat datang', style: AppTypography.displayMd),
+          Text(isEnglish ? 'Welcome' : 'Selamat datang',
+              style: AppTypography.displayMd),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Phase 1 — fondasi aplikasi siap. Fitur dibangun pada Phase 2–4.',
+            isEnglish
+                ? 'Choose a workspace to start managing the store.'
+                : 'Pilih area kerja untuk mulai mengelola toko.',
             style: AppTypography.bodyMd
                 .copyWith(color: context.colors.textSecondary),
           ),
@@ -36,20 +42,21 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Navigasi sementara', style: AppTypography.headlineMd),
+                Text(isEnglish ? 'Shortcuts' : 'Pintasan',
+                    style: AppTypography.headlineMd),
                 const SizedBox(height: AppSpacing.md),
                 Wrap(
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.sm,
                   children: [
-                    for (final entry in const [
-                      ('Kasir', '/pos'),
-                      ('Menu', '/products'),
-                      ('Stok', '/more/inventory'),
-                      ('Transaksi', '/transactions'),
-                      ('Pelanggan', '/more/customers'),
-                      ('Laporan', '/reports'),
-                      ('Pengaturan', '/more/settings'),
+                    for (final entry in [
+                      (l10n.navPos, '/pos'),
+                      (l10n.navProducts, '/products'),
+                      (l10n.navInventory, '/more/inventory'),
+                      (l10n.navTransactions, '/transactions'),
+                      (l10n.navCustomers, '/more/customers'),
+                      (l10n.navReports, '/reports'),
+                      (l10n.navSettings, '/more/settings'),
                     ])
                       AppButton(
                         label: entry.$1,

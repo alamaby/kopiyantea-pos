@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../core/config/app_constants.dart';
 import '../../core/database/app_database.dart';
 import '../../core/domain/enums.dart';
+import '../../core/l10n/locale_provider.dart';
 import '../../core/network/supabase_providers.dart';
 import '../../core/sync/sync_provider.dart';
 import '../../core/theme/colors.dart';
@@ -19,6 +20,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../auth/auth_provider.dart';
 import 'branch_selection_provider.dart';
 import 'settings_provider.dart';
@@ -34,7 +36,7 @@ class SettingsScreen extends ConsumerWidget {
     final isOwner = currentUser?.globalRole == GlobalRole.owner;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan')),
+      appBar: AppBar(title: Text(AppL10n.of(context).navSettings)),
       body: settings.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
@@ -48,6 +50,8 @@ class SettingsScreen extends ConsumerWidget {
             _BranchSection(settings: s, branchesAsync: branches),
             const SizedBox(height: AppSpacing.lg),
             _ThemeSection(settings: s),
+            const SizedBox(height: AppSpacing.lg),
+            const _LanguageSection(),
             const SizedBox(height: AppSpacing.lg),
             _DeviceSection(settings: s),
             if (isOwner) ...[
@@ -303,6 +307,55 @@ class _ThemeSection extends ConsumerWidget {
   }
 }
 
+// ── Language ──────────────────────────────────────────────────────────────────
+
+class _LanguageSection extends ConsumerWidget {
+  const _LanguageSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeControllerProvider);
+    final isEnglish = locale.languageCode == 'en';
+
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(label: isEnglish ? 'Language' : 'Bahasa'),
+          const SizedBox(height: AppSpacing.md),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(
+                value: 'en',
+                label: Text('English'),
+                icon: Text('EN'),
+              ),
+              ButtonSegment(
+                value: 'id',
+                label: Text('Indonesia'),
+                icon: Text('ID'),
+              ),
+            ],
+            selected: {locale.languageCode},
+            onSelectionChanged: (set) async {
+              await ref
+                  .read(localeControllerProvider.notifier)
+                  .setLanguageCode(set.first);
+            },
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.resolveWith(
+                (states) => states.contains(WidgetState.selected)
+                    ? AppColors.primarySurface
+                    : null,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Device ────────────────────────────────────────────────────────────────────
 
 class _DeviceSection extends ConsumerWidget {
@@ -539,6 +592,7 @@ class _BackupSection extends ConsumerWidget {
     try {
       final n =
           await ref.read(settingsNotifierProvider.notifier).applyFromJson(raw);
+      await ref.read(localeControllerProvider.notifier).reload();
       messenger.showSnackBar(
         SnackBar(content: Text('$n pengaturan dipulihkan')),
       );

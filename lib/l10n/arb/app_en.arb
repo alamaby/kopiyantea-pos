@@ -2,6 +2,7 @@
   "@@locale": "en",
 
   "appTitle": "KopiyanteaPOS",
+  "@appTitle": { "description": "Application title" },
 
   "navHome": "Home",
   "navPos": "POS",
@@ -32,6 +33,7 @@
   "posSubtotal": "Subtotal",
   "posDiscount": "Discount",
   "posTax": "Tax ({label})",
+  "@posTax": { "placeholders": { "label": { "type": "String" } } },
   "posTotal": "Total",
   "posPaymentReceived": "Received",
   "posPaymentChange": "Change",

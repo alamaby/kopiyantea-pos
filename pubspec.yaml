@@ -1,7 +1,7 @@
 name: kopiyantea_pos
 description: Offline-first Flutter POS for an Indonesian coffee shop chain.
 publish_to: 'none'
-version: 0.11.0+17
+version: 0.12.0+18
 
 environment:
   sdk: '>=3.4.0 <4.0.0'

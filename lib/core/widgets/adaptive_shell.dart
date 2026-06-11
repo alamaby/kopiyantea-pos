@@ -5,6 +5,7 @@ import '../theme/breakpoints.dart';
 import '../theme/colors.dart';
 import '../theme/spacing.dart';
 import '../theme/typography.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 /// Adaptive navigation scaffold.
 ///
@@ -20,33 +21,36 @@ class AdaptiveShell extends StatelessWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  static const List<_NavDestination> _destinations = [
-    _NavDestination(
-      label: 'Kasir',
-      icon: Icons.point_of_sale_outlined,
-      selectedIcon: Icons.point_of_sale,
-    ),
-    _NavDestination(
-      label: 'Menu',
-      icon: Icons.restaurant_menu_outlined,
-      selectedIcon: Icons.restaurant_menu,
-    ),
-    _NavDestination(
-      label: 'Laporan',
-      icon: Icons.bar_chart_outlined,
-      selectedIcon: Icons.bar_chart,
-    ),
-    _NavDestination(
-      label: 'Transaksi',
-      icon: Icons.receipt_long_outlined,
-      selectedIcon: Icons.receipt_long,
-    ),
-    _NavDestination(
-      label: 'Lainnya',
-      icon: Icons.menu_outlined,
-      selectedIcon: Icons.menu,
-    ),
-  ];
+  List<_NavDestination> _destinations(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    return [
+      _NavDestination(
+        label: l10n.navPos,
+        icon: Icons.point_of_sale_outlined,
+        selectedIcon: Icons.point_of_sale,
+      ),
+      _NavDestination(
+        label: l10n.navProducts,
+        icon: Icons.restaurant_menu_outlined,
+        selectedIcon: Icons.restaurant_menu,
+      ),
+      _NavDestination(
+        label: l10n.navReports,
+        icon: Icons.bar_chart_outlined,
+        selectedIcon: Icons.bar_chart,
+      ),
+      _NavDestination(
+        label: l10n.navTransactions,
+        icon: Icons.receipt_long_outlined,
+        selectedIcon: Icons.receipt_long,
+      ),
+      _NavDestination(
+        label: l10n.navMore,
+        icon: Icons.menu_outlined,
+        selectedIcon: Icons.menu,
+      ),
+    ];
+  }
 
   void _onTap(int index) {
     // Re-tapping the current destination pops to the branch root.
@@ -61,17 +65,18 @@ class AdaptiveShell extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
+        final destinations = _destinations(context);
         if (width >= AppBreakpoint.tablet) {
           return _RailScaffold(
             shell: navigationShell,
-            destinations: _destinations,
+            destinations: destinations,
             onTap: _onTap,
             extended: width >= AppBreakpoint.railExtended,
           );
         }
         return _BottomNavScaffold(
           shell: navigationShell,
-          destinations: _destinations,
+          destinations: destinations,
           onTap: _onTap,
         );
       },

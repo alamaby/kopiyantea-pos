@@ -4,6 +4,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/l10n/locale_provider.dart';
+
 part 'settings_provider.freezed.dart';
 part 'settings_provider.g.dart';
 
@@ -58,8 +60,7 @@ class SettingsNotifier extends _$SettingsNotifier {
     );
   }
 
-  Future<void> setSelectedBranch(String? branchId) =>
-      _update((prefs) async {
+  Future<void> setSelectedBranch(String? branchId) => _update((prefs) async {
         if (branchId == null) {
           await prefs.remove(_Keys.selectedBranchId);
         } else {
@@ -73,8 +74,7 @@ class SettingsNotifier extends _$SettingsNotifier {
   Future<void> setPrintEnabled(bool enabled) =>
       _update((prefs) => prefs.setBool(_Keys.printEnabled, enabled));
 
-  Future<void> setLastPrinterAddress(String? address) =>
-      _update((prefs) async {
+  Future<void> setLastPrinterAddress(String? address) => _update((prefs) async {
         if (address == null) {
           await prefs.remove(_Keys.lastPrinterAddress);
         } else {
@@ -82,16 +82,14 @@ class SettingsNotifier extends _$SettingsNotifier {
         }
       });
 
-  Future<void> setRememberMe(bool enabled) =>
-      _update((prefs) async {
+  Future<void> setRememberMe(bool enabled) => _update((prefs) async {
         await prefs.setBool(_Keys.rememberMe, enabled);
         if (!enabled) {
           await prefs.remove(_Keys.lastLoginEmail);
         }
       });
 
-  Future<void> setLastLoginEmail(String? email) =>
-      _update((prefs) async {
+  Future<void> setLastLoginEmail(String? email) => _update((prefs) async {
         if (email == null || email.isEmpty) {
           await prefs.remove(_Keys.lastLoginEmail);
         } else {
@@ -111,6 +109,7 @@ class SettingsNotifier extends _$SettingsNotifier {
   /// clipboard export. Excludes ephemeral/credential fields.
   Future<String> exportToJson() async {
     final s = await future;
+    final prefs = await SharedPreferences.getInstance();
     return const JsonEncoder.withIndent('  ').convert({
       'app': kSettingsExportApp,
       'version': kSettingsExportVersion,
@@ -118,6 +117,8 @@ class SettingsNotifier extends _$SettingsNotifier {
       'settings': {
         _Keys.selectedBranchId: s.selectedBranchId,
         _Keys.themeMode: s.themeMode,
+        kAppLocalePreferenceKey:
+            prefs.getString(kAppLocalePreferenceKey) ?? kDefaultAppLanguageCode,
         _Keys.printEnabled: s.printEnabled,
         _Keys.lastPrinterAddress: s.lastPrinterAddress,
         _Keys.rememberMe: s.rememberMe,
@@ -164,6 +165,13 @@ class SettingsNotifier extends _$SettingsNotifier {
       final v = m[_Keys.themeMode];
       if (v is String && (v == 'system' || v == 'light' || v == 'dark')) {
         await prefs.setString(_Keys.themeMode, v);
+        applied++;
+      }
+    }
+    if (m.containsKey(kAppLocalePreferenceKey)) {
+      final v = m[kAppLocalePreferenceKey];
+      if (v is String && kSupportedAppLanguageCodes.contains(v)) {
+        await prefs.setString(kAppLocalePreferenceKey, v);
         applied++;
       }
     }

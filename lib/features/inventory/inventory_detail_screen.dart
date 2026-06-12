@@ -10,8 +10,10 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/labels.dart';
+import '../../core/utils/localized_labels.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'inventory_providers.dart';
 
 class InventoryDetailScreen extends ConsumerWidget {
@@ -22,12 +24,13 @@ class InventoryDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemAsync = ref.watch(inventoryItemProvider(itemId));
+    final l10n = AppL10n.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: itemAsync.maybeWhen(
-          data: (item) => Text(item?.name ?? 'Detail Stok'),
-          orElse: () => const Text('Detail Stok'),
+          data: (item) => Text(item?.name ?? l10n.inventoryDetailTitle),
+          orElse: () => Text(l10n.inventoryDetailTitle),
         ),
         actions: [
           itemAsync.maybeWhen(
@@ -35,9 +38,8 @@ class InventoryDetailScreen extends ConsumerWidget {
                 ? const SizedBox.shrink()
                 : IconButton(
                     icon: const Icon(Icons.edit_outlined),
-                    tooltip: 'Ubah item',
-                    onPressed: () =>
-                        context.push('/inventory/${item.id}/edit'),
+                    tooltip: l10n.inventoryEditItemTooltip,
+                    onPressed: () => context.push('/inventory/${item.id}/edit'),
                   ),
             orElse: () => const SizedBox.shrink(),
           ),
@@ -46,14 +48,14 @@ class InventoryDetailScreen extends ConsumerWidget {
       body: itemAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat item',
+          title: l10n.inventoryLoadItemFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (item) {
           if (item == null) {
-            return const AppEmptyState(
-              title: 'Item tidak ditemukan',
+            return AppEmptyState(
+              title: l10n.inventoryItemNotFound,
               icon: Icons.search_off_outlined,
             );
           }
@@ -72,6 +74,7 @@ class _DetailBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final movementsAsync = ref.watch(inventoryMovementsProvider(item.id));
+    final l10n = AppL10n.of(context);
 
     return ListView(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -83,7 +86,7 @@ class _DetailBody extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
           child: Text(
-            'RIWAYAT PERGERAKAN',
+            l10n.inventoryMovementsSection.toUpperCase(),
             style: AppTypography.labelSm.copyWith(
               color: context.colors.textSecondary,
               letterSpacing: 0.8,
@@ -97,7 +100,7 @@ class _DetailBody extends ConsumerWidget {
             child: Center(child: AppLoadingIndicator()),
           ),
           error: (e, _) => Text(
-            'Gagal memuat riwayat: $e',
+            l10n.inventoryLoadMovementsFailed(e.toString()),
             style: AppTypography.bodySm.copyWith(color: AppColors.danger),
           ),
           data: (movements) {
@@ -127,6 +130,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final low = item.cachedStock <= item.minStock;
+    final l10n = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -138,7 +142,7 @@ class _SummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'STOK SAAT INI',
+            l10n.inventoryCurrentStockSection.toUpperCase(),
             style: AppTypography.labelSm.copyWith(
               color: context.colors.textSecondary,
               letterSpacing: 0.8,
@@ -152,9 +156,12 @@ class _SummaryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: AppSpacing.md),
-          _Row(label: 'Minimum', value: formatStock(item.minStock, item.unit)),
           _Row(
-            label: 'Harga modal',
+            label: l10n.inventoryMinimum,
+            value: formatStock(item.minStock, item.unit),
+          ),
+          _Row(
+            label: l10n.inventoryCostPrice,
             value:
                 '${formatRupiah(item.costPerUnit)}/${stockUnitLabel(item.unit)}',
           ),
@@ -170,14 +177,14 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Row(
       children: [
         Expanded(
           child: OutlinedButton.icon(
-            onPressed: () =>
-                context.push('/inventory/${item.id}/movement'),
+            onPressed: () => context.push('/inventory/${item.id}/movement'),
             icon: const Icon(Icons.add),
-            label: const Text('Catat Pergerakan'),
+            label: Text(l10n.inventoryRecordMovement),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
             ),
@@ -196,6 +203,7 @@ class _MovementTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final isPositive = movement.deltaSigned > 0;
     final color = isPositive ? AppColors.success : AppColors.danger;
     final prefix = isPositive ? '+' : '';
@@ -228,7 +236,7 @@ class _MovementTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  movementTypeLabel(movement.movementType),
+                  localizedMovementTypeLabel(l10n, movement.movementType),
                   style: AppTypography.titleMd,
                 ),
                 const SizedBox(height: AppSpacing.xs),
@@ -275,9 +283,9 @@ class _EmptyMovements extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          'Belum ada pergerakan stok',
-          style:
-              AppTypography.bodySm.copyWith(color: context.colors.textSecondary),
+          AppL10n.of(context).inventoryNoMovements,
+          style: AppTypography.bodySm
+              .copyWith(color: context.colors.textSecondary),
         ),
       ),
     );
@@ -298,8 +306,8 @@ class _Row extends StatelessWidget {
         children: [
           Text(
             label,
-            style:
-                AppTypography.bodyMd.copyWith(color: context.colors.textSecondary),
+            style: AppTypography.bodyMd
+                .copyWith(color: context.colors.textSecondary),
           ),
           const Spacer(),
           Text(value, style: AppTypography.bodyMd),

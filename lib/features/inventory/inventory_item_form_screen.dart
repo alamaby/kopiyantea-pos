@@ -17,6 +17,7 @@ import '../../core/utils/labels.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../settings/branch_selection_provider.dart';
 
 /// FEAT-005 — create or edit an inventory item (master).
@@ -65,8 +66,7 @@ class _InventoryItemFormScreenState
     setState(() => _loading = true);
     final row = await (ref.read(databaseProvider).select(
               ref.read(databaseProvider).inventoryItems,
-            )
-              ..where((i) => i.id.equals(widget.itemId!)))
+            )..where((i) => i.id.equals(widget.itemId!)))
         .getSingleOrNull();
     if (!mounted) return;
     setState(() {
@@ -82,6 +82,7 @@ class _InventoryItemFormScreenState
   }
 
   Future<void> _save() async {
+    final l10n = AppL10n.of(context);
     if (_saving) return;
     setState(() {
       _saving = true;
@@ -91,7 +92,7 @@ class _InventoryItemFormScreenState
     if (name.isEmpty) {
       setState(() {
         _saving = false;
-        _errorName = 'Nama wajib diisi';
+        _errorName = l10n.inventoryNameRequired;
       });
       return;
     }
@@ -108,7 +109,7 @@ class _InventoryItemFormScreenState
         if (!mounted) return;
         setState(() {
           _saving = false;
-          _errorName = 'Pilih cabang dulu di Pengaturan';
+          _errorName = l10n.inventorySelectBranchFirst;
         });
         return;
       }
@@ -153,39 +154,42 @@ class _InventoryItemFormScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Memuat…')),
+        appBar: AppBar(title: Text(l10n.statusLoading)),
         body: const Center(child: AppLoadingIndicator()),
       );
     }
     if (_isEditing && _existing == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Item Stok')),
-        body: const AppEmptyState(
-          title: 'Item tidak ditemukan',
+        appBar: AppBar(title: Text(l10n.inventoryItem)),
+        body: AppEmptyState(
+          title: l10n.inventoryItemNotFound,
           icon: Icons.search_off_outlined,
         ),
       );
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Ubah Item Stok' : 'Tambah Item Stok'),
+        title: Text(
+          _isEditing ? l10n.inventoryEditItem : l10n.inventoryAddItemTitle,
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           _Field(
-            label: 'Nama bahan',
+            label: l10n.inventoryIngredientName,
             controller: _nameCtrl,
-            hint: 'mis. Gula Aren, Susu Fresh',
+            hint: l10n.inventoryIngredientNameHint,
             errorText: _errorName,
             autofocus: !_isEditing,
             required: true,
           ),
           const SizedBox(height: AppSpacing.lg),
           Text(
-            'Satuan',
+            l10n.inventoryUnit,
             style: AppTypography.labelSm
                 .copyWith(color: context.colors.textSecondary),
           ),
@@ -203,25 +207,24 @@ class _InventoryItemFormScreenState
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
-            label: 'Stok minimum',
+            label: l10n.inventoryMinimumStock,
             controller: _minStockCtrl,
             hint: '0',
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             suffixText: stockUnitLabel(_unit),
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
-            label: 'Harga modal per ${stockUnitLabel(_unit)}',
+            label: l10n.inventoryCostPricePerUnit(stockUnitLabel(_unit)),
             controller: _costCtrl,
             hint: '0',
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             suffixText: 'Rp',
           ),
           const SizedBox(height: AppSpacing.xxl),
           AppButton(
-            label: _isEditing ? 'Simpan Perubahan' : 'Tambah Item',
+            label:
+                _isEditing ? l10n.inventorySaveChanges : l10n.inventoryAddItem,
             icon: Icons.save_outlined,
             onPressed: _saving ? null : _save,
             isLoading: _saving,
@@ -230,7 +233,7 @@ class _InventoryItemFormScreenState
           if (!_isEditing) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Setelah item dibuat, masukkan stok awal dari halaman detail item.',
+              l10n.inventoryAfterCreateHelp,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
               textAlign: TextAlign.center,

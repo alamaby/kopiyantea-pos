@@ -11,6 +11,7 @@ import '../../core/utils/labels.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../settings/branch_selection_provider.dart';
 import 'inventory_providers.dart';
 
@@ -20,6 +21,7 @@ class InventoryListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final branchAsync = ref.watch(selectedBranchProvider);
+    final l10n = AppL10n.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -28,7 +30,7 @@ class InventoryListScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Stok'),
+              Text(l10n.inventoryStock),
               if (b != null)
                 Text(
                   b.name,
@@ -37,28 +39,28 @@ class InventoryListScreen extends ConsumerWidget {
                 ),
             ],
           ),
-          orElse: () => const Text('Stok'),
+          orElse: () => Text(l10n.inventoryStock),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_inventory',
         onPressed: () => context.push('/inventory/new'),
         icon: const Icon(Icons.add),
-        label: const Text('Tambah Item'),
+        label: Text(l10n.inventoryAddItem),
       ),
       body: branchAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat cabang',
+          title: l10n.inventoryLoadBranchFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (branch) {
           if (branch == null) {
-            return const AppEmptyState(
-              title: 'Belum memilih cabang',
+            return AppEmptyState(
+              title: l10n.inventoryNoBranchTitle,
               icon: Icons.store_outlined,
-              message: 'Pilih cabang aktif di Pengaturan.',
+              message: l10n.inventoryNoBranchMessage,
             );
           }
           return _InventoryList(branchId: branch.id);
@@ -76,20 +78,21 @@ class _InventoryList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itemsAsync = ref.watch(branchInventoryProvider(branchId));
+    final l10n = AppL10n.of(context);
 
     return itemsAsync.when(
       loading: () => const Center(child: AppLoadingIndicator()),
       error: (e, _) => AppEmptyState(
-        title: 'Gagal memuat stok',
+        title: l10n.inventoryLoadStockFailed,
         icon: Icons.error_outline,
         message: e.toString(),
       ),
       data: (items) {
         if (items.isEmpty) {
-          return const AppEmptyState(
-            title: 'Belum ada item stok',
+          return AppEmptyState(
+            title: l10n.inventoryEmptyTitle,
             icon: Icons.inventory_2_outlined,
-            message: 'Tambahkan item dari menu manajemen.',
+            message: l10n.inventoryEmptyMessage,
           );
         }
         return ListView.separated(
@@ -110,7 +113,8 @@ class _InventoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = _stockStatus(item.cachedStock, item.minStock);
+    final l10n = AppL10n.of(context);
+    final status = _stockStatus(l10n, item.cachedStock, item.minStock);
 
     return Material(
       color: context.colors.surface,
@@ -148,7 +152,7 @@ class _InventoryTile extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      '${formatStock(item.cachedStock, item.unit)}  ·  min ${formatStock(item.minStock, item.unit)}',
+                      '${formatStock(item.cachedStock, item.unit)}  ·  ${l10n.inventoryMinimumShort(formatStock(item.minStock, item.unit))}',
                       style: AppTypography.bodySm
                           .copyWith(color: context.colors.textSecondary),
                     ),
@@ -178,23 +182,23 @@ class _Status {
   final AppBadgeTone tone;
 }
 
-_Status _stockStatus(double current, double min) {
+_Status _stockStatus(AppL10n l10n, double current, double min) {
   if (current <= 0) {
-    return const _Status(
-      label: 'Habis',
+    return _Status(
+      label: l10n.inventoryOutOfStock,
       icon: Icons.error_outline,
       tone: AppBadgeTone.danger,
     );
   }
   if (current <= min) {
-    return const _Status(
-      label: 'Menipis',
+    return _Status(
+      label: l10n.inventoryLowStock,
       icon: Icons.warning_amber_outlined,
       tone: AppBadgeTone.warning,
     );
   }
-  return const _Status(
-    label: 'Cukup',
+  return _Status(
+    label: l10n.inventoryEnoughStock,
     icon: Icons.check_circle_outline,
     tone: AppBadgeTone.success,
   );

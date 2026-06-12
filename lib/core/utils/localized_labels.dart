@@ -21,3 +21,13 @@ String localizedTransactionStatusLabel(
     TransactionStatus.voided => l10n.transactionsStatusVoided,
   };
 }
+
+String localizedMovementTypeLabel(AppL10n l10n, MovementType type) {
+  return switch (type) {
+    MovementType.purchase => l10n.inventoryMovementPurchase,
+    MovementType.sale => l10n.inventoryMovementSale,
+    MovementType.adjustment => l10n.inventoryMovementAdjustment,
+    MovementType.waste => l10n.inventoryMovementWaste,
+    MovementType.transfer => l10n.inventoryMovementTransfer,
+  };
+}

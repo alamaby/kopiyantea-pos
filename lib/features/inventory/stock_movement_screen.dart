@@ -13,10 +13,12 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/labels.dart';
+import '../../core/utils/localized_labels.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../auth/auth_provider.dart';
 import 'inventory_providers.dart';
 
@@ -67,6 +69,7 @@ class _StockMovementScreenState extends ConsumerState<StockMovementScreen> {
   }
 
   Future<void> _save(InventoryItemRow item) async {
+    final l10n = AppL10n.of(context);
     if (_saving) return;
     setState(() {
       _saving = true;
@@ -76,7 +79,7 @@ class _StockMovementScreenState extends ConsumerState<StockMovementScreen> {
     if (qty == null || qty == 0) {
       setState(() {
         _saving = false;
-        _errorQty = 'Jumlah tidak valid';
+        _errorQty = l10n.inventoryInvalidQuantity;
       });
       return;
     }
@@ -127,19 +130,20 @@ class _StockMovementScreenState extends ConsumerState<StockMovementScreen> {
   @override
   Widget build(BuildContext context) {
     final itemAsync = ref.watch(inventoryItemProvider(widget.itemId));
+    final l10n = AppL10n.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Catat Pergerakan Stok')),
+      appBar: AppBar(title: Text(l10n.inventoryRecordMovementTitle)),
       body: itemAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat item',
+          title: l10n.inventoryLoadItemFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (item) {
           if (item == null) {
-            return const AppEmptyState(
-              title: 'Item tidak ditemukan',
+            return AppEmptyState(
+              title: l10n.inventoryItemNotFound,
               icon: Icons.search_off_outlined,
             );
           }
@@ -153,7 +157,9 @@ class _StockMovementScreenState extends ConsumerState<StockMovementScreen> {
                     Text(item.name, style: AppTypography.headlineMd),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      'Stok saat ini: ${formatStock(item.cachedStock, item.unit)}',
+                      l10n.inventoryCurrentStock(
+                        formatStock(item.cachedStock, item.unit),
+                      ),
                       style: AppTypography.bodySm
                           .copyWith(color: context.colors.textSecondary),
                     ),
@@ -162,7 +168,7 @@ class _StockMovementScreenState extends ConsumerState<StockMovementScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'Jenis pergerakan',
+                l10n.inventoryMovementType,
                 style: AppTypography.labelSm
                     .copyWith(color: context.colors.textSecondary),
               ),
@@ -172,7 +178,7 @@ class _StockMovementScreenState extends ConsumerState<StockMovementScreen> {
                   for (final t in _allowedTypes)
                     ButtonSegment(
                       value: t,
-                      label: Text(movementTypeLabel(t)),
+                      label: Text(localizedMovementTypeLabel(l10n, t)),
                       icon: Icon(_iconFor(t)),
                     ),
                 ],
@@ -182,8 +188,8 @@ class _StockMovementScreenState extends ConsumerState<StockMovementScreen> {
               const SizedBox(height: AppSpacing.lg),
               Text(
                 _type == MovementType.adjustment
-                    ? 'Jumlah penyesuaian (gunakan tanda - untuk pengurangan)'
-                    : 'Jumlah',
+                    ? l10n.inventoryAdjustmentQuantity
+                    : l10n.inventoryQuantity,
                 style: AppTypography.labelSm
                     .copyWith(color: context.colors.textSecondary),
               ),
@@ -203,7 +209,7 @@ class _StockMovementScreenState extends ConsumerState<StockMovementScreen> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'Catatan (opsional)',
+                l10n.inventoryNotesOptional,
                 style: AppTypography.labelSm
                     .copyWith(color: context.colors.textSecondary),
               ),
@@ -211,13 +217,13 @@ class _StockMovementScreenState extends ConsumerState<StockMovementScreen> {
               TextField(
                 controller: _notesCtrl,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  hintText: 'mis. Beli dari supplier A, susut karena tumpah',
+                decoration: InputDecoration(
+                  hintText: l10n.inventoryNotesHint,
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
               AppButton(
-                label: _saving ? 'Menyimpan…' : 'Catat',
+                label: _saving ? l10n.statusSaving : l10n.inventoryRecord,
                 icon: Icons.save_outlined,
                 onPressed: _saving ? null : () => _save(item),
                 isLoading: _saving,

@@ -161,7 +161,14 @@ class _HeldOrderTile extends ConsumerWidget {
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         previewAsync.maybeWhen(
-                          data: (preview) => preview.firstItemName,
+                          data: (preview) {
+                            if (preview.firstItemName != null) {
+                              return preview.firstItemName!;
+                            }
+                            return preview.isFirstItemUnavailable
+                                ? l10n.heldOrdersItemUnavailable
+                                : l10n.heldOrdersNoItems;
+                          },
                           orElse: () => l10n.heldOrdersLoadingItem,
                         ),
                         style: AppTypography.bodySm.copyWith(

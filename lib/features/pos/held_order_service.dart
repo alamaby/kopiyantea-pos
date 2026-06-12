@@ -41,10 +41,12 @@ final heldOrderPreviewProvider = FutureProvider.autoDispose
 class HeldOrderPreview {
   const HeldOrderPreview({
     required this.firstItemName,
+    required this.isFirstItemUnavailable,
     required this.total,
   });
 
-  final String firstItemName;
+  final String? firstItemName;
+  final bool isFirstItemUnavailable;
   final double total;
 }
 
@@ -187,23 +189,24 @@ class HeldOrderService {
 
     return HeldOrderPreview(
       firstItemName: firstItemName,
+      isFirstItemUnavailable: itemsJson.isNotEmpty && firstItemName == null,
       total: total,
     );
   }
 
-  Future<String> _resolveFirstItemName(
+  Future<String?> _resolveFirstItemName(
       List<Map<String, dynamic>> itemsJson) async {
-    if (itemsJson.isEmpty) return 'Tidak ada item';
+    if (itemsJson.isEmpty) return null;
     final first = itemsJson.first;
     final snapshotName = first['productName'] as String?;
     if (snapshotName != null && snapshotName.trim().isNotEmpty) {
       return snapshotName.trim();
     }
     final productId = first['productId'] as String?;
-    if (productId == null) return 'Item tidak tersedia';
+    if (productId == null) return null;
     final product =
         await _ref.read(catalogDaoProvider).getProductById(productId);
-    return product?.name ?? 'Item tidak tersedia';
+    return product?.name;
   }
 
   Future<void> discard(String heldOrderId) =>

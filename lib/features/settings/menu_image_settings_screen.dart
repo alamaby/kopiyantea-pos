@@ -461,8 +461,8 @@ class _Preview extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.fromLTRB(6, 0, 6, 6),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
                           child: Text(
                             menuLabel,
                             overflow: TextOverflow.ellipsis,

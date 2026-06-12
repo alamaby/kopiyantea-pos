@@ -201,6 +201,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
       source: source,
       bucket: ImageBuckets.logos,
       pathPrefix: 'branches/',
+      cropTitle: AppL10n.of(context).imageCropTitle,
     );
     if (!mounted) return;
     setState(() => _uploadingLogo = false);

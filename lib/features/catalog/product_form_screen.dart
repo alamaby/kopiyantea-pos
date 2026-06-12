@@ -231,6 +231,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       source: source,
       bucket: ImageBuckets.products,
       pathPrefix: 'products/',
+      cropTitle: AppL10n.of(context).imageCropTitle,
       // FEAT-012b — force 1:1 crop so MenuGrid square thumbnails frame the
       // food/drink subject without auto-cropping random parts.
       crop: CropAspect.square,

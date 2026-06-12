@@ -77,6 +77,7 @@ class ImageUploadService {
     required ImageSource_ source,
     required String bucket,
     required String pathPrefix,
+    required String cropTitle,
     CropAspect crop = CropAspect.none,
   }) async {
     final sb = _sb;
@@ -113,7 +114,7 @@ class ImageUploadService {
           compressQuality: 95, // we re-compress below; keep crop output high
           uiSettings: [
             AndroidUiSettings(
-              toolbarTitle: 'Atur Foto',
+              toolbarTitle: cropTitle,
               toolbarColor: const Color(0xFF0F766E), // brand teal
               toolbarWidgetColor: const Color(0xFFFFFFFF),
               initAspectRatio: CropAspectRatioPreset.original,
@@ -121,7 +122,7 @@ class ImageUploadService {
               hideBottomControls: crop == CropAspect.square,
             ),
             IOSUiSettings(
-              title: 'Atur Foto',
+              title: cropTitle,
               aspectRatioLockEnabled: crop == CropAspect.square,
               resetAspectRatioEnabled: crop == CropAspect.free,
             ),
@@ -209,6 +210,7 @@ final imageUploadServiceProvider = Provider<ImageUploadService>(
 abstract final class ImageBuckets {
   static const products = 'product-images';
   static const qris = 'qris-images';
+
   /// FEAT-014 — branch receipt header logo (B&W PNG, ≤576×200 px).
   static const logos = 'receipt-logos';
 }

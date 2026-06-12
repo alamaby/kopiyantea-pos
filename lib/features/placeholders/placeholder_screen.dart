@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/widgets/app_empty_state.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class PlaceholderScreen extends StatelessWidget {
   const PlaceholderScreen({required this.title, super.key});
@@ -14,7 +15,7 @@ class PlaceholderScreen extends StatelessWidget {
       body: AppEmptyState(
         title: title,
         icon: Icons.construction_outlined,
-        message: 'Layar ini dibangun pada Phase 2–4.',
+        message: AppL10n.of(context).placeholderScreenMessage,
       ),
     );
   }

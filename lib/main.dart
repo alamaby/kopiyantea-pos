@@ -18,6 +18,7 @@ import 'core/sync/background_sync.dart';
 import 'core/theme/app_theme.dart';
 import 'features/settings/settings_provider.dart';
 import 'l10n/generated/app_localizations.dart';
+import 'l10n/generated/app_localizations_en.dart';
 import 'router.dart';
 
 /// Application entry point.
@@ -144,28 +145,41 @@ class _EnvErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'KopiyanteaPOS — Config Error',
+      title: AppL10nEn().envConfigErrorTitle,
+      localizationsDelegates: AppL10n.localizationsDelegates,
+      supportedLocales: AppL10n.supportedLocales,
       home: Scaffold(
-        appBar: AppBar(title: const Text('Config Error')),
+        appBar: AppBar(
+          title: Builder(
+            builder: (context) => Text(
+              AppL10n.of(context).envConfigErrorShortTitle,
+            ),
+          ),
+        ),
         body: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 48),
-              const SizedBox(height: 16),
-              const Text(
-                'Environment configuration is invalid.',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Edit .env (see .env.example), then rebuild:\n'
-                '  dart run build_runner build --delete-conflicting-outputs',
-              ),
-              const SizedBox(height: 16),
-              SelectableText(message),
-            ],
+          child: Builder(
+            builder: (context) {
+              final l10n = AppL10n.of(context);
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n.envConfigInvalid,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(l10n.envConfigFixInstruction),
+                  const SizedBox(height: 16),
+                  SelectableText(message),
+                ],
+              );
+            },
           ),
         ),
       ),

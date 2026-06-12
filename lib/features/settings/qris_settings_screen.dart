@@ -77,6 +77,7 @@ class _BranchQrisCardState extends ConsumerState<_BranchQrisCard> {
       source: source,
       bucket: ImageBuckets.qris,
       pathPrefix: 'branches/',
+      cropTitle: AppL10n.of(context).imageCropTitle,
     );
     if (!mounted) return;
     setState(() => _uploading = false);

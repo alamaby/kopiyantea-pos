@@ -604,7 +604,11 @@ class _BackupSection extends ConsumerWidget {
       );
     } on FormatException catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text(l10n.settingsImportFailed(e.message))),
+        SnackBar(
+          content: Text(l10n.settingsImportFailed(
+            _settingsImportErrorMessage(l10n, e.message),
+          )),
+        ),
       );
     } catch (e) {
       messenger.showSnackBar(
@@ -612,6 +616,17 @@ class _BackupSection extends ConsumerWidget {
       );
     }
   }
+
+  String _settingsImportErrorMessage(AppL10n l10n, String code) =>
+      switch (code) {
+        kSettingsImportInvalidJson => l10n.settingsImportInvalidJson,
+        kSettingsImportWrongApp => l10n.settingsImportWrongApp,
+        kSettingsImportVersionMismatch =>
+          l10n.settingsImportVersionMismatch(kSettingsExportVersion),
+        kSettingsImportSettingsFieldInvalid =>
+          l10n.settingsImportSettingsFieldInvalid,
+        _ => code,
+      };
 }
 
 class _AboutSection extends StatefulWidget {

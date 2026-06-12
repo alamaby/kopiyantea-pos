@@ -13,6 +13,10 @@ part 'settings_provider.g.dart';
 /// schema breaks; importer rejects mismatched envelopes.
 const String kSettingsExportApp = 'kopiyantea-pos';
 const int kSettingsExportVersion = 1;
+const String kSettingsImportInvalidJson = 'invalid_json';
+const String kSettingsImportWrongApp = 'wrong_app';
+const String kSettingsImportVersionMismatch = 'version_mismatch';
+const String kSettingsImportSettingsFieldInvalid = 'settings_field_invalid';
 
 // ── Keys ─────────────────────────────────────────────────────────────────────
 
@@ -135,18 +139,17 @@ class SettingsNotifier extends _$SettingsNotifier {
     try {
       decoded = jsonDecode(raw) as Map<String, dynamic>;
     } catch (e) {
-      throw const FormatException('JSON tidak valid');
+      throw const FormatException(kSettingsImportInvalidJson);
     }
     if (decoded['app'] != kSettingsExportApp) {
-      throw const FormatException('Bukan backup KopiyanteaPOS');
+      throw const FormatException(kSettingsImportWrongApp);
     }
     if (decoded['version'] != kSettingsExportVersion) {
-      throw FormatException(
-          'Versi backup tidak cocok (expect $kSettingsExportVersion)');
+      throw const FormatException(kSettingsImportVersionMismatch);
     }
     final m = decoded['settings'];
     if (m is! Map<String, dynamic>) {
-      throw const FormatException('Field "settings" hilang/rusak');
+      throw const FormatException(kSettingsImportSettingsFieldInvalid);
     }
 
     final prefs = await SharedPreferences.getInstance();

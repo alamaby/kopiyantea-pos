@@ -39,6 +39,7 @@ import 'features/users/user_form_screen.dart';
 import 'features/users/user_list_screen.dart';
 import 'features/transactions/transaction_detail_screen.dart';
 import 'features/transactions/transaction_list_screen.dart';
+import 'l10n/generated/app_localizations.dart';
 
 /// Typed shell routing via [StatefulShellRoute.indexedStack].
 ///
@@ -341,8 +342,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
     ],
-    errorBuilder: (_, state) => Scaffold(
-      body: Center(child: Text('Route tidak ditemukan: ${state.uri}')),
+    errorBuilder: (context, state) => Scaffold(
+      body: Center(
+        child: Text(AppL10n.of(context).routeNotFound('${state.uri}')),
+      ),
     ),
   );
 });

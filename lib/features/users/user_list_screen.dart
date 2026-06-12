@@ -258,6 +258,7 @@ class _DismissibleInvitation extends ConsumerWidget {
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(buildUndoSnackBar(
       message: AppL10n.of(context).usersInviteCancelled(snapshot.email),
+      undoLabel: AppL10n.of(context).actionUndo,
       onUndo: () => _undoCancelInvitation(ref, snapshot, deleteOutboxId),
     ));
   }

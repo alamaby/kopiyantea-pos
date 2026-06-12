@@ -610,6 +610,7 @@ class _MenuDetailRow extends ConsumerWidget {
     final bp = item.branchProduct;
     final pricing = _MenuPricing.from(item);
     final displayName = bp.customName ?? product.name;
+    final l10n = AppL10n.of(context);
 
     return Material(
       color: context.colors.surface,

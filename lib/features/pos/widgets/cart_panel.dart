@@ -676,6 +676,7 @@ class _CartItemTile extends ConsumerWidget {
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(buildUndoSnackBar(
       message: AppL10n.of(context).cartItemRemoved(name),
+      undoLabel: AppL10n.of(context).actionUndo,
       onUndo: () => notifier.restoreItem(removed, index: removedIndex),
     ));
   }

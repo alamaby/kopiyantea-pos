@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/database_provider.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 enum MenuImageHeaderLayout { stacked, split }
 
@@ -127,9 +128,9 @@ extension MenuImageHeaderLayoutX on MenuImageHeaderLayout {
         MenuImageHeaderLayout.split => 'split',
       };
 
-  String get label => switch (this) {
-        MenuImageHeaderLayout.stacked => 'Atas-bawah',
-        MenuImageHeaderLayout.split => 'Logo kiri',
+  String localizedLabel(AppL10n l10n) => switch (this) {
+        MenuImageHeaderLayout.stacked => l10n.menuImageHeaderStacked,
+        MenuImageHeaderLayout.split => l10n.menuImageHeaderSplit,
       };
 }
 

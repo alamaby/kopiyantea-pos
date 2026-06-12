@@ -11,6 +11,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'branch_selection_provider.dart';
 import 'menu_image_settings.dart';
 
@@ -19,20 +20,21 @@ class MenuImageSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final branchesAsync = ref.watch(allBranchesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Image Menu')),
+      appBar: AppBar(title: Text(l10n.settingsMenuImage)),
       body: branchesAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat cabang',
+          title: l10n.settingsBranchesLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (branches) {
           if (branches.isEmpty) {
-            return const AppEmptyState(
-              title: 'Belum ada cabang',
+            return AppEmptyState(
+              title: l10n.settingsNoBranches,
               icon: Icons.store_outlined,
             );
           }
@@ -104,16 +106,17 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
   }
 
   Future<void> _save() async {
+    final l10n = AppL10n.of(context);
     final normalized = normalizeMenuImageHex(_hexCtrl.text);
     final parsedImageWidth = int.tryParse(_widthCtrl.text.trim());
     if (!isValidMenuImageHex(normalized)) {
-      setState(() => _hexError = 'Gunakan format #RRGGBB');
+      setState(() => _hexError = l10n.menuImageInvalidHex);
       return;
     }
     if (parsedImageWidth == null ||
         parsedImageWidth < 1080 ||
         parsedImageWidth > 4096) {
-      setState(() => _widthError = 'Gunakan angka 1080-4096');
+      setState(() => _widthError = l10n.menuImageInvalidWidth);
       return;
     }
     final imageWidth = normalizeMenuImageWidthPx(parsedImageWidth);
@@ -140,13 +143,14 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content:
-              Text('Pengaturan image menu ${widget.branch.name} tersimpan')),
+        content: Text(l10n.menuImageSettingsSaved(widget.branch.name)),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (!_loaded) {
       return const AppCard(
         child: SizedBox(
@@ -170,39 +174,49 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
             columns: _columns,
             headerLayout: _headerLayout,
             backgroundColor: previewColor,
+            logoLabel: l10n.menuImagePreviewLogo,
+            menuLabel: l10n.menuImagePreviewMenu,
           ),
           const SizedBox(height: AppSpacing.lg),
           SwitchListTile(
             value: _showBranchName,
             onChanged: (v) => setState(() => _showBranchName = v),
-            title: Text('Tampilkan nama cabang', style: AppTypography.titleMd),
+            title: Text(
+              l10n.menuImageShowBranchName,
+              style: AppTypography.titleMd,
+            ),
             contentPadding: EdgeInsets.zero,
             activeColor: AppColors.primary,
           ),
           SwitchListTile(
             value: _showBranchAddress,
             onChanged: (v) => setState(() => _showBranchAddress = v),
-            title:
-                Text('Tampilkan alamat cabang', style: AppTypography.titleMd),
+            title: Text(
+              l10n.menuImageShowBranchAddress,
+              style: AppTypography.titleMd,
+            ),
             contentPadding: EdgeInsets.zero,
             activeColor: AppColors.primary,
           ),
           SwitchListTile(
             value: _showBranchPhone,
             onChanged: (v) => setState(() => _showBranchPhone = v),
-            title: Text('Tampilkan nomor cabang', style: AppTypography.titleMd),
+            title: Text(
+              l10n.menuImageShowBranchPhone,
+              style: AppTypography.titleMd,
+            ),
             contentPadding: EdgeInsets.zero,
             activeColor: AppColors.primary,
           ),
           const SizedBox(height: AppSpacing.md),
-          Text('Layout header', style: AppTypography.labelSm),
+          Text(l10n.menuImageHeaderLayout, style: AppTypography.labelSm),
           const SizedBox(height: AppSpacing.sm),
           SegmentedButton<MenuImageHeaderLayout>(
             segments: [
               for (final layout in MenuImageHeaderLayout.values)
                 ButtonSegment(
                   value: layout,
-                  label: Text(layout.label),
+                  label: Text(layout.localizedLabel(l10n)),
                   icon: Icon(
                     layout == MenuImageHeaderLayout.stacked
                         ? Icons.view_stream_outlined
@@ -215,7 +229,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
                 setState(() => _headerLayout = value.first),
           ),
           const SizedBox(height: AppSpacing.md),
-          Text('Jumlah card per baris', style: AppTypography.labelSm),
+          Text(l10n.menuImageColumns, style: AppTypography.labelSm),
           const SizedBox(height: AppSpacing.sm),
           SegmentedButton<int>(
             segments: const [
@@ -235,7 +249,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
                 setState(() => _columns = value.first),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text('Lebar image menu (px)', style: AppTypography.labelSm),
+          Text(l10n.menuImageWidth, style: AppTypography.labelSm),
           const SizedBox(height: AppSpacing.sm),
           TextField(
             controller: _widthCtrl,
@@ -246,13 +260,13 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
             ],
             decoration: InputDecoration(
               hintText: '3240',
-              helperText: 'Rekomendasi 3240 atau 4096 untuk hasil lebih tajam.',
+              helperText: l10n.menuImageWidthHelp,
               errorText: _widthError,
             ),
             onChanged: (_) => setState(() => _widthError = null),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text('Background warna menu', style: AppTypography.labelSm),
+          Text(l10n.menuImageBackgroundColor, style: AppTypography.labelSm),
           const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
@@ -275,7 +289,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
                   ],
                   textCapitalization: TextCapitalization.characters,
                   decoration: InputDecoration(
-                    hintText: '#F8FAFC',
+                    hintText: l10n.menuImageColorHint,
                     errorText: _hexError,
                   ),
                   onChanged: (_) => setState(() => _hexError = null),
@@ -308,7 +322,7 @@ class _BranchMenuImageCardState extends ConsumerState<_BranchMenuImageCard> {
           ),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
-            label: _saving ? 'Menyimpan...' : 'Simpan',
+            label: _saving ? l10n.statusSaving : l10n.actionSave,
             icon: Icons.save_outlined,
             onPressed: _saving ? null : _save,
             isLoading: _saving,
@@ -353,6 +367,8 @@ class _Preview extends StatelessWidget {
     required this.columns,
     required this.headerLayout,
     required this.backgroundColor,
+    required this.logoLabel,
+    required this.menuLabel,
   });
 
   final BranchRow branch;
@@ -362,6 +378,8 @@ class _Preview extends StatelessWidget {
   final int columns;
   final MenuImageHeaderLayout headerLayout;
   final Color backgroundColor;
+  final String logoLabel;
+  final String menuLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -389,7 +407,7 @@ class _Preview extends StatelessWidget {
                       border: Border.all(color: context.colors.border),
                     ),
                     child: Text(
-                      'Logo',
+                      logoLabel,
                       style: AppTypography.labelSm.copyWith(
                         color: _readableMutedColor(backgroundColor),
                       ),
@@ -446,7 +464,7 @@ class _Preview extends StatelessWidget {
                         const Padding(
                           padding: EdgeInsets.fromLTRB(6, 0, 6, 6),
                           child: Text(
-                            'Menu',
+                            menuLabel,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 11),
                           ),

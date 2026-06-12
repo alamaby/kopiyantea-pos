@@ -15,6 +15,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_badge.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../catalog/category_providers.dart';
 import '../../modifiers/modifier_providers.dart';
 import '../cart_provider.dart';
@@ -86,6 +87,7 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final productsAsync = ref.watch(menuProductsProvider(widget.branchId));
     final recommendedSales =
         ref.watch(recommendedMenuSalesProvider(widget.branchId)).valueOrNull ??
@@ -96,16 +98,16 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
     return productsAsync.when(
       loading: () => const Center(child: AppLoadingIndicator()),
       error: (e, _) => AppEmptyState(
-        title: 'Gagal memuat menu',
+        title: l10n.posMenuLoadFailed,
         icon: Icons.error_outline,
         message: e.toString(),
       ),
       data: (products) {
         if (products.isEmpty) {
-          return const AppEmptyState(
-            title: 'Belum ada menu',
+          return AppEmptyState(
+            title: l10n.posMenuEmptyTitle,
             icon: Icons.restaurant_menu_outlined,
-            message: 'Tambahkan produk dari layar Menu.',
+            message: l10n.posMenuEmptyMessage,
           );
         }
 
@@ -160,6 +162,9 @@ class _MenuGridState extends ConsumerState<MenuGrid> {
                   ? _FilteredEmptyState(
                       query: _query,
                       selectedFilter: _selectedFilter,
+                      selectedFilterLabel: _selectedFilter == _recommendedFilter
+                          ? l10n.posMenuRecommendedFilter
+                          : _selectedFilter,
                     )
                   : switch (_viewMode) {
                       _MenuViewMode.grid => GridView.builder(
@@ -289,6 +294,7 @@ class _MenuFilters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: context.colors.surface,
@@ -313,13 +319,13 @@ class _MenuFilters extends StatelessWidget {
                     onChanged: onQueryChanged,
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
-                      hintText: 'Cari menu...',
+                      hintText: l10n.posMenuSearchHint,
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: query.isEmpty
                           ? null
                           : IconButton(
                               icon: const Icon(Icons.close),
-                              tooltip: 'Hapus pencarian',
+                              tooltip: l10n.posMenuClearSearch,
                               onPressed: onClearQuery,
                             ),
                     ),
@@ -327,16 +333,16 @@ class _MenuFilters extends StatelessWidget {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 SegmentedButton<_MenuViewMode>(
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: _MenuViewMode.grid,
-                      icon: Icon(Icons.grid_view_outlined),
-                      tooltip: 'Tampilan grid',
+                      icon: const Icon(Icons.grid_view_outlined),
+                      tooltip: l10n.posMenuGridView,
                     ),
                     ButtonSegment(
                       value: _MenuViewMode.detail,
-                      icon: Icon(Icons.view_list_outlined),
-                      tooltip: 'Tampilan detail',
+                      icon: const Icon(Icons.view_list_outlined),
+                      tooltip: l10n.posMenuDetailView,
                     ),
                   ],
                   selected: {viewMode},
@@ -367,7 +373,7 @@ class _MenuFilters extends StatelessWidget {
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return _CategoryChip(
-                        label: 'Semua',
+                        label: l10n.posMenuAllFilter,
                         selected: selectedFilter.isEmpty,
                         color: null,
                         icon: Icons.apps_outlined,
@@ -379,7 +385,7 @@ class _MenuFilters extends StatelessWidget {
                     }
                     if (index == 1) {
                       return _CategoryChip(
-                        label: 'Rekomendasi',
+                        label: l10n.posMenuRecommendedFilter,
                         selected: selectedFilter == recommendedFilter,
                         color: null,
                         icon: Icons.trending_up_outlined,
@@ -464,24 +470,30 @@ class _FilteredEmptyState extends StatelessWidget {
   const _FilteredEmptyState({
     required this.query,
     required this.selectedFilter,
+    required this.selectedFilterLabel,
   });
 
   final String query;
   final String selectedFilter;
+  final String selectedFilterLabel;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final hasQuery = query.isNotEmpty;
     final hasCategory = selectedFilter.isNotEmpty;
     final message = switch ((hasQuery, hasCategory)) {
-      (true, true) => 'Tidak ada menu $selectedFilter untuk "$query".',
-      (true, false) => 'Tidak ada menu untuk "$query".',
-      (false, true) => 'Tidak ada menu di filter $selectedFilter.',
-      (false, false) => 'Tidak ada menu yang cocok.',
+      (true, true) => l10n.posMenuNoResultForCategoryAndQuery(
+          selectedFilterLabel,
+          query,
+        ),
+      (true, false) => l10n.posMenuNoResultForQuery(query),
+      (false, true) => l10n.posMenuNoResultForCategory(selectedFilterLabel),
+      (false, false) => l10n.posMenuNoResult,
     };
 
     return AppEmptyState(
-      title: 'Menu tidak ditemukan',
+      title: l10n.posMenuNotFoundTitle,
       icon: Icons.search_off_outlined,
       message: message,
     );
@@ -495,6 +507,7 @@ class _MenuTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final product = item.product;
     final bp = item.branchProduct;
     final pricing = _MenuPricing.from(item);
@@ -670,7 +683,7 @@ class _MenuDetailRow extends ConsumerWidget {
               ),
               const SizedBox(width: AppSpacing.sm),
               IconButton.filledTonal(
-                tooltip: 'Tambah',
+                tooltip: l10n.posMenuAdd,
                 onPressed: () => _addMenuItemToCart(context, ref, item),
                 icon: const Icon(Icons.add),
               ),

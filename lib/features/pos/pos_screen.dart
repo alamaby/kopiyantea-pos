@@ -13,6 +13,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../reports/widgets/today_quick_badge.dart';
 import '../settings/branch_selection_provider.dart';
 import 'cart_provider.dart';
@@ -41,6 +42,7 @@ class PosScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedBranch = ref.watch(selectedBranchProvider);
+    final l10n = AppL10n.of(context);
 
     // Keep the cart's branch reference in sync with the active selection.
     // `ref.listen` (Riverpod 2.x) does NOT fire for the initial value — so
@@ -50,10 +52,10 @@ class PosScreen extends ConsumerWidget {
     // Re-sync when ANY tax-relevant field differs, not just id — otherwise
     // a tax % change on the same branch would leave the cart with a stale
     // snapshot and totals would not reflect the new rate.
-    final cartBranch =
-        ref.watch(cartNotifierProvider.select((c) => c.branch));
+    final cartBranch = ref.watch(cartNotifierProvider.select((c) => c.branch));
     final activeBranch = selectedBranch.valueOrNull;
-    if (activeBranch != null && !_branchSyncedForTotals(cartBranch, activeBranch)) {
+    if (activeBranch != null &&
+        !_branchSyncedForTotals(cartBranch, activeBranch)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(cartNotifierProvider.notifier).setBranch(activeBranch);
       });
@@ -66,7 +68,7 @@ class PosScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Kasir'),
+              Text(l10n.navPos),
               if (b != null)
                 Text(
                   b.name,
@@ -75,7 +77,7 @@ class PosScreen extends ConsumerWidget {
                 ),
             ],
           ),
-          orElse: () => const Text('Kasir'),
+          orElse: () => Text(l10n.navPos),
         ),
         actions: [
           const _SyncIndicator(),
@@ -94,14 +96,13 @@ class PosScreen extends ConsumerWidget {
                 branch: activeBranch,
               ),
             ),
-          if (activeBranch != null)
-            HeldOrdersAction(branchId: activeBranch.id),
+          if (activeBranch != null) HeldOrdersAction(branchId: activeBranch.id),
         ],
       ),
       body: selectedBranch.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat cabang',
+          title: l10n.posLoadBranchFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
@@ -128,14 +129,15 @@ class _SyncIndicator extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final sync = ref.watch(syncProvider);
     final tooltip = sync.isSyncing
-        ? 'Menyinkronkan…'
+        ? l10n.statusSyncing
         : sync.lastError != null
-            ? 'Sync gagal: ${sync.lastError}'
+            ? l10n.posSyncFailed(sync.lastError!)
             : sync.lastSyncAt == null
-                ? 'Belum tersinkron'
-                : 'Tersinkron ${formatDateTime(sync.lastSyncAt!)}';
+                ? l10n.posNeverSynced
+                : l10n.posSyncedAt(formatDateTime(sync.lastSyncAt!));
 
     final Widget dot = sync.isSyncing
         ? const SizedBox(
@@ -176,12 +178,13 @@ class _NoBranchSelected extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return AppEmptyState(
-      title: 'Belum memilih cabang',
+      title: l10n.posNoBranchTitle,
       icon: Icons.store_outlined,
-      message: 'Buka Pengaturan untuk memilih cabang yang aktif.',
+      message: l10n.posNoBranchMessage,
       action: AppButton(
-        label: 'Buka Pengaturan',
+        label: l10n.posOpenSettings,
         icon: Icons.settings_outlined,
         variant: AppButtonVariant.secondary,
         onPressed: () => context.push('/more/settings'),
@@ -248,8 +251,7 @@ class _MobileLayout extends ConsumerWidget {
       useRootNavigator: true,
       backgroundColor: context.colors.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       builder: (_) => SizedBox(
         height: MediaQuery.of(context).size.height * 0.88,
@@ -272,6 +274,7 @@ class _CartPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Material(
       color: AppColors.primary,
       borderRadius: AppRadius.radiusFull,
@@ -289,7 +292,7 @@ class _CartPill extends StatelessWidget {
               const Icon(Icons.shopping_cart, color: Colors.white),
               const SizedBox(width: AppSpacing.sm),
               Text(
-                'Lihat Keranjang ($itemCount)',
+                l10n.posViewCart(itemCount),
                 style: AppTypography.titleMd.copyWith(color: Colors.white),
               ),
               const Spacer(),

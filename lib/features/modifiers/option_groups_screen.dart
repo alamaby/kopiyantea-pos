@@ -10,6 +10,7 @@ import '../../core/theme/typography.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'modifier_providers.dart';
 
 /// FEAT-001 — owner-only list of modifier groups.
@@ -19,27 +20,28 @@ class OptionGroupsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupsAsync = ref.watch(allOptionGroupsProvider);
+    final l10n = AppL10n.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Modifier Produk')),
+      appBar: AppBar(title: Text(l10n.settingsProductModifiers)),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_option_groups',
         onPressed: () => context.push('/more/settings/modifiers/new'),
         icon: const Icon(Icons.add),
-        label: const Text('Grup Baru'),
+        label: Text(l10n.modifiersNewGroup),
       ),
       body: groupsAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat',
+          title: l10n.modifiersLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (groups) {
           if (groups.isEmpty) {
-            return const AppEmptyState(
-              title: 'Belum ada grup modifier',
+            return AppEmptyState(
+              title: l10n.modifiersEmptyGroupsTitle,
               icon: Icons.tune_outlined,
-              message: 'Buat grup seperti "Tingkat Gula" atau "Ukuran Cup".',
+              message: l10n.modifiersEmptyGroupsMessage,
             );
           }
           return ListView.separated(
@@ -50,8 +52,7 @@ class OptionGroupsScreen extends ConsumerWidget {
               AppSpacing.xxxxl,
             ),
             itemCount: groups.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (_, i) => _GroupTile(group: groups[i]),
           );
         },
@@ -67,6 +68,7 @@ class _GroupTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final optsAsync = ref.watch(optionsForGroupProvider(group.id));
+    final l10n = AppL10n.of(context);
     return Material(
       color: context.colors.surface,
       borderRadius: AppRadius.radiusLg,
@@ -88,13 +90,12 @@ class _GroupTile extends ConsumerWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(group.name,
-                              style: AppTypography.titleMd),
+                          child: Text(group.name, style: AppTypography.titleMd),
                         ),
                         if (group.isRequired) ...[
                           const SizedBox(width: AppSpacing.sm),
-                          const AppBadge(
-                            label: 'Wajib',
+                          AppBadge(
+                            label: l10n.modifiersRequiredBadge,
                             icon: Icons.priority_high,
                             tone: AppBadgeTone.danger,
                           ),
@@ -105,9 +106,13 @@ class _GroupTile extends ConsumerWidget {
                     optsAsync.maybeWhen(
                       data: (opts) => Text(
                         opts.isEmpty
-                            ? 'Belum ada pilihan'
-                            : '${opts.length} pilihan · '
-                                '${group.isMultiSelect ? "multi" : "tunggal"}',
+                            ? l10n.modifiersNoOptions
+                            : l10n.modifiersOptionCountMode(
+                                opts.length,
+                                group.isMultiSelect
+                                    ? l10n.modifiersModeMulti
+                                    : l10n.modifiersModeSingle,
+                              ),
                         style: AppTypography.bodySm.copyWith(
                           color: context.colors.textSecondary,
                         ),

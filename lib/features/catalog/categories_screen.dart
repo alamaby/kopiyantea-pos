@@ -16,6 +16,7 @@ import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'category_providers.dart';
 
 /// Owner-only CRUD untuk registry kategori produk (Tier 1).
@@ -25,32 +26,30 @@ class CategoriesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rowsAsync = ref.watch(allCategoriesProvider);
+    final l10n = AppL10n.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Kategori Produk'),
+        title: Text(l10n.settingsProductCategories),
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_category',
         onPressed: () => _showForm(context, ref, existing: null),
         icon: const Icon(Icons.add),
-        label: const Text('Tambah'),
+        label: Text(l10n.actionAdd),
       ),
       body: rowsAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat',
+          title: l10n.catalogCategoriesLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (rows) {
           if (rows.isEmpty) {
-            return const AppEmptyState(
-              title: 'Belum ada kategori',
+            return AppEmptyState(
+              title: l10n.catalogCategoriesEmptyTitle,
               icon: Icons.category_outlined,
-              message:
-                  'Tap "Tambah" untuk membuat kategori (mis. Kopi, Pastry). '
-                  'Kategori akan muncul sebagai pilihan saat menambah/ubah '
-                  'produk.',
+              message: l10n.catalogCategoriesEmptyMessage,
             );
           }
           return ReorderableListView.builder(
@@ -188,23 +187,24 @@ class CategoriesScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.warning_amber_outlined,
             size: 36, color: AppColors.warning),
-        title: const Text('Hapus kategori?'),
+        title: Text(AppL10n.of(ctx).catalogCategoryDeleteTitle),
         content: Text(
           usedCount == 0
-              ? '"${row.name}" akan dihapus permanen.'
-              : '"${row.name}" sedang dipakai oleh $usedCount produk. '
-                  'Setelah dihapus, produk-produk itu akan kehilangan '
-                  'kategori (jadi kosong).',
+              ? AppL10n.of(ctx).catalogCategoryDeleteUnusedMessage(row.name)
+              : AppL10n.of(ctx).catalogCategoryDeleteUsedMessage(
+                  row.name,
+                  usedCount,
+                ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(AppL10n.of(ctx).actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Hapus'),
+            child: Text(AppL10n.of(ctx).actionDelete),
           ),
         ],
       ),
@@ -236,6 +236,7 @@ class _CategoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final color = categoryColorFromStorage(row.color);
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -265,28 +266,28 @@ class _CategoryTile extends StatelessWidget {
             child: Text(row.name, style: AppTypography.titleMd),
           ),
           if (!row.isActive)
-            const AppBadge(
-              label: 'Nonaktif',
+            AppBadge(
+              label: l10n.bankAccountsInactive,
               icon: Icons.pause_circle_outline,
               tone: AppBadgeTone.neutral,
             ),
           IconButton(
             onPressed: onEdit,
             icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Ubah',
+            tooltip: l10n.actionEdit,
           ),
           IconButton(
             onPressed: onToggleActive,
             icon: Icon(row.isActive
                 ? Icons.pause_circle_outline
                 : Icons.play_circle_outline),
-            tooltip: row.isActive ? 'Nonaktifkan' : 'Aktifkan',
+            tooltip: row.isActive ? l10n.actionDeactivate : l10n.actionActivate,
           ),
           IconButton(
             onPressed: onDelete,
             icon: const Icon(Icons.delete_outline),
             color: AppColors.danger,
-            tooltip: 'Hapus',
+            tooltip: l10n.actionDelete,
           ),
         ],
       ),
@@ -335,6 +336,7 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
   }
 
   Future<void> _save() async {
+    final l10n = AppL10n.of(context);
     setState(() {
       _saving = true;
       _errorName = null;
@@ -343,7 +345,7 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
     if (name.isEmpty) {
       setState(() {
         _saving = false;
-        _errorName = 'Nama kategori wajib diisi';
+        _errorName = l10n.catalogCategoryNameRequired;
       });
       return;
     }
@@ -352,7 +354,7 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
     if (existingByName != null && existingByName.id != widget.existing?.id) {
       setState(() {
         _saving = false;
-        _errorName = 'Nama sudah dipakai kategori lain';
+        _errorName = l10n.catalogCategoryNameDuplicate;
       });
       return;
     }
@@ -398,6 +400,7 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -423,7 +426,9 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                widget.existing == null ? 'Tambah Kategori' : 'Ubah Kategori',
+                widget.existing == null
+                    ? l10n.catalogCategoryAddTitle
+                    : l10n.catalogCategoryEditTitle,
                 style: AppTypography.headlineMd,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -432,15 +437,15 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
                 autofocus: widget.existing == null,
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
-                  labelText: 'Nama',
-                  hintText: 'mis. Kopi, Pastry, Snack',
+                  labelText: l10n.catalogCategoryName,
+                  hintText: l10n.catalogCategoryNameHint,
                   errorText: _errorName,
                   prefixIcon: const Icon(Icons.category_outlined),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'WARNA',
+                l10n.catalogCategoryColor.toUpperCase(),
                 style: AppTypography.labelSm
                     .copyWith(color: context.colors.textSecondary),
               ),
@@ -464,7 +469,7 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
               ),
               const SizedBox(height: AppSpacing.xxl),
               AppButton(
-                label: _saving ? 'Menyimpan…' : 'Simpan',
+                label: _saving ? l10n.statusSaving : l10n.actionSave,
                 icon: Icons.save_outlined,
                 onPressed: _saving ? null : _save,
                 isLoading: _saving,

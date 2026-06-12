@@ -18,6 +18,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'modifier_providers.dart';
 
 /// FEAT-001 — create or edit a modifier group + its options.
@@ -33,8 +34,7 @@ class OptionGroupFormScreen extends ConsumerStatefulWidget {
       _OptionGroupFormScreenState();
 }
 
-class _OptionGroupFormScreenState
-    extends ConsumerState<OptionGroupFormScreen> {
+class _OptionGroupFormScreenState extends ConsumerState<OptionGroupFormScreen> {
   final _nameCtrl = TextEditingController();
   bool _isRequired = false;
   bool _isMultiSelect = false;
@@ -74,6 +74,7 @@ class _OptionGroupFormScreenState
   }
 
   Future<void> _saveGroup() async {
+    final l10n = AppL10n.of(context);
     if (_saving) return;
     setState(() {
       _saving = true;
@@ -83,7 +84,7 @@ class _OptionGroupFormScreenState
     if (name.isEmpty) {
       setState(() {
         _saving = false;
-        _errorName = 'Nama wajib diisi';
+        _errorName = l10n.modifiersGroupNameRequired;
       });
       return;
     }
@@ -119,7 +120,7 @@ class _OptionGroupFormScreenState
       );
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Grup tersimpan')),
+      SnackBar(content: Text(l10n.modifiersGroupSaved)),
     );
   }
 
@@ -129,20 +130,19 @@ class _OptionGroupFormScreenState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus grup?'),
+        title: Text(AppL10n.of(ctx).modifiersDeleteGroupTitle),
         content: Text(
-          'Grup "${_nameCtrl.text}" beserta semua pilihannya akan dihapus. '
-          'Snapshot di transaksi lama tetap aman.',
+          AppL10n.of(ctx).modifiersDeleteGroupMessage(_nameCtrl.text),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(AppL10n.of(ctx).actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Hapus'),
+            child: Text(AppL10n.of(ctx).actionDelete),
           ),
         ],
       ),
@@ -162,15 +162,20 @@ class _OptionGroupFormScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Memuat…')),
+        appBar: AppBar(title: Text(l10n.statusLoading)),
         body: const Center(child: AppLoadingIndicator()),
       );
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Ubah Grup Modifier' : 'Grup Modifier Baru'),
+        title: Text(
+          _isEditing
+              ? l10n.modifiersEditGroupTitle
+              : l10n.modifiersNewGroupTitle,
+        ),
         actions: [
           if (_existing != null)
             IconButton(
@@ -182,7 +187,7 @@ class _OptionGroupFormScreenState
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          Text('Nama grup',
+          Text(l10n.modifiersGroupName,
               style: AppTypography.labelSm.copyWith(
                 color: context.colors.textSecondary,
               )),
@@ -190,7 +195,7 @@ class _OptionGroupFormScreenState
           TextField(
             controller: _nameCtrl,
             decoration: InputDecoration(
-              hintText: 'mis. Tingkat Gula, Ukuran Cup',
+              hintText: l10n.modifiersGroupNameHint,
               errorText: _errorName,
             ),
             autofocus: !_isEditing,
@@ -200,11 +205,11 @@ class _OptionGroupFormScreenState
             value: _isRequired,
             onChanged: (v) => setState(() => _isRequired = v),
             title:
-                Text('Wajib dipilih', style: AppTypography.titleMd),
+                Text(l10n.modifiersRequiredTitle, style: AppTypography.titleMd),
             subtitle: Text(
               _isRequired
-                  ? 'Pelanggan harus memilih satu opsi'
-                  : 'Opsional — bisa dilewati',
+                  ? l10n.modifiersRequiredOnSubtitle
+                  : l10n.modifiersRequiredOffSubtitle,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -214,12 +219,12 @@ class _OptionGroupFormScreenState
           SwitchListTile(
             value: _isMultiSelect,
             onChanged: (v) => setState(() => _isMultiSelect = v),
-            title: Text('Bisa pilih lebih dari satu',
+            title: Text(l10n.modifiersMultiSelectTitle,
                 style: AppTypography.titleMd),
             subtitle: Text(
               _isMultiSelect
-                  ? 'Pelanggan bisa pilih beberapa (mis. topping)'
-                  : 'Hanya satu pilihan (mis. ukuran cup)',
+                  ? l10n.modifiersMultiSelectOnSubtitle
+                  : l10n.modifiersMultiSelectOffSubtitle,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -228,7 +233,7 @@ class _OptionGroupFormScreenState
           ),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
-            label: _saving ? 'Menyimpan…' : 'Simpan Grup',
+            label: _saving ? l10n.statusSaving : l10n.modifiersSaveGroup,
             icon: Icons.save_outlined,
             onPressed: _saving ? null : _saveGroup,
             isLoading: _saving,
@@ -251,6 +256,7 @@ class _OptionsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final optsAsync = ref.watch(optionsForGroupProvider(group.id));
+    final l10n = AppL10n.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,7 +265,7 @@ class _OptionsSection extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  'PILIHAN',
+                  l10n.modifiersOptionsSection.toUpperCase(),
                   style: AppTypography.labelSm.copyWith(
                     color: context.colors.textSecondary,
                     letterSpacing: 0.8,
@@ -268,7 +274,7 @@ class _OptionsSection extends ConsumerWidget {
               ),
               TextButton.icon(
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Tambah'),
+                label: Text(l10n.actionAdd),
                 onPressed: () => _openSheet(context, ref, null),
               ),
             ],
@@ -279,11 +285,12 @@ class _OptionsSection extends ConsumerWidget {
               padding: EdgeInsets.all(AppSpacing.md),
               child: AppLoadingIndicator(),
             ),
-            error: (e, _) => Text('Gagal: $e'),
+            error: (e, _) =>
+                Text(l10n.modifiersLoadOptionsFailed(e.toString())),
             data: (opts) {
               if (opts.isEmpty) {
                 return Text(
-                  'Belum ada pilihan dalam grup ini.',
+                  l10n.modifiersEmptyOptionsInGroup,
                   style: AppTypography.bodySm.copyWith(
                     color: context.colors.textSecondary,
                   ),
@@ -293,8 +300,7 @@ class _OptionsSection extends ConsumerWidget {
                 children: [
                   for (final o in opts) ...[
                     _OptionTile(option: o, group: group),
-                    if (o != opts.last)
-                      const Divider(height: 1),
+                    if (o != opts.last) const Divider(height: 1),
                   ],
                 ],
               );
@@ -328,14 +334,12 @@ class _OptionTile extends ConsumerWidget {
           ? null
           : Text(
               '+${formatRupiah(option.priceDelta)}',
-              style: AppTypography.bodySm
-                  .copyWith(color: AppColors.accent),
+              style: AppTypography.bodySm.copyWith(color: AppColors.accent),
             ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (option.isDefault)
-            const _DefaultBadge(),
+          if (option.isDefault) const _DefaultBadge(),
           IconButton(
             icon: const Icon(Icons.edit_outlined, size: 18),
             onPressed: () => showModalBottomSheet<void>(
@@ -355,8 +359,8 @@ class _DefaultBadge extends StatelessWidget {
   const _DefaultBadge();
   @override
   Widget build(BuildContext context) {
-    return const AppBadge(
-      label: 'Default',
+    return AppBadge(
+      label: AppL10n.of(context).modifiersDefault,
       icon: Icons.star_outlined,
       tone: AppBadgeTone.info,
     );
@@ -369,8 +373,7 @@ class _OptionEditorSheet extends ConsumerStatefulWidget {
   final OptionRow? existing;
 
   @override
-  ConsumerState<_OptionEditorSheet> createState() =>
-      _OptionEditorSheetState();
+  ConsumerState<_OptionEditorSheet> createState() => _OptionEditorSheetState();
 }
 
 class _OptionEditorSheetState extends ConsumerState<_OptionEditorSheet> {
@@ -442,6 +445,7 @@ class _OptionEditorSheetState extends ConsumerState<_OptionEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -456,24 +460,25 @@ class _OptionEditorSheetState extends ConsumerState<_OptionEditorSheet> {
               Container(
                 width: 40,
                 height: 4,
-                margin:
-                    const EdgeInsets.only(bottom: AppSpacing.md),
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
                 decoration: BoxDecoration(
                   color: context.colors.border,
                   borderRadius: AppRadius.radiusSm,
                 ),
               ),
               Text(
-                widget.existing == null ? 'Pilihan Baru' : 'Ubah Pilihan',
+                widget.existing == null
+                    ? l10n.modifiersNewOptionTitle
+                    : l10n.modifiersEditOptionTitle,
                 style: AppTypography.headlineMd,
               ),
               const SizedBox(height: AppSpacing.lg),
               TextField(
                 controller: _nameCtrl,
                 autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Nama pilihan',
-                  hintText: 'mis. Normal, Less, Extra',
+                decoration: InputDecoration(
+                  labelText: l10n.modifiersOptionName,
+                  hintText: l10n.modifiersOptionNameHint,
                 ),
               ),
               const SizedBox(height: AppSpacing.md),
@@ -481,17 +486,17 @@ class _OptionEditorSheetState extends ConsumerState<_OptionEditorSheet> {
                 controller: _deltaCtrl,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Tambahan harga (Rupiah)',
+                decoration: InputDecoration(
+                  labelText: l10n.modifiersPriceDelta,
                   hintText: '0',
                 ),
               ),
               SwitchListTile(
                 value: _isDefault,
                 onChanged: (v) => setState(() => _isDefault = v),
-                title: const Text('Pilihan default'),
+                title: Text(l10n.modifiersDefaultOptionTitle),
                 subtitle: Text(
-                  'Akan langsung tercentang saat pelanggan membuka picker',
+                  l10n.modifiersDefaultOptionSubtitle,
                   style: AppTypography.bodySm.copyWith(
                     color: context.colors.textSecondary,
                   ),
@@ -508,11 +513,11 @@ class _OptionEditorSheetState extends ConsumerState<_OptionEditorSheet> {
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.danger,
                       ),
-                      child: const Text('Hapus'),
+                      child: Text(l10n.actionDelete),
                     ),
                   const Spacer(),
                   AppButton(
-                    label: 'Simpan',
+                    label: l10n.actionSave,
                     icon: Icons.check,
                     onPressed: _saving ? null : _save,
                     isLoading: _saving,

@@ -12,6 +12,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../catalog/catalog_providers.dart';
 import 'modifier_providers.dart';
 
@@ -25,29 +26,30 @@ class ProductOptionsScreen extends ConsumerWidget {
     final productAsync = ref.watch(productByIdProvider(productId));
     final groupsAsync = ref.watch(allOptionGroupsProvider);
     final boundAsync = ref.watch(productOptionGroupsProvider(productId));
+    final l10n = AppL10n.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: productAsync.maybeWhen(
-          data: (p) =>
-              Text(p == null ? 'Modifier' : 'Modifier · ${p.name}'),
-          orElse: () => const Text('Modifier'),
+          data: (p) => Text(p == null
+              ? l10n.modifiersTitle
+              : l10n.modifiersProductTitleWithName(p.name)),
+          orElse: () => Text(l10n.modifiersTitle),
         ),
       ),
       body: groupsAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal',
+          title: l10n.modifiersGenericLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (groups) {
           if (groups.isEmpty) {
-            return const AppEmptyState(
-              title: 'Belum ada grup modifier',
+            return AppEmptyState(
+              title: l10n.modifiersEmptyGroupsTitle,
               icon: Icons.tune_outlined,
-              message:
-                  'Buat grup terlebih dahulu di Pengaturan → Modifier Produk.',
+              message: l10n.modifiersEmptyProductGroupsMessage,
             );
           }
           final bound = boundAsync.maybeWhen(
@@ -58,8 +60,7 @@ class ProductOptionsScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
               Text(
-                'Centang grup yang dipakai produk ini. Pelanggan akan melihat '
-                'picker modifier saat menambahkan item ke keranjang.',
+                l10n.modifiersProductHelp,
                 style: AppTypography.bodySm
                     .copyWith(color: context.colors.textSecondary),
               ),
@@ -90,6 +91,7 @@ class _GroupCheckbox extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     return CheckboxListTile(
       value: initiallyBound,
       onChanged: (v) async {
@@ -129,10 +131,10 @@ class _GroupCheckbox extends ConsumerWidget {
       },
       title: Text(group.name, style: AppTypography.titleMd),
       subtitle: Text(
-        '${group.isRequired ? "Wajib" : "Opsional"} · '
-        '${group.isMultiSelect ? "Multi" : "Tunggal"}',
-        style: AppTypography.bodySm
-            .copyWith(color: context.colors.textSecondary),
+        '${group.isRequired ? l10n.modifiersRequired : l10n.modifiersOptional} · '
+        '${group.isMultiSelect ? l10n.modifiersMulti : l10n.modifiersSingle}',
+        style:
+            AppTypography.bodySm.copyWith(color: context.colors.textSecondary),
       ),
       contentPadding: EdgeInsets.zero,
       activeColor: AppColors.primary,

@@ -8,8 +8,10 @@ import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/localized_labels.dart';
 import '../../../core/utils/result.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../bank_accounts/bank_account_picker_sheet.dart';
 import '../cart_provider.dart';
 import '../checkout_use_case.dart';
@@ -38,12 +40,13 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final cartNotifier = ref.read(cartNotifierProvider.notifier);
     final totals = cartNotifier.totals;
     if (totals == null) {
-      return const Padding(
-        padding: EdgeInsets.all(AppSpacing.xl),
-        child: Text('Tidak ada total untuk dibayar'),
+      return Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Text(l10n.checkoutNoTotal),
       );
     }
 
@@ -83,11 +86,11 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            Text('Bayar', style: AppTypography.headlineLg),
+            Text(l10n.posCheckout, style: AppTypography.headlineLg),
             const SizedBox(height: AppSpacing.md),
             _TotalDisplay(total: totals.total),
             const SizedBox(height: AppSpacing.xl),
-            _SectionTitle('Metode Pembayaran'),
+            _SectionTitle(l10n.checkoutPaymentMethod),
             const SizedBox(height: AppSpacing.sm),
             _MethodPicker(
               selected: _method,
@@ -109,7 +112,7 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
             ],
             if (isCash) ...[
               const SizedBox(height: AppSpacing.xl),
-              _SectionTitle('Diterima'),
+              _SectionTitle(l10n.posPaymentReceived),
               const SizedBox(height: AppSpacing.sm),
               _QuickAmountRow(
                 total: totals.total,
@@ -165,7 +168,7 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
             ],
             const SizedBox(height: AppSpacing.xl),
             AppButton(
-              label: 'Konfirmasi Pembayaran',
+              label: l10n.checkoutConfirmPayment,
               icon: Icons.check_circle_outline,
               onPressed: canSubmit
                   ? () => _submit(totals.total, isCash ? received : null)
@@ -221,18 +224,18 @@ class _CheckoutSheetState extends ConsumerState<CheckoutSheet> {
       case Err(:final error):
         setState(() {
           _isSubmitting = false;
-          _errorMessage = _errorLabel(error);
+          _errorMessage = _errorLabel(AppL10n.of(context), error);
         });
     }
   }
 
-  String _errorLabel(CheckoutError e) => switch (e) {
-        CheckoutError.noBranch => 'Pilih cabang terlebih dahulu',
-        CheckoutError.emptyCart => 'Keranjang kosong',
-        CheckoutError.invalidPayment => 'Pembayaran tidak mencukupi',
+  String _errorLabel(AppL10n l10n, CheckoutError e) => switch (e) {
+        CheckoutError.noBranch => l10n.checkoutErrorNoBranch,
+        CheckoutError.emptyCart => l10n.checkoutErrorEmptyCart,
+        CheckoutError.invalidPayment => l10n.checkoutErrorInvalidPayment,
         CheckoutError.bankAccountMissing =>
-          'Pilih rekening tujuan transfer dulu',
-        CheckoutError.databaseError => 'Gagal menyimpan transaksi. Coba lagi.',
+          l10n.checkoutErrorBankAccountMissing,
+        CheckoutError.databaseError => l10n.checkoutErrorDatabase,
       };
 
   Future<void> _discardActiveHeldOrder() async {
@@ -251,6 +254,7 @@ class _BankAccountSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final cart = ref.watch(cartNotifierProvider);
     final selected = cart.bankAccount;
     return Container(
@@ -267,7 +271,7 @@ class _BankAccountSection extends ConsumerWidget {
               const Icon(Icons.account_balance_outlined,
                   color: AppColors.primaryDark),
               const SizedBox(width: AppSpacing.sm),
-              Text('Rekening Tujuan',
+              Text(l10n.checkoutDestinationAccount,
                   style: AppTypography.titleMd
                       .copyWith(color: AppColors.primaryDark)),
             ],
@@ -275,8 +279,7 @@ class _BankAccountSection extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           if (selected == null)
             Text(
-              'Pilih rekening yang akan menerima transfer. '
-              'Owner mengatur daftar rekening di Pengaturan → Rekening Bank.',
+              l10n.checkoutSelectDestinationAccountHelp,
               style:
                   AppTypography.bodySm.copyWith(color: AppColors.primaryDark),
             )
@@ -299,7 +302,7 @@ class _BankAccountSection extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    'a.n. ${selected.accountHolder}',
+                    l10n.checkoutAccountHolderPrefix(selected.accountHolder),
                     style: AppTypography.bodySm
                         .copyWith(color: context.colors.textSecondary),
                   ),
@@ -308,7 +311,9 @@ class _BankAccountSection extends ConsumerWidget {
             ),
           const SizedBox(height: AppSpacing.md),
           AppButton(
-            label: selected == null ? 'Pilih Rekening' : 'Ganti Rekening',
+            label: selected == null
+                ? l10n.checkoutSelectAccount
+                : l10n.checkoutChangeAccount,
             icon: Icons.swap_horiz_outlined,
             variant: AppButtonVariant.secondary,
             onPressed: () async {
@@ -341,6 +346,7 @@ class _QrisSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final cart = ref.watch(cartNotifierProvider);
     final branch = cart.branch;
     final hasQr =
@@ -359,7 +365,7 @@ class _QrisSection extends ConsumerWidget {
               const Icon(Icons.qr_code_2_outlined,
                   color: AppColors.primaryDark),
               const SizedBox(width: AppSpacing.sm),
-              Text('Pembayaran QRIS',
+              Text(l10n.checkoutQrisPayment,
                   style: AppTypography.titleMd
                       .copyWith(color: AppColors.primaryDark)),
             ],
@@ -367,16 +373,13 @@ class _QrisSection extends ConsumerWidget {
           const SizedBox(height: AppSpacing.sm),
           Text(
             hasQr
-                ? 'Tampilkan QR di bawah ke customer untuk discan. '
-                    'Setelah pembayaran terverifikasi di m-banking, '
-                    'tap "Pembayaran Diterima".'
-                : 'Cabang ini belum upload QRIS. Owner perlu mengaturnya '
-                    'di Pengaturan → QRIS Statis.',
+                ? l10n.checkoutQrisInstructions
+                : l10n.checkoutQrisUnavailableHelp,
             style: AppTypography.bodySm.copyWith(color: AppColors.primaryDark),
           ),
           const SizedBox(height: AppSpacing.md),
           AppButton(
-            label: hasQr ? 'Tampilkan QRIS' : 'QRIS Belum Tersedia',
+            label: hasQr ? l10n.checkoutShowQris : l10n.checkoutQrisUnavailable,
             icon: Icons.qr_code_2_outlined,
             onPressed: !hasQr || branch == null
                 ? null
@@ -403,11 +406,12 @@ class _TotalDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Total',
+          l10n.posTotal,
           style: AppTypography.bodyMd
               .copyWith(color: context.colors.textSecondary),
         ),
@@ -441,24 +445,16 @@ class _MethodPicker extends StatelessWidget {
   final PaymentMethod selected;
   final ValueChanged<PaymentMethod> onChanged;
 
-  static const _labels = {
-    PaymentMethod.cash: 'Tunai',
-    PaymentMethod.qris: 'QRIS',
-    PaymentMethod.debit: 'Debit',
-    PaymentMethod.credit: 'Kredit',
-    PaymentMethod.transfer: 'Transfer',
-    PaymentMethod.other: 'Lainnya',
-  };
-
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Wrap(
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.sm,
       children: [
         for (final m in PaymentMethod.values)
           ChoiceChip(
-            label: Text(_labels[m]!),
+            label: Text(localizedPaymentMethodLabel(l10n, m)),
             selected: selected == m,
             onSelected: (_) => onChanged(m),
             selectedColor: AppColors.primarySurface,
@@ -507,7 +503,9 @@ class _ChangeDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = insufficient ? AppColors.danger : AppColors.success;
-    final label = insufficient ? 'Kurang' : 'Kembalian';
+    final l10n = AppL10n.of(context);
+    final label =
+        insufficient ? l10n.checkoutInsufficient : l10n.posPaymentChange;
     final value = insufficient ? -change : change;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),

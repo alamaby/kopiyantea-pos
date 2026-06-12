@@ -8,6 +8,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'telemetry_provider.dart';
 
 /// ENH-009 — single-pane diagnostic for owner/support.
@@ -16,14 +17,15 @@ class TelemetryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final snapAsync = ref.watch(telemetrySnapshotProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Telemetri'),
+        title: Text(l10n.settingsTelemetry),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Muat ulang',
+            tooltip: l10n.telemetryReload,
             onPressed: () => ref.invalidate(telemetrySnapshotProvider),
           ),
         ],
@@ -31,35 +33,36 @@ class TelemetryScreen extends ConsumerWidget {
       body: snapAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat telemetri',
+          title: l10n.telemetryLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (s) => ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
-            _Card(label: 'Aplikasi', rows: [
-              _Row('Nama', s.appName),
-              _Row('Versi', s.appVersion),
+            _Card(label: l10n.telemetryAppSection, rows: [
+              _Row(l10n.telemetryAppName, s.appName),
+              _Row(l10n.telemetryVersion, s.appVersion),
             ]),
             const SizedBox(height: AppSpacing.lg),
-            _Card(label: 'Database', rows: [
-              _Row('Ukuran', _formatBytes(s.dbSizeBytes)),
-              _Row('Transaksi', '${s.transactionCount}'),
-              _Row('Item Transaksi', '${s.transactionItemCount}'),
-              _Row('Pergerakan Stok', '${s.inventoryMovementCount}'),
-            ]),
-            const SizedBox(height: AppSpacing.lg),
-            _Card(label: 'Sinkronisasi', rows: [
+            _Card(label: l10n.telemetryDatabaseSection, rows: [
+              _Row(l10n.telemetryDatabaseSize, _formatBytes(s.dbSizeBytes)),
+              _Row(l10n.transactionsTitle, '${s.transactionCount}'),
+              _Row(l10n.telemetryTransactionItems, '${s.transactionItemCount}'),
               _Row(
-                'Terakhir Sinkron',
-                s.lastSyncAt == null
-                    ? '—'
-                    : formatRelativeTime(s.lastSyncAt!),
+                l10n.telemetryInventoryMovements,
+                '${s.inventoryMovementCount}',
               ),
-              _Row('Menunggu', '${s.outboxPending}'),
-              _Row('Gagal', '${s.outboxFailed}'),
-              _Row('Selesai', '${s.outboxDone}'),
+            ]),
+            const SizedBox(height: AppSpacing.lg),
+            _Card(label: l10n.telemetrySyncSection, rows: [
+              _Row(
+                l10n.telemetryLastSync,
+                s.lastSyncAt == null ? '—' : formatRelativeTime(s.lastSyncAt!),
+              ),
+              _Row(l10n.telemetryOutboxPending, '${s.outboxPending}'),
+              _Row(l10n.telemetryOutboxFailed, '${s.outboxFailed}'),
+              _Row(l10n.telemetryOutboxDone, '${s.outboxDone}'),
             ]),
           ],
         ),

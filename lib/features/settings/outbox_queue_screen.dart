@@ -17,6 +17,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'branch_selection_provider.dart';
 
 part 'outbox_queue_screen.g.dart';
@@ -31,18 +32,19 @@ class OutboxQueueScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final rowsAsync = ref.watch(allOutboxRowsProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Antrian Sinkronisasi'),
+        title: Text(l10n.outboxTitle),
         actions: [
           IconButton(
-            tooltip: 'Coba ulang semua yang gagal',
+            tooltip: l10n.outboxRetryAllFailed,
             icon: const Icon(Icons.refresh),
             onPressed: () => _retryAllFailed(context, ref),
           ),
           IconButton(
-            tooltip: 'Hapus semua yang gagal',
+            tooltip: l10n.outboxDeleteAllFailed,
             icon: const Icon(Icons.delete_sweep_outlined),
             onPressed: () => _deleteAllFailed(context, ref),
           ),
@@ -51,16 +53,16 @@ class OutboxQueueScreen extends ConsumerWidget {
       body: rowsAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat antrian',
+          title: l10n.outboxLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (rows) {
           if (rows.isEmpty) {
-            return const AppEmptyState(
-              title: 'Antrian kosong',
+            return AppEmptyState(
+              title: l10n.outboxEmptyTitle,
               icon: Icons.cloud_done_outlined,
-              message: 'Semua data sudah tersinkron.',
+              message: l10n.outboxEmptyMessage,
             );
           }
           final pending = rows
@@ -77,7 +79,7 @@ class OutboxQueueScreen extends ConsumerWidget {
             children: [
               if (failed.isNotEmpty) ...[
                 _SectionHeader(
-                  label: 'GAGAL (${failed.length})',
+                  label: l10n.outboxFailedSection(failed.length),
                   tone: AppBadgeTone.danger,
                 ),
                 ...failed.map((r) => _OutboxTile(row: r)),
@@ -85,7 +87,7 @@ class OutboxQueueScreen extends ConsumerWidget {
               ],
               if (pending.isNotEmpty) ...[
                 _SectionHeader(
-                  label: 'MENUNGGU (${pending.length})',
+                  label: l10n.outboxPendingSection(pending.length),
                   tone: AppBadgeTone.warning,
                 ),
                 ...pending.map((r) => _OutboxTile(row: r)),
@@ -93,7 +95,7 @@ class OutboxQueueScreen extends ConsumerWidget {
               ],
               if (done.isNotEmpty) ...[
                 _SectionHeader(
-                  label: 'SELESAI (${done.length})',
+                  label: l10n.outboxDoneSection(done.length),
                   tone: AppBadgeTone.success,
                 ),
                 ...done.take(20).map((r) => _OutboxTile(row: r)),
@@ -111,27 +113,26 @@ class OutboxQueueScreen extends ConsumerWidget {
         rows.where((r) => r.status == OutboxStatus.failed).length;
     if (failedCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tidak ada baris gagal untuk dihapus')),
+        SnackBar(content: Text(AppL10n.of(context).outboxNoFailedRows)),
       );
       return;
     }
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus semua yang gagal?'),
+        title: Text(AppL10n.of(ctx).outboxDeleteAllFailedTitle),
         content: Text(
-          '$failedCount baris gagal akan dihapus permanen. Data yang '
-          'belum sampai ke server akan hilang.',
+          AppL10n.of(ctx).outboxDeleteAllFailedMessage(failedCount),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(AppL10n.of(ctx).actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Hapus Semua'),
+            child: Text(AppL10n.of(ctx).outboxDeleteAllAction),
           ),
         ],
       ),
@@ -140,7 +141,7 @@ class OutboxQueueScreen extends ConsumerWidget {
     final n = await ref.read(outboxDaoProvider).deleteAllFailed();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$n baris gagal dihapus')),
+      SnackBar(content: Text(AppL10n.of(context).outboxDeletedFailedRows(n))),
     );
   }
 
@@ -149,7 +150,7 @@ class OutboxQueueScreen extends ConsumerWidget {
     final n = await dao.retryAllFailed();
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$n baris di-reset ke status menunggu')),
+      SnackBar(content: Text(AppL10n.of(context).outboxRetriedRows(n))),
     );
     // Trigger an immediate push attempt.
     final branchIds =
@@ -187,6 +188,7 @@ class _OutboxTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final preview = _payloadPreview(row);
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
@@ -201,7 +203,7 @@ class _OutboxTile extends ConsumerWidget {
                     size: 18, color: context.colors.textSecondary),
                 const SizedBox(width: AppSpacing.sm),
                 Text(
-                  _entityLabel(row.entityType),
+                  _entityLabel(l10n, row.entityType),
                   style: AppTypography.titleMd,
                 ),
                 const Spacer(),
@@ -268,14 +270,14 @@ class _OutboxTile extends ConsumerWidget {
               Row(
                 children: [
                   AppButton(
-                    label: 'Coba lagi',
+                    label: l10n.outboxRetry,
                     icon: Icons.refresh,
                     variant: AppButtonVariant.secondary,
                     onPressed: () => _retry(context, ref),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   AppButton(
-                    label: 'Hapus',
+                    label: l10n.actionDelete,
                     icon: Icons.delete_outline,
                     variant: AppButtonVariant.danger,
                     onPressed: () => _confirmDelete(context, ref),
@@ -301,20 +303,17 @@ class _OutboxTile extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus dari antrian?'),
-        content: const Text(
-          'Data ini akan dihapus permanen dari antrian sinkronisasi. '
-          'Jika data belum sampai ke server, data akan hilang.',
-        ),
+        title: Text(AppL10n.of(ctx).outboxDeleteTitle),
+        content: Text(AppL10n.of(ctx).outboxDeleteMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(AppL10n.of(ctx).actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Hapus'),
+            child: Text(AppL10n.of(ctx).actionDelete),
           ),
         ],
       ),
@@ -323,26 +322,30 @@ class _OutboxTile extends ConsumerWidget {
     await ref.read(outboxDaoProvider).deleteById(row.id);
   }
 
-  static String _entityLabel(OutboxEntityType t) => switch (t) {
-        OutboxEntityType.transaction => 'Transaksi',
-        OutboxEntityType.transactionItem => 'Item Transaksi',
-        OutboxEntityType.inventoryMovement => 'Pergerakan Stok',
-        OutboxEntityType.customer => 'Pelanggan',
-        OutboxEntityType.branch => 'Cabang',
-        OutboxEntityType.inventoryItem => 'Item Stok',
-        OutboxEntityType.appUser => 'Pengguna',
-        OutboxEntityType.userBranchAccess => 'Akses Cabang',
-        OutboxEntityType.pendingInvitation => 'Undangan Pengguna',
-        OutboxEntityType.optionGroup => 'Grup Modifier',
-        OutboxEntityType.optionItem => 'Opsi Modifier',
-        OutboxEntityType.productOptionGroup => 'Link Modifier',
-        OutboxEntityType.receiptSetting => 'Tampilan Struk',
-        OutboxEntityType.product => 'Produk',
-        OutboxEntityType.branchProduct => 'Override Cabang',
-        OutboxEntityType.productRecipe => 'Resep',
-        OutboxEntityType.bankAccount => 'Rekening Bank',
-        OutboxEntityType.category => 'Kategori',
-        OutboxEntityType.customerPointLedger => 'Poin Pelanggan',
+  static String _entityLabel(AppL10n l10n, OutboxEntityType t) => switch (t) {
+        OutboxEntityType.transaction => l10n.outboxEntityTransaction,
+        OutboxEntityType.transactionItem => l10n.outboxEntityTransactionItem,
+        OutboxEntityType.inventoryMovement =>
+          l10n.outboxEntityInventoryMovement,
+        OutboxEntityType.customer => l10n.outboxEntityCustomer,
+        OutboxEntityType.branch => l10n.outboxEntityBranch,
+        OutboxEntityType.inventoryItem => l10n.outboxEntityInventoryItem,
+        OutboxEntityType.appUser => l10n.outboxEntityAppUser,
+        OutboxEntityType.userBranchAccess => l10n.outboxEntityUserBranchAccess,
+        OutboxEntityType.pendingInvitation =>
+          l10n.outboxEntityPendingInvitation,
+        OutboxEntityType.optionGroup => l10n.outboxEntityOptionGroup,
+        OutboxEntityType.optionItem => l10n.outboxEntityOptionItem,
+        OutboxEntityType.productOptionGroup =>
+          l10n.outboxEntityProductOptionGroup,
+        OutboxEntityType.receiptSetting => l10n.outboxEntityReceiptSetting,
+        OutboxEntityType.product => l10n.outboxEntityProduct,
+        OutboxEntityType.branchProduct => l10n.outboxEntityBranchProduct,
+        OutboxEntityType.productRecipe => l10n.outboxEntityProductRecipe,
+        OutboxEntityType.bankAccount => l10n.outboxEntityBankAccount,
+        OutboxEntityType.category => l10n.outboxEntityCategory,
+        OutboxEntityType.customerPointLedger =>
+          l10n.outboxEntityCustomerPointLedger,
       };
 
   static IconData _iconFor(OutboxEntityType t) => switch (t) {

@@ -16,6 +16,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../auth/auth_provider.dart';
 import '../settings/branch_selection_provider.dart';
 import 'shift_closing_providers.dart';
@@ -25,8 +26,7 @@ class ShiftClosingScreen extends ConsumerStatefulWidget {
   const ShiftClosingScreen({super.key});
 
   @override
-  ConsumerState<ShiftClosingScreen> createState() =>
-      _ShiftClosingScreenState();
+  ConsumerState<ShiftClosingScreen> createState() => _ShiftClosingScreenState();
 }
 
 class _ShiftClosingScreenState extends ConsumerState<ShiftClosingScreen> {
@@ -48,23 +48,23 @@ class _ShiftClosingScreenState extends ConsumerState<ShiftClosingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final branchAsync = ref.watch(selectedBranchProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Tutup Kas')),
+      appBar: AppBar(title: Text(l10n.navShiftClosing)),
       body: branchAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat cabang',
+          title: l10n.shiftLoadBranchFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (branch) {
           if (branch == null) {
-            return const AppEmptyState(
-              title: 'Belum memilih cabang',
+            return AppEmptyState(
+              title: l10n.shiftNoBranchTitle,
               icon: Icons.store_outlined,
-              message:
-                  'Pilih cabang aktif di Pengaturan sebelum tutup kas.',
+              message: l10n.shiftNoBranchMessage,
             );
           }
           return _Body(branch: branch, state: this);
@@ -81,6 +81,7 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final summaryAsync = ref.watch(todayCashSummaryProvider(branch.id));
     final historyAsync = ref.watch(shiftClosingHistoryProvider(branch.id));
 
@@ -101,7 +102,7 @@ class _Body extends ConsumerWidget {
               ),
             ),
             error: (e, _) => AppCard(
-              child: Text('Gagal: $e'),
+              child: Text(l10n.shiftLoadFailed('$e')),
             ),
             data: (summary) => _ReconciliationCard(
               branch: branch,
@@ -111,7 +112,7 @@ class _Body extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.xxl),
           Text(
-            'RIWAYAT TUTUP KAS',
+            l10n.shiftHistorySection,
             style: AppTypography.labelSm.copyWith(
               color: context.colors.textSecondary,
               letterSpacing: 0.8,
@@ -123,16 +124,14 @@ class _Body extends ConsumerWidget {
               padding: EdgeInsets.all(AppSpacing.md),
               child: AppLoadingIndicator(),
             ),
-            error: (e, _) => Text('Gagal: $e',
-                style: AppTypography.bodySm
-                    .copyWith(color: AppColors.danger)),
+            error: (e, _) => Text(l10n.shiftLoadFailed('$e'),
+                style: AppTypography.bodySm.copyWith(color: AppColors.danger)),
             data: (rows) {
               if (rows.isEmpty) {
-                return const AppEmptyState(
-                  title: 'Belum ada riwayat',
+                return AppEmptyState(
+                  title: l10n.shiftNoHistoryTitle,
                   icon: Icons.history_outlined,
-                  message:
-                      'Setelah tutup kas pertama, daftar akan muncul di sini.',
+                  message: l10n.shiftNoHistoryMessage,
                 );
               }
               return Column(
@@ -200,6 +199,7 @@ class _ReconciliationCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final expected = state._opening + summary.netCash;
     final variance = state._counted - expected;
     final hasCounted = state._countedCtrl.text.trim().isNotEmpty;
@@ -208,14 +208,14 @@ class _ReconciliationCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('REKAP KAS HARI INI',
+          Text(l10n.shiftCashSummarySection,
               style: AppTypography.labelSm.copyWith(
                 color: context.colors.textSecondary,
                 letterSpacing: 0.8,
               )),
           const SizedBox(height: AppSpacing.md),
           _CashRow(
-            label: 'Saldo awal (float)',
+            label: l10n.shiftOpeningFloat,
             valueWidget: SizedBox(
               width: 140,
               child: TextField(
@@ -232,24 +232,24 @@ class _ReconciliationCard extends ConsumerWidget {
             ),
           ),
           _CashRow(
-            label: 'Penjualan tunai (${summary.transactionCount} trx)',
+            label: l10n.shiftCashSales(summary.transactionCount),
             value: formatRupiah(summary.cashIn),
           ),
           if (summary.cashRefunded > 0)
             _CashRow(
-              label: 'Refund tunai (${summary.refundCount} trx)',
+              label: l10n.shiftCashRefund(summary.refundCount),
               value: '-${formatRupiah(summary.cashRefunded)}',
               valueColor: AppColors.danger,
             ),
           const Divider(),
           _CashRow(
-            label: 'Seharusnya di laci',
+            label: l10n.shiftExpectedCash,
             value: formatRupiah(expected),
             highlight: true,
           ),
           const SizedBox(height: AppSpacing.md),
           _CashRow(
-            label: 'Hitungan fisik',
+            label: l10n.shiftCountedCash,
             valueWidget: SizedBox(
               width: 140,
               child: TextField(
@@ -288,18 +288,18 @@ class _ReconciliationCard extends ConsumerWidget {
                             : Icons.trending_up),
                     color: variance == 0
                         ? AppColors.success
-                        : (variance < 0
-                            ? AppColors.danger
-                            : AppColors.accent),
+                        : (variance < 0 ? AppColors.danger : AppColors.accent),
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       variance == 0
-                          ? 'Pas — tidak ada selisih'
+                          ? l10n.shiftBalanced
                           : (variance < 0
-                              ? 'Kurang ${formatRupiah(variance.abs())}'
-                              : 'Lebih ${formatRupiah(variance)}'),
+                              ? l10n.shiftShort(
+                                  formatRupiah(variance.abs()),
+                                )
+                              : l10n.shiftOver(formatRupiah(variance))),
                       style: AppTypography.bodyMd.copyWith(
                         color: variance == 0
                             ? AppColors.success
@@ -317,14 +317,14 @@ class _ReconciliationCard extends ConsumerWidget {
           TextField(
             controller: state._notesCtrl,
             maxLines: 2,
-            decoration: const InputDecoration(
-              labelText: 'Catatan (opsional)',
-              hintText: 'mis. selisih karena uang receh kasir',
+            decoration: InputDecoration(
+              labelText: l10n.shiftNotesOptional,
+              hintText: l10n.shiftNotesHint,
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
-            label: state._saving ? 'Menyimpan…' : 'Tutup Kas',
+            label: state._saving ? l10n.statusSaving : l10n.navShiftClosing,
             icon: Icons.lock_outline,
             onPressed: !hasCounted || state._saving
                 ? null
@@ -363,7 +363,7 @@ class _ReconciliationCard extends ConsumerWidget {
       if (!context.mounted) return;
       ref.invalidate(shiftClosingHistoryProvider(branch.id));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tutup kas tersimpan')),
+        SnackBar(content: Text(AppL10n.of(context).shiftSaved)),
       );
       // Clear inputs for the next session.
       state._countedCtrl.clear();
@@ -410,9 +410,7 @@ class _CashRow extends StatelessWidget {
           else
             Text(
               value!,
-              style: (highlight
-                      ? AppTypography.titleMd
-                      : AppTypography.bodyMd)
+              style: (highlight ? AppTypography.titleMd : AppTypography.bodyMd)
                   .copyWith(
                 color: valueColor,
                 fontFeatures: const [FontFeature.tabularFigures()],
@@ -430,6 +428,7 @@ class _HistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final isShort = row.variance < 0;
     final isOver = row.variance > 0;
     return Container(
@@ -452,20 +451,20 @@ class _HistoryTile extends StatelessWidget {
                 ),
               ),
               if (row.variance == 0)
-                const AppBadge(
-                  label: 'Pas',
+                AppBadge(
+                  label: l10n.shiftBalancedBadge,
                   icon: Icons.check_circle_outline,
                   tone: AppBadgeTone.success,
                 )
               else if (isShort)
                 AppBadge(
-                  label: 'Kurang ${formatRupiah(row.variance.abs())}',
+                  label: l10n.shiftShort(formatRupiah(row.variance.abs())),
                   icon: Icons.trending_down,
                   tone: AppBadgeTone.danger,
                 )
               else if (isOver)
                 AppBadge(
-                  label: 'Lebih ${formatRupiah(row.variance)}',
+                  label: l10n.shiftOver(formatRupiah(row.variance)),
                   icon: Icons.trending_up,
                   tone: AppBadgeTone.warning,
                 ),
@@ -473,9 +472,11 @@ class _HistoryTile extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Saldo awal ${formatRupiah(row.openingFloat)} · '
-            'Seharusnya ${formatRupiah(row.expectedCash)} · '
-            'Dihitung ${formatRupiah(row.countedCash)}',
+            l10n.shiftHistorySummary(
+              formatRupiah(row.openingFloat),
+              formatRupiah(row.expectedCash),
+              formatRupiah(row.countedCash),
+            ),
             style: AppTypography.bodySm
                 .copyWith(color: context.colors.textSecondary),
           ),

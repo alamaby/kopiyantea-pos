@@ -641,6 +641,40 @@
     }
   },
 
+  "shiftLoadBranchFailed": "Gagal memuat cabang",
+  "shiftNoBranchTitle": "Belum memilih cabang",
+  "shiftNoBranchMessage": "Pilih cabang aktif di Pengaturan sebelum tutup kas.",
+  "shiftLoadFailed": "Gagal: {error}",
+  "@shiftLoadFailed": { "placeholders": { "error": { "type": "String" } } },
+  "shiftHistorySection": "RIWAYAT TUTUP KAS",
+  "shiftNoHistoryTitle": "Belum ada riwayat",
+  "shiftNoHistoryMessage": "Setelah tutup kas pertama, daftar akan muncul di sini.",
+  "shiftCashSummarySection": "REKAP KAS HARI INI",
+  "shiftOpeningFloat": "Saldo awal (float)",
+  "shiftCashSales": "Penjualan tunai ({count} trx)",
+  "@shiftCashSales": { "placeholders": { "count": { "type": "int" } } },
+  "shiftCashRefund": "Refund tunai ({count} trx)",
+  "@shiftCashRefund": { "placeholders": { "count": { "type": "int" } } },
+  "shiftExpectedCash": "Seharusnya di laci",
+  "shiftCountedCash": "Hitungan fisik",
+  "shiftBalanced": "Pas - tidak ada selisih",
+  "shiftBalancedBadge": "Pas",
+  "shiftShort": "Kurang {amount}",
+  "@shiftShort": { "placeholders": { "amount": { "type": "String" } } },
+  "shiftOver": "Lebih {amount}",
+  "@shiftOver": { "placeholders": { "amount": { "type": "String" } } },
+  "shiftNotesOptional": "Catatan (opsional)",
+  "shiftNotesHint": "mis. selisih karena uang receh kasir",
+  "shiftSaved": "Tutup kas tersimpan",
+  "shiftHistorySummary": "Saldo awal {opening} · Seharusnya {expected} · Dihitung {counted}",
+  "@shiftHistorySummary": {
+    "placeholders": {
+      "opening": { "type": "String" },
+      "expected": { "type": "String" },
+      "counted": { "type": "String" }
+    }
+  },
+
   "transactionsTitle": "Transaksi",
   "transactionsDetailTitle": "Detail Transaksi",
   "transactionsLoadBranchFailed": "Gagal memuat cabang",

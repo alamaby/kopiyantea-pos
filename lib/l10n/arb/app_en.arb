@@ -641,6 +641,40 @@
     }
   },
 
+  "shiftLoadBranchFailed": "Failed to load branch",
+  "shiftNoBranchTitle": "No branch selected",
+  "shiftNoBranchMessage": "Select an active branch in Settings before closing cash.",
+  "shiftLoadFailed": "Failed: {error}",
+  "@shiftLoadFailed": { "placeholders": { "error": { "type": "String" } } },
+  "shiftHistorySection": "CASH CLOSING HISTORY",
+  "shiftNoHistoryTitle": "No history yet",
+  "shiftNoHistoryMessage": "After the first cash closing, the list will appear here.",
+  "shiftCashSummarySection": "TODAY'S CASH SUMMARY",
+  "shiftOpeningFloat": "Opening float",
+  "shiftCashSales": "Cash sales ({count} trx)",
+  "@shiftCashSales": { "placeholders": { "count": { "type": "int" } } },
+  "shiftCashRefund": "Cash refund ({count} trx)",
+  "@shiftCashRefund": { "placeholders": { "count": { "type": "int" } } },
+  "shiftExpectedCash": "Expected in drawer",
+  "shiftCountedCash": "Physical count",
+  "shiftBalanced": "Balanced - no variance",
+  "shiftBalancedBadge": "Balanced",
+  "shiftShort": "Short {amount}",
+  "@shiftShort": { "placeholders": { "amount": { "type": "String" } } },
+  "shiftOver": "Over {amount}",
+  "@shiftOver": { "placeholders": { "amount": { "type": "String" } } },
+  "shiftNotesOptional": "Notes (optional)",
+  "shiftNotesHint": "e.g. variance due to small change",
+  "shiftSaved": "Cash closing saved",
+  "shiftHistorySummary": "Opening {opening} · Expected {expected} · Counted {counted}",
+  "@shiftHistorySummary": {
+    "placeholders": {
+      "opening": { "type": "String" },
+      "expected": { "type": "String" },
+      "counted": { "type": "String" }
+    }
+  },
+
   "transactionsTitle": "Transactions",
   "transactionsDetailTitle": "Transaction Detail",
   "transactionsLoadBranchFailed": "Failed to load branch",

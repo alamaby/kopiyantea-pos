@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_badge.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../settings/branch_selection_provider.dart';
 import '../today_badge_provider.dart';
 
@@ -15,6 +16,7 @@ class TodayQuickBadge extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final branchAsync = ref.watch(selectedBranchProvider);
     final branch = branchAsync.valueOrNull;
     if (branch == null) return const SizedBox.shrink();
@@ -27,7 +29,7 @@ class TodayQuickBadge extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Tooltip(
-        message: 'Lihat laporan hari ini',
+        message: l10n.reportsViewToday,
         child: InkWell(
           borderRadius: BorderRadius.circular(999),
           onTap: () => context.push('/reports'),

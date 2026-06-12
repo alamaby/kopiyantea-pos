@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/domain/enums.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../settings/branch_selection_provider.dart';
 
 part 'report_providers.g.dart';
@@ -12,14 +13,9 @@ part 'report_providers.g.dart';
 
 enum DatePreset { today, yesterday, last7Days, last30Days }
 
-extension DatePresetX on DatePreset {
-  String get label => switch (this) {
-        DatePreset.today => 'Hari Ini',
-        DatePreset.yesterday => 'Kemarin',
-        DatePreset.last7Days => '7 Hari',
-        DatePreset.last30Days => '30 Hari',
-      };
+const missingBankAccountSnapshotKey = '__missing_bank_account__';
 
+extension DatePresetX on DatePreset {
   DateTimeRange range(DateTime now) {
     final startOfToday = DateTime(now.year, now.month, now.day);
     final endOfToday = startOfToday
@@ -41,6 +37,15 @@ extension DatePresetX on DatePreset {
         ),
     };
   }
+}
+
+String localizedDatePresetLabel(AppL10n l10n, DatePreset preset) {
+  return switch (preset) {
+    DatePreset.today => l10n.reportsPresetToday,
+    DatePreset.yesterday => l10n.reportsPresetYesterday,
+    DatePreset.last7Days => l10n.reportsPresetLast7Days,
+    DatePreset.last30Days => l10n.reportsPresetLast30Days,
+  };
 }
 
 class ReportRangeSelection {
@@ -147,7 +152,7 @@ DailyReport buildReport({
     );
     // FEAT-015 — bucket transfers by destination bank.
     if (tx.paymentMethod == PaymentMethod.transfer) {
-      final key = tx.bankAccountSnapshot ?? 'Tanpa rekening';
+      final key = tx.bankAccountSnapshot ?? missingBankAccountSnapshotKey;
       final existingBank = byBankAccount[key];
       byBankAccount[key] = PaymentStats(
         count: (existingBank?.count ?? 0) + 1,

@@ -7,9 +7,10 @@ import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/labels.dart';
+import '../../core/utils/localized_labels.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../settings/branch_selection_provider.dart';
 import 'report_providers.dart';
 import 'share_report_image_use_case.dart';
@@ -19,6 +20,7 @@ class ReportsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final selection = ref.watch(reportRangeProvider);
     final reportAsync = ref.watch(dailyReportProvider);
     final branchAsync = ref.watch(selectedBranchProvider);
@@ -30,7 +32,7 @@ class ReportsScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Laporan'),
+              Text(l10n.navReports),
               if (b != null)
                 Text(
                   b.name,
@@ -39,7 +41,7 @@ class ReportsScreen extends ConsumerWidget {
                 ),
             ],
           ),
-          orElse: () => const Text('Laporan'),
+          orElse: () => Text(l10n.navReports),
         ),
         actions: const [
           _ShareReportButton(),
@@ -53,23 +55,23 @@ class ReportsScreen extends ConsumerWidget {
             child: reportAsync.when(
               loading: () => const Center(child: AppLoadingIndicator()),
               error: (e, _) => AppEmptyState(
-                title: 'Gagal memuat laporan',
+                title: l10n.reportsLoadFailed,
                 icon: Icons.error_outline,
                 message: e.toString(),
               ),
               data: (report) {
                 if (report == null) {
-                  return const AppEmptyState(
-                    title: 'Belum memilih cabang',
+                  return AppEmptyState(
+                    title: l10n.reportsNoBranchTitle,
                     icon: Icons.store_outlined,
-                    message: 'Pilih cabang aktif di Pengaturan.',
+                    message: l10n.reportsNoBranchMessage,
                   );
                 }
                 if (report.transactionCount == 0) {
-                  return const AppEmptyState(
-                    title: 'Belum ada transaksi',
+                  return AppEmptyState(
+                    title: l10n.reportsEmptyTitle,
                     icon: Icons.bar_chart_outlined,
-                    message: 'Tidak ada transaksi selesai di periode ini.',
+                    message: l10n.reportsEmptyMessage,
                   );
                 }
                 return RefreshIndicator(
@@ -113,12 +115,13 @@ class _ShareReportButtonState extends ConsumerState<_ShareReportButton> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final report = ref.watch(dailyReportProvider).valueOrNull;
     final branch = ref.watch(selectedBranchProvider).valueOrNull;
     final enabled = report != null && branch != null && !_isSharing;
 
     return IconButton(
-      tooltip: 'Bagikan laporan sebagai gambar',
+      tooltip: l10n.reportsShareImageTooltip,
       onPressed: enabled ? () => _share(context, report, branch.name) : null,
       icon: _isSharing
           ? const SizedBox(
@@ -140,6 +143,7 @@ class _ShareReportButtonState extends ConsumerState<_ShareReportButton> {
     final box = renderObject is RenderBox ? renderObject : null;
     try {
       await const ShareReportImageUseCase().share(
+        l10n: AppL10n.of(context),
         report: report,
         branchName: branchName,
         sharePositionOrigin:
@@ -148,7 +152,7 @@ class _ShareReportButtonState extends ConsumerState<_ShareReportButton> {
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal membagikan laporan: $e')),
+        SnackBar(content: Text(AppL10n.of(context).reportsShareFailed('$e'))),
       );
     } finally {
       if (mounted) setState(() => _isSharing = false);
@@ -165,6 +169,7 @@ class _RangeControls extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
@@ -179,7 +184,7 @@ class _RangeControls extends ConsumerWidget {
               children: [
                 for (final p in DatePreset.values) ...[
                   ChoiceChip(
-                    label: Text(p.label),
+                    label: Text(localizedDatePresetLabel(l10n, p)),
                     selected: selection.preset == p,
                     onSelected: (_) =>
                         ref.read(reportRangeProvider.notifier).setPreset(p),
@@ -197,7 +202,7 @@ class _RangeControls extends ConsumerWidget {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.calendar_today_outlined, size: 18),
                   label: Text(
-                    'Mulai: ${formatDate(selection.range.start)}',
+                    l10n.reportsStartDate(formatDate(selection.range.start)),
                     overflow: TextOverflow.ellipsis,
                   ),
                   onPressed: () => _pickCustomDate(context, ref, isStart: true),
@@ -208,7 +213,7 @@ class _RangeControls extends ConsumerWidget {
                 child: OutlinedButton.icon(
                   icon: const Icon(Icons.event_outlined, size: 18),
                   label: Text(
-                    'Selesai: ${formatDate(selection.range.end)}',
+                    l10n.reportsEndDate(formatDate(selection.range.end)),
                     overflow: TextOverflow.ellipsis,
                   ),
                   onPressed: () =>
@@ -251,11 +256,12 @@ class _RevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionLabel('Pendapatan'),
+          _SectionLabel(l10n.reportsRevenue),
           const SizedBox(height: AppSpacing.xs),
           Text(
             _rangeLabel(report.range),
@@ -273,14 +279,14 @@ class _RevenueCard extends StatelessWidget {
             children: [
               Expanded(
                 child: _Stat(
-                  label: 'Transaksi',
+                  label: l10n.reportsTransactions,
                   value: '${report.transactionCount}',
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: _Stat(
-                  label: 'Rata-rata',
+                  label: l10n.reportsAverage,
                   value: formatRupiah(report.averageOrderValue),
                 ),
               ),
@@ -343,6 +349,7 @@ class _PaymentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final entries = report.byPayment.entries.toList()
       ..sort((a, b) => b.value.revenue.compareTo(a.value.revenue));
 
@@ -350,7 +357,7 @@ class _PaymentCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SectionLabel('Metode Pembayaran'),
+          _SectionLabel(l10n.reportsPaymentMethods),
           const SizedBox(height: AppSpacing.md),
           for (var i = 0; i < entries.length; i++) ...[
             if (i > 0) const SizedBox(height: AppSpacing.md),
@@ -374,6 +381,7 @@ class _BankAccountCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final entries = report.byBankAccount.entries.toList()
       ..sort((a, b) => b.value.revenue.compareTo(a.value.revenue));
     final transferTotal = entries.fold<double>(
@@ -385,7 +393,7 @@ class _BankAccountCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SectionLabel('Transfer per Rekening'),
+          _SectionLabel(l10n.reportsTransferByAccount),
           const SizedBox(height: AppSpacing.md),
           for (var i = 0; i < entries.length; i++) ...[
             if (i > 0) const SizedBox(height: AppSpacing.md),
@@ -413,21 +421,25 @@ class _BankAccountRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final fraction = total > 0 ? stats.revenue / total : 0.0;
+    final displaySnapshot = snapshot == missingBankAccountSnapshotKey
+        ? l10n.reportsNoBankAccount
+        : snapshot;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
             Expanded(
-              child: Text(snapshot,
+              child: Text(displaySnapshot,
                   style: AppTypography.bodyMd,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
             ),
             const SizedBox(width: AppSpacing.md),
             Text(
-              '${stats.count} tx',
+              l10n.reportsTransactionCountShort(stats.count),
               style: AppTypography.labelSm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -463,6 +475,7 @@ class _PaymentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final fraction = total > 0 ? stats.revenue / total : 0.0;
     final pct = (fraction * 100).toStringAsFixed(0);
 
@@ -471,7 +484,10 @@ class _PaymentRow extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(paymentMethodLabel(method), style: AppTypography.titleMd),
+            Text(
+              localizedPaymentMethodLabel(l10n, method),
+              style: AppTypography.titleMd,
+            ),
             const SizedBox(width: AppSpacing.sm),
             Text(
               '$pct%',
@@ -481,7 +497,7 @@ class _PaymentRow extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              '${stats.count} tx',
+              l10n.reportsTransactionCountShort(stats.count),
               style: AppTypography.labelSm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -513,15 +529,16 @@ class _TopItemsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (items.isEmpty) {
       return _Card(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SectionLabel('Produk Terlaris'),
+            _SectionLabel(l10n.reportsTopProducts),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'Belum ada item terjual',
+              l10n.reportsNoSoldItems,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -534,7 +551,7 @@ class _TopItemsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionLabel('Produk Terlaris'),
+          _SectionLabel(l10n.reportsTopProducts),
           const SizedBox(height: AppSpacing.sm),
           for (var i = 0; i < items.length; i++) ...[
             if (i > 0) const Divider(height: AppSpacing.lg),
@@ -554,6 +571,7 @@ class _TopItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final qty = item.totalQty == item.totalQty.roundToDouble()
         ? item.totalQty.toStringAsFixed(0)
         : item.totalQty.toStringAsFixed(1);
@@ -581,7 +599,7 @@ class _TopItemRow extends StatelessWidget {
               Text(item.name, style: AppTypography.titleMd),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                '$qty terjual',
+                l10n.reportsQtySold(qty),
                 style: AppTypography.labelSm
                     .copyWith(color: context.colors.textSecondary),
               ),

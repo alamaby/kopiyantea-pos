@@ -9,19 +9,22 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/utils/formatters.dart';
-import '../../core/utils/labels.dart';
+import '../../core/utils/localized_labels.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'report_providers.dart';
 
 class ShareReportImageUseCase {
   const ShareReportImageUseCase();
 
   Future<void> share({
+    required AppL10n l10n,
     required DailyReport report,
     required String branchName,
     Rect? sharePositionOrigin,
   }) async {
     final generatedAt = DateTime.now();
     final bytes = await ReportImageRenderer().renderPng(
+      l10n: l10n,
       report: report,
       branchName: branchName,
       generatedAt: generatedAt,
@@ -34,8 +37,8 @@ class ShareReportImageUseCase {
 
     await Share.shareXFiles(
       [XFile(file.path, mimeType: 'image/png', name: fileName)],
-      subject: 'Laporan $branchName',
-      text: 'Laporan $branchName (${_rangeLabel(report.range)})',
+      subject: l10n.reportsShareSubject(branchName),
+      text: l10n.reportsShareText(branchName, _rangeLabel(report.range)),
       sharePositionOrigin: sharePositionOrigin,
     );
   }
@@ -56,11 +59,13 @@ class ReportImageRenderer {
   static const Color _border = Color(0xFFE2E8F0);
 
   Future<Uint8List> renderPng({
+    required AppL10n l10n,
     required DailyReport report,
     required String branchName,
     required DateTime generatedAt,
   }) async {
     final height = _ReportImageLayout(
+      l10n: l10n,
       report: report,
       branchName: branchName,
       generatedAt: generatedAt,
@@ -69,6 +74,7 @@ class ReportImageRenderer {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     _ReportImageLayout(
+      l10n: l10n,
       report: report,
       branchName: branchName,
       generatedAt: generatedAt,
@@ -76,7 +82,7 @@ class ReportImageRenderer {
     final image = await recorder.endRecording().toImage(_width.toInt(), height);
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
     if (data == null) {
-      throw StateError('Gagal membuat gambar laporan');
+      throw StateError(l10n.reportsCreateImageFailed);
     }
     return data.buffer.asUint8List();
   }
@@ -92,11 +98,13 @@ class ReportImageRenderer {
 
 class _ReportImageLayout {
   _ReportImageLayout({
+    required this.l10n,
     required this.report,
     required this.branchName,
     required this.generatedAt,
   });
 
+  final AppL10n l10n;
   final DailyReport report;
   final String branchName;
   final DateTime generatedAt;
@@ -123,7 +131,7 @@ class _ReportImageLayout {
   void _header(Canvas? canvas) {
     _text(
       canvas,
-      'Laporan Penjualan',
+      l10n.reportsSalesReport,
       x: ReportImageRenderer._padding,
       y: _y,
       maxWidth: _contentWidth,
@@ -164,7 +172,7 @@ class _ReportImageLayout {
   void _revenue(Canvas? canvas) {
     _card(canvas, (c, x, y, w) {
       var cursor = y;
-      cursor += _label(c, 'Pendapatan', x, cursor, w);
+      cursor += _label(c, l10n.reportsRevenue, x, cursor, w);
       cursor += 12;
       cursor += _text(
         c,
@@ -180,10 +188,10 @@ class _ReportImageLayout {
       );
       cursor += 28;
       final statWidth = (w - 20) / 2;
-      final h1 = _stat(
-          c, x, cursor, statWidth, 'Transaksi', '${report.transactionCount}');
-      final h2 = _stat(c, x + statWidth + 20, cursor, statWidth, 'Rata-rata',
-          formatRupiah(report.averageOrderValue));
+      final h1 = _stat(c, x, cursor, statWidth, l10n.reportsTransactions,
+          '${report.transactionCount}');
+      final h2 = _stat(c, x + statWidth + 20, cursor, statWidth,
+          l10n.reportsAverage, formatRupiah(report.averageOrderValue));
       return cursor + math.max(h1, h2) - y;
     });
   }
@@ -193,7 +201,7 @@ class _ReportImageLayout {
       ..sort((a, b) => b.value.revenue.compareTo(a.value.revenue));
     _card(canvas, (c, x, y, w) {
       var cursor = y;
-      cursor += _label(c, 'Metode Pembayaran', x, cursor, w);
+      cursor += _label(c, l10n.reportsPaymentMethods, x, cursor, w);
       cursor += 18;
       for (final entry in entries) {
         cursor += _progressRow(
@@ -201,8 +209,8 @@ class _ReportImageLayout {
           x,
           cursor,
           w,
-          paymentMethodLabel(entry.key),
-          '${entry.value.count} tx',
+          localizedPaymentMethodLabel(l10n, entry.key),
+          l10n.reportsTransactionCountShort(entry.value.count),
           formatRupiah(entry.value.revenue),
           report.totalRevenue <= 0
               ? 0
@@ -221,12 +229,12 @@ class _ReportImageLayout {
     final total = entries.fold<double>(0, (sum, e) => sum + e.value.revenue);
     _card(canvas, (c, x, y, w) {
       var cursor = y;
-      cursor += _label(c, 'Transfer per Rekening', x, cursor, w);
+      cursor += _label(c, l10n.reportsTransferByAccount, x, cursor, w);
       cursor += 18;
       if (entries.isEmpty) {
         cursor += _text(
           c,
-          'Belum ada transaksi transfer pada periode ini',
+          l10n.reportsNoTransferTransactions,
           x: x,
           y: cursor,
           maxWidth: w,
@@ -237,13 +245,16 @@ class _ReportImageLayout {
         );
       } else {
         for (final entry in entries) {
+          final accountLabel = entry.key == missingBankAccountSnapshotKey
+              ? l10n.reportsNoBankAccount
+              : entry.key;
           cursor += _progressRow(
             c,
             x,
             cursor,
             w,
-            entry.key,
-            '${entry.value.count} tx',
+            accountLabel,
+            l10n.reportsTransactionCountShort(entry.value.count),
             formatRupiah(entry.value.revenue),
             total <= 0 ? 0 : entry.value.revenue / total,
             ReportImageRenderer._accent,
@@ -258,12 +269,12 @@ class _ReportImageLayout {
   void _topItems(Canvas? canvas) {
     _card(canvas, (c, x, y, w) {
       var cursor = y;
-      cursor += _label(c, 'Produk Terlaris', x, cursor, w);
+      cursor += _label(c, l10n.reportsTopProducts, x, cursor, w);
       cursor += 18;
       if (report.topItems.isEmpty) {
         cursor += _text(
           c,
-          'Belum ada item terjual',
+          l10n.reportsNoSoldItems,
           x: x,
           y: cursor,
           maxWidth: w,
@@ -296,7 +307,7 @@ class _ReportImageLayout {
     _y += 8;
     _text(
       canvas,
-      'Image dibuat: ${formatDateTimeSeconds(generatedAt)}',
+      l10n.reportsImageGeneratedAt(formatDateTimeSeconds(generatedAt)),
       x: ReportImageRenderer._padding,
       y: _y,
       maxWidth: _contentWidth,
@@ -534,7 +545,7 @@ class _ReportImageLayout {
     );
     _text(
       canvas,
-      '$qty terjual',
+      l10n.reportsQtySold(qty),
       x: x + 52,
       y: y + titleHeight + 4,
       maxWidth: width - 300,

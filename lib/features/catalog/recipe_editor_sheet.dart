@@ -16,6 +16,7 @@ import '../../core/utils/labels.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../inventory/inventory_providers.dart';
 
 /// Bottom sheet for add/edit/delete of one recipe row.
@@ -89,13 +90,12 @@ class _RecipeEditorSheetState extends ConsumerState<RecipeEditorSheet> {
   }
 
   String _formatQty(double q) {
-    return q == q.roundToDouble()
-        ? q.toStringAsFixed(0)
-        : q.toString();
+    return q == q.roundToDouble() ? q.toStringAsFixed(0) : q.toString();
   }
 
   Future<void> _save() async {
     if (_isSaving) return;
+    final l10n = AppL10n.of(context);
     setState(() {
       _isSaving = true;
       _errorQty = null;
@@ -111,7 +111,7 @@ class _RecipeEditorSheetState extends ConsumerState<RecipeEditorSheet> {
     if (qty == null || qty <= 0) {
       setState(() {
         _isSaving = false;
-        _errorQty = 'Jumlah harus lebih dari 0';
+        _errorQty = l10n.catalogRecipeInvalidQuantity;
       });
       return;
     }
@@ -137,22 +137,23 @@ class _RecipeEditorSheetState extends ConsumerState<RecipeEditorSheet> {
 
   Future<void> _delete() async {
     if (!_isEditing) return;
+    final l10n = AppL10n.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus bahan?'),
+        title: Text(l10n.catalogRecipeDeleteTitle),
         content: Text(
-          '"${widget.existing!.item.name}" akan dihapus dari komposisi produk ini.',
+          l10n.catalogRecipeDeleteMessage(widget.existing!.item.name),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Hapus'),
+            child: Text(l10n.actionDelete),
           ),
         ],
       ),
@@ -167,6 +168,7 @@ class _RecipeEditorSheetState extends ConsumerState<RecipeEditorSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -193,7 +195,9 @@ class _RecipeEditorSheetState extends ConsumerState<RecipeEditorSheet> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                _isEditing ? 'Ubah Bahan' : 'Tambah Bahan',
+                _isEditing
+                    ? l10n.catalogRecipeEditIngredient
+                    : l10n.catalogRecipeAddIngredient,
                 style: AppTypography.headlineLg,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -219,7 +223,7 @@ class _RecipeEditorSheetState extends ConsumerState<RecipeEditorSheet> {
                     if (_isEditing) ...[
                       Expanded(
                         child: AppButton(
-                          label: 'Hapus',
+                          label: l10n.actionDelete,
                           variant: AppButtonVariant.danger,
                           icon: Icons.delete_outline,
                           onPressed: _isSaving ? null : _delete,
@@ -230,7 +234,7 @@ class _RecipeEditorSheetState extends ConsumerState<RecipeEditorSheet> {
                     ],
                     Expanded(
                       child: AppButton(
-                        label: _isEditing ? 'Simpan' : 'Tambah',
+                        label: _isEditing ? l10n.actionSave : l10n.actionAdd,
                         icon: Icons.save_outlined,
                         onPressed: _isSaving ? null : _save,
                         isLoading: _isSaving,
@@ -265,13 +269,14 @@ class _ItemPicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final itemsAsync = ref.watch(branchInventoryProvider(branchId));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'PILIH BAHAN',
+          l10n.catalogRecipePickIngredient,
           style: AppTypography.labelSm.copyWith(
             color: context.colors.textSecondary,
             letterSpacing: 0.8,
@@ -284,17 +289,17 @@ class _ItemPicker extends ConsumerWidget {
             child: AppLoadingIndicator(),
           ),
           error: (e, _) => Text(
-            'Gagal memuat: $e',
+            l10n.catalogRecipePickerLoadFailed('$e'),
             style: AppTypography.bodySm.copyWith(color: AppColors.danger),
           ),
           data: (all) {
-            final available = all.where((i) => !excludeIds.contains(i.id)).toList();
+            final available =
+                all.where((i) => !excludeIds.contains(i.id)).toList();
             if (available.isEmpty) {
-              return const AppEmptyState(
-                title: 'Tidak ada bahan tersedia',
+              return AppEmptyState(
+                title: l10n.catalogRecipeNoIngredientsTitle,
                 icon: Icons.inventory_2_outlined,
-                message:
-                    'Semua bahan sudah dipakai atau belum ada item stok di cabang ini.',
+                message: l10n.catalogRecipeNoIngredientsMessage,
               );
             }
             return ConstrainedBox(
@@ -342,7 +347,9 @@ class _ItemPicker extends ConsumerWidget {
                               children: [
                                 Text(it.name, style: AppTypography.titleMd),
                                 Text(
-                                  'Stok: ${formatStock(it.cachedStock, it.unit)}',
+                                  l10n.catalogRecipeStock(
+                                    formatStock(it.cachedStock, it.unit),
+                                  ),
                                   style: AppTypography.labelSm.copyWith(
                                     color: context.colors.textSecondary,
                                   ),
@@ -371,6 +378,7 @@ class _SelectedItemDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
@@ -387,7 +395,9 @@ class _SelectedItemDisplay extends StatelessWidget {
               children: [
                 Text(item.name, style: AppTypography.titleMd),
                 Text(
-                  'Stok saat ini: ${formatStock(item.cachedStock, item.unit)}',
+                  l10n.catalogRecipeCurrentStock(
+                    formatStock(item.cachedStock, item.unit),
+                  ),
                   style: AppTypography.labelSm.copyWith(
                     color: context.colors.textSecondary,
                   ),
@@ -416,11 +426,12 @@ class _QuantityField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'JUMLAH PER PRODUK',
+          l10n.catalogRecipeQuantityPerProduct,
           style: AppTypography.labelSm.copyWith(
             color: context.colors.textSecondary,
             letterSpacing: 0.8,
@@ -438,8 +449,7 @@ class _QuantityField extends StatelessWidget {
             hintText: '0',
             errorText: errorText,
             suffixText: stockUnitLabel(unit),
-            helperText:
-                'Jumlah yang dikurangi dari stok setiap kali produk ini terjual',
+            helperText: l10n.catalogRecipeQuantityHelp,
           ),
         ),
       ],

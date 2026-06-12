@@ -20,6 +20,7 @@ import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../auth/auth_provider.dart';
 import '../settings/branch_selection_provider.dart';
 import 'catalog_csv.dart';
@@ -47,6 +48,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final branchAsync = ref.watch(selectedBranchProvider);
 
     return Scaffold(
@@ -56,7 +58,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Menu'),
+              Text(l10n.navProducts),
               if (b != null)
                 Text(
                   b.name,
@@ -65,7 +67,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                 ),
             ],
           ),
-          orElse: () => const Text('Menu'),
+          orElse: () => Text(l10n.navProducts),
         ),
         actions: [
           if (branchAsync.valueOrNull != null)
@@ -76,7 +78,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.ios_share_outlined),
-              tooltip: 'Bagikan menu PNG',
+              tooltip: l10n.catalogProductsShareMenuPng,
               onPressed: _isSharingMenuImage
                   ? null
                   : () => _shareMenuImage(context, branchAsync.valueOrNull!),
@@ -84,25 +86,25 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           if (ref.watch(currentUserProvider)?.globalRole == GlobalRole.owner)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
-              tooltip: 'Lainnya',
+              tooltip: l10n.catalogProductsMore,
               onSelected: (v) {
                 if (v == 'export') _exportCsv(context, ref);
                 if (v == 'import') _importCsv(context, ref);
               },
-              itemBuilder: (_) => const [
+              itemBuilder: (_) => [
                 PopupMenuItem(
                   value: 'export',
                   child: ListTile(
-                    leading: Icon(Icons.upload_outlined),
-                    title: Text('Ekspor CSV'),
+                    leading: const Icon(Icons.upload_outlined),
+                    title: Text(l10n.catalogProductsExportCsv),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
                 PopupMenuItem(
                   value: 'import',
                   child: ListTile(
-                    leading: Icon(Icons.download_outlined),
-                    title: Text('Impor CSV'),
+                    leading: const Icon(Icons.download_outlined),
+                    title: Text(l10n.catalogProductsImportCsv),
                     contentPadding: EdgeInsets.zero,
                   ),
                 ),
@@ -114,21 +116,21 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         heroTag: 'fab_catalog',
         onPressed: () => context.push('/products/new'),
         icon: const Icon(Icons.add),
-        label: const Text('Tambah Produk'),
+        label: Text(l10n.catalogProductsAdd),
       ),
       body: branchAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat cabang',
+          title: l10n.catalogProductsLoadBranchFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (branch) {
           if (branch == null) {
-            return const AppEmptyState(
-              title: 'Belum memilih cabang',
+            return AppEmptyState(
+              title: l10n.catalogProductsNoBranchTitle,
               icon: Icons.store_outlined,
-              message: 'Pilih cabang aktif di Pengaturan.',
+              message: l10n.catalogProductsNoBranchMessage,
             );
           }
           return Column(
@@ -138,7 +140,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                 child: TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
-                    hintText: 'Cari nama produk atau kategori…',
+                    hintText: l10n.catalogProductsSearchHint,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _query.isEmpty
                         ? null
@@ -166,6 +168,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
   Future<void> _shareMenuImage(BuildContext context, BranchRow branch) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     setState(() => _isSharingMenuImage = true);
     try {
       final shared = await ref.read(shareMenuImageUseCaseProvider).share(
@@ -174,14 +177,13 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       if (!context.mounted) return;
       if (!shared) {
         messenger.showSnackBar(
-          const SnackBar(
-              content: Text('Belum ada menu tersedia untuk dishare')),
+          SnackBar(content: Text(l10n.catalogProductsShareEmpty)),
         );
       }
     } catch (e) {
       if (!context.mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('Gagal membuat image menu: $e')),
+        SnackBar(content: Text(l10n.catalogProductsShareImageFailed('$e'))),
       );
     } finally {
       if (mounted) setState(() => _isSharingMenuImage = false);
@@ -190,6 +192,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     final dao = ref.read(catalogDaoProvider);
     final rows = await dao.getAllProducts();
     final csv = exportProductsToCsv(rows);
@@ -197,18 +200,19 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     if (!context.mounted) return;
     messenger.showSnackBar(
       SnackBar(
-        content: Text('${rows.length} produk disalin ke clipboard sebagai CSV'),
+        content: Text(l10n.catalogProductsExportedCsv(rows.length)),
       ),
     );
   }
 
   Future<void> _importCsv(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final raw = data?.text;
     if (raw == null || raw.trim().isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Clipboard kosong')),
+        SnackBar(content: Text(l10n.catalogProductsClipboardEmpty)),
       );
       return;
     }
@@ -218,17 +222,19 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Konfirmasi Impor'),
+        title: Text(l10n.catalogProductsImportConfirmTitle),
         content: SizedBox(
           width: 520,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${result.ok.length} baris akan dibuat/diperbarui.'),
+              Text(l10n.catalogProductsImportRowsReady(result.ok.length)),
               if (result.errors.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),
-                Text('${result.errors.length} kesalahan (dilewati):',
+                Text(
+                    l10n.catalogProductsImportErrorsSkipped(
+                        result.errors.length),
                     style: const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: AppSpacing.xs),
                 ConstrainedBox(
@@ -247,12 +253,12 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed:
                 result.ok.isEmpty ? null : () => Navigator.pop(ctx, true),
-            child: const Text('Impor'),
+            child: Text(l10n.actionImport),
           ),
         ],
       ),
@@ -313,8 +319,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     if (!context.mounted) return;
     messenger.showSnackBar(
       SnackBar(
-        content: Text(
-            '${result.ok.length} produk diimpor & diantrekan untuk sinkron'),
+        content: Text(l10n.catalogProductsImportedQueued(result.ok.length)),
       ),
     );
   }
@@ -328,12 +333,13 @@ class _List extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final menuAsync = ref.watch(branchMenuFullProvider(branchId));
 
     return menuAsync.when(
       loading: () => const Center(child: AppLoadingIndicator()),
       error: (e, _) => AppEmptyState(
-        title: 'Gagal memuat menu',
+        title: l10n.catalogProductsLoadFailed,
         icon: Icons.error_outline,
         message: e.toString(),
       ),
@@ -341,13 +347,13 @@ class _List extends ConsumerWidget {
         final filtered = _filter(items, query);
         if (filtered.isEmpty) {
           return AppEmptyState(
-            title: query.isEmpty ? 'Belum ada produk' : 'Tidak ditemukan',
+            title: query.isEmpty
+                ? l10n.catalogProductsEmptyTitle
+                : l10n.catalogProductsNotFound,
             icon: query.isEmpty
                 ? Icons.restaurant_menu_outlined
                 : Icons.search_off_outlined,
-            message: query.isEmpty
-                ? 'Tap "Tambah Produk" untuk membuat menu baru.'
-                : null,
+            message: query.isEmpty ? l10n.catalogProductsEmptyMessage : null,
           );
         }
         return ListView.separated(
@@ -387,6 +393,7 @@ class _Tile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final product = item.product;
     final bp = item.branchProduct;
     final now = DateTime.now();
@@ -447,8 +454,8 @@ class _Tile extends ConsumerWidget {
                           ],
                           if (inactive) ...[
                             const SizedBox(width: AppSpacing.sm),
-                            const AppBadge(
-                              label: 'Nonaktif',
+                            AppBadge(
+                              label: l10n.statusInactive,
                               icon: Icons.block,
                               tone: AppBadgeTone.neutral,
                             ),

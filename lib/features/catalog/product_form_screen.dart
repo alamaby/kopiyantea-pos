@@ -19,6 +19,7 @@ import '../../core/utils/result.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'category_providers.dart';
 
 /// Add/edit screen for a master `Product` row.
@@ -97,6 +98,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   Future<void> _save() async {
     if (_isSaving) return;
+    final l10n = AppL10n.of(context);
     setState(() {
       _isSaving = true;
       _errorName = null;
@@ -113,7 +115,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     if (name.isEmpty) {
       setState(() {
         _isSaving = false;
-        _errorName = 'Nama wajib diisi';
+        _errorName = l10n.catalogProductNameRequired;
       });
       return;
     }
@@ -121,7 +123,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     if (price == null || price <= 0) {
       setState(() {
         _isSaving = false;
-        _errorPrice = 'Harga harus lebih dari 0';
+        _errorPrice = l10n.catalogProductInvalidBasePrice;
       });
       return;
     }
@@ -132,7 +134,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       if (dup != null && dup.id != _existing?.id) {
         setState(() {
           _isSaving = false;
-          _errorSku = 'SKU sudah dipakai produk lain';
+          _errorSku = l10n.catalogProductSkuDuplicate;
         });
         return;
       }
@@ -200,6 +202,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   /// FEAT-012 — pick + compress + upload + replace local URL.
   Future<void> _pickPhoto() async {
+    final l10n = AppL10n.of(context);
     final source = await showModalBottomSheet<ImageSource_>(
       context: context,
       builder: (ctx) => SafeArea(
@@ -207,12 +210,12 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Pilih dari Galeri'),
+              title: Text(l10n.catalogProductChooseFromGallery),
               onTap: () => Navigator.pop(ctx, ImageSource_.gallery),
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Ambil dari Kamera'),
+              title: Text(l10n.catalogProductTakeFromCamera),
               onTap: () => Navigator.pop(ctx, ImageSource_.camera),
             ),
           ],
@@ -245,7 +248,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         if (error == ImageUploadError.cancelled ||
             error == ImageUploadError.cropCancelled) return;
         messenger.showSnackBar(
-          SnackBar(content: Text('Gagal upload: ${error.name}')),
+          SnackBar(content: Text(l10n.catalogProductUploadFailed(error.name))),
         );
     }
   }
@@ -261,17 +264,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Memuat…')),
+        appBar: AppBar(title: Text(l10n.statusLoading)),
         body: const Center(child: AppLoadingIndicator()),
       );
     }
     if (_isEditing && _existing == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Produk')),
-        body: const AppEmptyState(
-          title: 'Produk tidak ditemukan',
+        appBar: AppBar(title: Text(l10n.navProducts)),
+        body: AppEmptyState(
+          title: l10n.catalogProductNotFound,
           icon: Icons.search_off_outlined,
         ),
       );
@@ -279,7 +283,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Ubah Produk' : 'Tambah Produk'),
+        title: Text(
+          _isEditing ? l10n.catalogProductsEdit : l10n.catalogProductsAdd,
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -292,9 +298,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
-            label: 'Nama',
+            label: l10n.catalogProductName,
             controller: _nameCtrl,
-            hint: 'mis. Latte, Cappuccino',
+            hint: l10n.catalogProductNameHint,
             errorText: _errorName,
             autofocus: !_isEditing,
             required: true,
@@ -306,7 +312,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
-            label: 'Harga Dasar',
+            label: l10n.catalogProductBasePrice,
             controller: _basePriceCtrl,
             hint: '0',
             errorText: _errorPrice,
@@ -317,20 +323,21 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
-            label: 'SKU',
+            label: l10n.catalogProductSku,
             controller: _skuCtrl,
-            hint: 'Opsional · kode unik',
+            hint: l10n.catalogProductSkuHint,
             errorText: _errorSku,
           ),
           const SizedBox(height: AppSpacing.lg),
           SwitchListTile(
             value: _isActive,
             onChanged: (v) => setState(() => _isActive = v),
-            title: Text('Aktif', style: AppTypography.titleMd),
+            title:
+                Text(l10n.catalogProductActive, style: AppTypography.titleMd),
             subtitle: Text(
               _isActive
-                  ? 'Produk muncul di POS semua cabang yang mengaktifkannya'
-                  : 'Disembunyikan dari POS · data tetap tersimpan',
+                  ? l10n.catalogProductActiveSubtitle
+                  : l10n.catalogProductInactiveSubtitle,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -352,8 +359,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
-                      'Produk akan ditambahkan ke menu semua cabang aktif. '
-                      'Atur ketersediaan & diskon per-cabang dari layar produk.',
+                      l10n.catalogProductCreateInfo,
                       style: AppTypography.bodySm
                           .copyWith(color: context.colors.textSecondary),
                     ),
@@ -364,7 +370,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ],
           const SizedBox(height: AppSpacing.xxl),
           AppButton(
-            label: _isEditing ? 'Simpan Perubahan' : 'Tambah Produk',
+            label: _isEditing
+                ? l10n.catalogProductsSaveChanges
+                : l10n.catalogProductsAdd,
             icon: Icons.save_outlined,
             onPressed: _isSaving ? null : _save,
             isLoading: _isSaving,
@@ -393,12 +401,13 @@ class _PhotoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'FOTO PRODUK',
+          l10n.catalogProductPhotoSection,
           style: AppTypography.labelSm
               .copyWith(color: context.colors.textSecondary),
         ),
@@ -438,7 +447,7 @@ class _PhotoSection extends StatelessWidget {
                                 size: 36, color: context.colors.textTertiary),
                             const SizedBox(height: AppSpacing.xs),
                             Text(
-                              'Tap untuk tambah foto',
+                              l10n.catalogProductPhotoTapToAdd,
                               style: AppTypography.bodySm.copyWith(
                                 color: context.colors.textSecondary,
                               ),
@@ -453,7 +462,9 @@ class _PhotoSection extends StatelessWidget {
           children: [
             Expanded(
               child: AppButton(
-                label: hasImage ? 'Ganti Foto' : 'Pilih Foto',
+                label: hasImage
+                    ? l10n.catalogProductChangePhoto
+                    : l10n.catalogProductChoosePhoto,
                 icon: Icons.image_outlined,
                 variant: AppButtonVariant.secondary,
                 onPressed: uploading ? null : onPick,
@@ -464,7 +475,7 @@ class _PhotoSection extends StatelessWidget {
               IconButton(
                 onPressed: uploading ? null : onRemove,
                 icon: const Icon(Icons.delete_outline),
-                tooltip: 'Hapus foto',
+                tooltip: l10n.catalogProductDeletePhoto,
                 color: AppColors.danger,
               ),
             ],
@@ -490,6 +501,7 @@ class _CategoryPickerField extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final async = ref.watch(activeCategoriesProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,7 +509,7 @@ class _CategoryPickerField extends ConsumerWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
           child: Text(
-            'Kategori',
+            l10n.catalogProductCategory,
             style: AppTypography.labelSm
                 .copyWith(color: context.colors.textSecondary),
           ),
@@ -508,7 +520,7 @@ class _CategoryPickerField extends ConsumerWidget {
             child: AppLoadingIndicator(),
           ),
           error: (e, _) => Text(
-            'Gagal memuat kategori: $e',
+            l10n.catalogProductCategoryLoadFailed('$e'),
             style: AppTypography.bodySm.copyWith(color: AppColors.danger),
           ),
           data: (rows) {
@@ -525,14 +537,14 @@ class _CategoryPickerField extends ConsumerWidget {
                   child: DropdownButtonFormField<String?>(
                     value: hasSelected ? selectedName : null,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.category_outlined),
-                      hintText: 'Pilih kategori',
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.category_outlined),
+                      hintText: l10n.catalogProductCategoryHint,
                     ),
                     items: [
-                      const DropdownMenuItem<String?>(
+                      DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('Tanpa kategori'),
+                        child: Text(l10n.catalogProductNoCategory),
                       ),
                       for (final c in rows)
                         DropdownMenuItem<String?>(
@@ -564,7 +576,7 @@ class _CategoryPickerField extends ConsumerWidget {
                         DropdownMenuItem<String?>(
                           value: selectedName,
                           child: Text(
-                            '$selectedName (belum terdaftar)',
+                            l10n.catalogProductLegacyCategory(selectedName!),
                             style: AppTypography.bodyMd
                                 .copyWith(color: AppColors.warning),
                           ),
@@ -575,7 +587,7 @@ class _CategoryPickerField extends ConsumerWidget {
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 IconButton.outlined(
-                  tooltip: 'Tambah kategori baru',
+                  tooltip: l10n.catalogProductAddCategoryTooltip,
                   onPressed: () => _quickAdd(context, ref),
                   icon: const Icon(Icons.add),
                 ),
@@ -588,29 +600,30 @@ class _CategoryPickerField extends ConsumerWidget {
   }
 
   Future<void> _quickAdd(BuildContext context, WidgetRef ref) async {
+    final l10n = AppL10n.of(context);
     final ctrl = TextEditingController();
     final created = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Tambah Kategori'),
+        title: Text(l10n.catalogCategoryAddTitle),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            hintText: 'mis. Kopi, Pastry',
-            prefixIcon: Icon(Icons.category_outlined),
+          decoration: InputDecoration(
+            hintText: l10n.catalogCategoryNameHint,
+            prefixIcon: const Icon(Icons.category_outlined),
           ),
           onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: const Text('Simpan'),
+            child: Text(l10n.actionSave),
           ),
         ],
       ),

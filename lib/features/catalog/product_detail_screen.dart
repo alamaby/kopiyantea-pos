@@ -23,6 +23,7 @@ import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../settings/branch_selection_provider.dart';
 import 'catalog_providers.dart';
 import 'recipe_editor_sheet.dart';
@@ -103,6 +104,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   Future<void> _save() async {
     if (_isSaving) return;
+    final l10n = AppL10n.of(context);
     setState(() {
       _isSaving = true;
       _errorPrice = null;
@@ -121,7 +123,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       if (parsed == null || parsed <= 0) {
         setState(() {
           _isSaving = false;
-          _errorPrice = 'Harga override harus lebih dari 0';
+          _errorPrice = l10n.catalogProductInvalidPriceOverride;
         });
         return;
       }
@@ -132,7 +134,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     if (discount < 0 || discount > 100) {
       setState(() {
         _isSaving = false;
-        _errorDiscount = 'Diskon harus antara 0-100';
+        _errorDiscount = l10n.catalogProductInvalidDiscount;
       });
       return;
     }
@@ -161,7 +163,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pengaturan cabang tersimpan')),
+      SnackBar(content: Text(l10n.catalogProductBranchSettingsSaved)),
     );
     setState(() => _isSaving = false);
   }
@@ -182,9 +184,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Memuat…')),
+        appBar: AppBar(title: Text(l10n.statusLoading)),
         body: const Center(child: AppLoadingIndicator()),
       );
     }
@@ -193,9 +196,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final branch = _branch;
     if (product == null || bp == null || branch == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Produk')),
-        body: const AppEmptyState(
-          title: 'Produk tidak ditemukan',
+        appBar: AppBar(title: Text(l10n.navProducts)),
+        body: AppEmptyState(
+          title: l10n.catalogProductNotFound,
           icon: Icons.search_off_outlined,
         ),
       );
@@ -269,9 +272,8 @@ class _ModifierLinkCard extends ConsumerWidget {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.tune_outlined),
-        title: const Text('Modifier'),
-        subtitle: const Text(
-            'Atur grup pilihan (gula, ukuran, dll.) untuk produk ini'),
+        title: Text(AppL10n.of(context).modifiersTitle),
+        subtitle: Text(AppL10n.of(context).catalogProductModifiersSubtitle),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => GoRouter.of(context).push('/products/$productId/options'),
       ),
@@ -294,6 +296,7 @@ class _RecipeCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final recipesAsync = ref.watch(productRecipesProvider(productId, branchId));
 
     return Container(
@@ -309,7 +312,7 @@ class _RecipeCard extends ConsumerWidget {
           Row(
             children: [
               Text(
-                'KOMPOSISI · ${branchName.toUpperCase()}',
+                l10n.catalogRecipeSection(branchName.toUpperCase()),
                 style: AppTypography.labelSm.copyWith(
                   color: context.colors.textSecondary,
                   letterSpacing: 0.8,
@@ -319,7 +322,7 @@ class _RecipeCard extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Bahan yang dikurangi dari stok saat produk terjual.',
+            l10n.catalogRecipeHelp,
             style: AppTypography.bodySm
                 .copyWith(color: context.colors.textSecondary),
           ),
@@ -330,7 +333,7 @@ class _RecipeCard extends ConsumerWidget {
               child: AppLoadingIndicator(),
             ),
             error: (e, _) => Text(
-              'Gagal memuat komposisi: $e',
+              l10n.catalogRecipeLoadFailed('$e'),
               style: AppTypography.bodySm.copyWith(color: AppColors.danger),
             ),
             data: (recipes) => Column(
@@ -352,8 +355,7 @@ class _RecipeCard extends ConsumerWidget {
                         const SizedBox(width: AppSpacing.sm),
                         Expanded(
                           child: Text(
-                            'Belum ada bahan. Produk akan tetap bisa dijual, '
-                            'tapi stok tidak akan dikurangi otomatis.',
+                            l10n.catalogRecipeEmptyMessage,
                             style: AppTypography.bodySm.copyWith(
                               color: context.colors.textSecondary,
                             ),
@@ -381,7 +383,7 @@ class _RecipeCard extends ConsumerWidget {
                   ),
                 const SizedBox(height: AppSpacing.sm),
                 AppButton(
-                  label: 'Tambah Bahan',
+                  label: l10n.catalogRecipeAddIngredient,
                   icon: Icons.add,
                   variant: AppButtonVariant.secondary,
                   onPressed: () => RecipeEditorSheet.show(
@@ -468,6 +470,7 @@ class _MasterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -481,7 +484,7 @@ class _MasterCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                'MASTER PRODUK',
+                l10n.catalogProductMasterSection,
                 style: AppTypography.labelSm.copyWith(
                   color: context.colors.textSecondary,
                   letterSpacing: 0.8,
@@ -489,8 +492,8 @@ class _MasterCard extends StatelessWidget {
               ),
               const Spacer(),
               if (!product.isActive)
-                const AppBadge(
-                  label: 'Nonaktif',
+                AppBadge(
+                  label: l10n.statusInactive,
                   icon: Icons.block,
                   tone: AppBadgeTone.neutral,
                 ),
@@ -498,7 +501,7 @@ class _MasterCard extends StatelessWidget {
               TextButton.icon(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 16),
-                label: const Text('Ubah'),
+                label: Text(l10n.actionEdit),
               ),
             ],
           ),
@@ -573,6 +576,7 @@ class _PreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final hasReducedPrice = effective < original;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -590,7 +594,7 @@ class _PreviewCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'HARGA DI KASIR',
+                  l10n.catalogProductPriceAtPos,
                   style: AppTypography.labelXs.copyWith(
                     color: AppColors.primaryDark,
                     letterSpacing: 0.8,
@@ -662,6 +666,7 @@ class _BranchEditCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -673,7 +678,7 @@ class _BranchEditCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'PENGATURAN CABANG · ${branchName.toUpperCase()}',
+            l10n.catalogProductBranchSettingsSection(branchName.toUpperCase()),
             style: AppTypography.labelSm.copyWith(
               color: context.colors.textSecondary,
               letterSpacing: 0.8,
@@ -683,11 +688,14 @@ class _BranchEditCard extends StatelessWidget {
           SwitchListTile(
             value: isAvailable,
             onChanged: onAvailableChanged,
-            title: Text('Tersedia di kasir', style: AppTypography.titleMd),
+            title: Text(
+              l10n.catalogProductAvailableAtPos,
+              style: AppTypography.titleMd,
+            ),
             subtitle: Text(
               isAvailable
-                  ? 'Pelanggan dapat memesan produk ini'
-                  : 'Sembunyi dari layar Kasir',
+                  ? l10n.catalogProductAvailableSubtitle
+                  : l10n.catalogProductUnavailableSubtitle,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -697,15 +705,15 @@ class _BranchEditCard extends StatelessWidget {
           const Divider(),
           const SizedBox(height: AppSpacing.sm),
           _Field(
-            label: 'Nama Kustom',
+            label: l10n.catalogProductCustomName,
             controller: customNameCtrl,
-            hint: 'Opsional · override nama master di cabang ini',
+            hint: l10n.catalogProductCustomNameHint,
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
-            label: 'Harga Override',
+            label: l10n.catalogProductPriceOverride,
             controller: priceOverrideCtrl,
-            hint: 'Opsional · biarkan kosong untuk pakai harga master',
+            hint: l10n.catalogProductPriceOverrideHint,
             errorText: errorPrice,
             keyboardType: TextInputType.number,
             prefix: 'Rp ',
@@ -713,7 +721,7 @@ class _BranchEditCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
-            label: 'Diskon (%)',
+            label: l10n.catalogProductDiscountPercent,
             controller: discountCtrl,
             hint: '0',
             errorText: errorDiscount,
@@ -723,7 +731,7 @@ class _BranchEditCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.lg),
           Text(
-            'Diskon Berlaku Sampai',
+            l10n.catalogProductDiscountValidUntil,
             style: AppTypography.labelSm
                 .copyWith(color: context.colors.textSecondary),
           ),
@@ -744,7 +752,7 @@ class _BranchEditCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       discountValidUntil == null
-                          ? 'Tanpa batas waktu'
+                          ? l10n.catalogProductNoExpiry
                           : formatDate(discountValidUntil!),
                       style: AppTypography.bodyMd,
                     ),
@@ -761,7 +769,7 @@ class _BranchEditCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xl),
           AppButton(
-            label: 'Simpan Pengaturan Cabang',
+            label: l10n.catalogProductSaveBranchSettings,
             icon: Icons.save_outlined,
             onPressed: isSaving ? null : onSave,
             isLoading: isSaving,

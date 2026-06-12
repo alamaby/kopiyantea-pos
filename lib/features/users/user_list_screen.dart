@@ -17,6 +17,7 @@ import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import '../../core/widgets/undo_snackbar.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'user_providers.dart';
 
 /// FEAT-006 — owner-only list of users + pending invitations.
@@ -25,21 +26,22 @@ class UserListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final usersAsync = ref.watch(allUsersProvider);
     final invitesAsync = ref.watch(pendingInvitationsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengguna')),
+      appBar: AppBar(title: Text(l10n.usersTitle)),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_users',
         onPressed: () => context.push('/more/settings/users/new'),
         icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Undang'),
+        label: Text(l10n.usersInvite),
       ),
       body: usersAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat pengguna',
+          title: l10n.usersLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
@@ -49,10 +51,10 @@ class UserListScreen extends ConsumerWidget {
             orElse: () => const <PendingInvitationRow>[],
           );
           if (users.isEmpty && invites.isEmpty) {
-            return const AppEmptyState(
-              title: 'Belum ada pengguna',
+            return AppEmptyState(
+              title: l10n.usersEmptyTitle,
               icon: Icons.people_outline,
-              message: 'Tap "Undang" untuk menambah kasir atau manajer.',
+              message: l10n.usersEmptyMessage,
             );
           }
           return ListView(
@@ -65,7 +67,7 @@ class UserListScreen extends ConsumerWidget {
             children: [
               if (invites.isNotEmpty) ...[
                 Text(
-                  'MENUNGGU BERGABUNG',
+                  l10n.usersPendingSection,
                   style: AppTypography.labelSm.copyWith(
                     color: context.colors.textSecondary,
                     letterSpacing: 0.8,
@@ -80,7 +82,7 @@ class UserListScreen extends ConsumerWidget {
               ],
               if (users.isNotEmpty) ...[
                 Text(
-                  'PENGGUNA AKTIF',
+                  l10n.usersActiveSection,
                   style: AppTypography.labelSm.copyWith(
                     color: context.colors.textSecondary,
                     letterSpacing: 0.8,
@@ -106,6 +108,7 @@ class _UserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Material(
       color: context.colors.surface,
       borderRadius: AppRadius.radiusLg,
@@ -147,14 +150,14 @@ class _UserTile extends StatelessWidget {
                 ),
               ),
               AppBadge(
-                label: _roleLabel(user.globalRole.name),
+                label: _roleLabel(l10n, user.globalRole),
                 icon: Icons.badge_outlined,
                 tone: AppBadgeTone.info,
               ),
               if (!user.isActive) ...[
                 const SizedBox(width: AppSpacing.xs),
-                const AppBadge(
-                  label: 'Nonaktif',
+                AppBadge(
+                  label: l10n.statusInactive,
                   icon: Icons.block,
                   tone: AppBadgeTone.warning,
                 ),
@@ -181,6 +184,7 @@ class _DismissibleInvitation extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     return Dismissible(
       key: ValueKey('invitation-${invitation.id}'),
       direction: DismissDirection.endToStart,
@@ -193,13 +197,18 @@ class _DismissibleInvitation extends ConsumerWidget {
           color: AppColors.danger,
           borderRadius: AppRadius.radiusLg,
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.delete_outline, color: Colors.white),
-            SizedBox(width: AppSpacing.xs),
-            Text('Batalkan',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            const Icon(Icons.delete_outline, color: Colors.white),
+            const SizedBox(width: AppSpacing.xs),
+            Text(
+              l10n.usersCancelInvite,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -212,21 +221,19 @@ class _DismissibleInvitation extends ConsumerWidget {
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.warning_amber_outlined,
               size: 36, color: AppColors.warning),
-          title: const Text('Batalkan undangan?'),
+          title: Text(AppL10n.of(ctx).usersCancelInviteTitle),
           content: Text(
-            'Undangan untuk ${invitation.email} akan dihapus. '
-            'Jika link sudah dikirim, pengguna tidak akan bisa klaim akses '
-            'lagi dengan link itu.',
+            AppL10n.of(ctx).usersCancelInviteMessage(invitation.email),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Jangan'),
+              child: Text(AppL10n.of(ctx).usersDoNotCancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-              child: const Text('Batalkan Undangan'),
+              child: Text(AppL10n.of(ctx).usersCancelInviteAction),
             ),
           ],
         ),
@@ -250,7 +257,7 @@ class _DismissibleInvitation extends ConsumerWidget {
 
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(buildUndoSnackBar(
-      message: 'Undangan untuk ${snapshot.email} dibatalkan',
+      message: AppL10n.of(context).usersInviteCancelled(snapshot.email),
       onUndo: () => _undoCancelInvitation(ref, snapshot, deleteOutboxId),
     ));
   }
@@ -294,6 +301,7 @@ class _InvitationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -303,8 +311,7 @@ class _InvitationTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.mark_email_unread_outlined,
-              color: AppColors.accent),
+          const Icon(Icons.mark_email_unread_outlined, color: AppColors.accent),
           const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
@@ -321,7 +328,7 @@ class _InvitationTile extends StatelessWidget {
             ),
           ),
           AppBadge(
-            label: _roleLabel(invitation.globalRole.name),
+            label: _roleLabel(l10n, invitation.globalRole),
             icon: Icons.badge_outlined,
             tone: AppBadgeTone.info,
           ),
@@ -331,9 +338,8 @@ class _InvitationTile extends StatelessWidget {
   }
 }
 
-String _roleLabel(String r) => switch (r) {
-      'owner' => 'Pemilik',
-      'manager' => 'Manajer',
-      'cashier' => 'Kasir',
-      _ => r,
+String _roleLabel(AppL10n l10n, GlobalRole role) => switch (role) {
+      GlobalRole.owner => l10n.settingsRoleOwner,
+      GlobalRole.manager => l10n.settingsRoleManager,
+      GlobalRole.cashier => l10n.settingsRoleCashier,
     };

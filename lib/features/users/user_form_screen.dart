@@ -15,6 +15,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../auth/auth_provider.dart';
 import '../settings/branch_selection_provider.dart';
 import 'user_providers.dart';
@@ -93,6 +94,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
   Future<void> _save() async {
     if (_saving) return;
+    final l10n = AppL10n.of(context);
     setState(() {
       _saving = true;
       _errorName = null;
@@ -103,14 +105,14 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
     if (name.isEmpty) {
       setState(() {
         _saving = false;
-        _errorName = 'Nama wajib diisi';
+        _errorName = l10n.usersNameRequired;
       });
       return;
     }
     if (!_isEditing && !_isLikelyEmail(email)) {
       setState(() {
         _saving = false;
-        _errorEmail = 'Email tidak valid';
+        _errorEmail = l10n.usersInvalidEmail;
       });
       return;
     }
@@ -129,7 +131,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
         if (!mounted) return;
         setState(() {
           _saving = false;
-          _errorEmail = 'Email sudah dipakai pengguna lain';
+          _errorEmail = l10n.usersEmailAlreadyUsed;
         });
         return;
       }
@@ -138,7 +140,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
         if (!mounted) return;
         setState(() {
           _saving = false;
-          _errorEmail = 'Undangan untuk email ini sudah ada';
+          _errorEmail = l10n.usersInvitationAlreadyExists;
         });
         return;
       }
@@ -227,17 +229,18 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (_loading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Memuat…')),
+        appBar: AppBar(title: Text(l10n.statusLoading)),
         body: const Center(child: AppLoadingIndicator()),
       );
     }
     if (_isEditing && _existing == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Pengguna')),
-        body: const AppEmptyState(
-          title: 'Pengguna tidak ditemukan',
+        appBar: AppBar(title: Text(l10n.usersTitle)),
+        body: AppEmptyState(
+          title: l10n.usersNotFound,
           icon: Icons.search_off_outlined,
         ),
       );
@@ -245,49 +248,56 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
     final branchesAsync = ref.watch(allBranchesProvider);
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Ubah Pengguna' : 'Undang Pengguna'),
+        title: Text(_isEditing ? l10n.usersEditTitle : l10n.usersInviteTitle),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           _LabeledField(
-            label: 'Nama lengkap',
+            label: l10n.usersFullName,
             required: true,
             child: TextField(
               controller: _nameCtrl,
               decoration: InputDecoration(
-                hintText: 'mis. Budi Setiawan',
+                hintText: l10n.usersFullNameHint,
                 errorText: _errorName,
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
           _LabeledField(
-            label: 'Email',
+            label: l10n.authEmail,
             required: !_isEditing,
             child: TextField(
               controller: _emailCtrl,
               keyboardType: TextInputType.emailAddress,
               enabled: !_isEditing,
               decoration: InputDecoration(
-                hintText: 'email@contoh.com',
+                hintText: l10n.usersEmailHint,
                 errorText: _errorEmail,
-                helperText: _isEditing
-                    ? 'Email tidak dapat diubah'
-                    : null,
+                helperText: _isEditing ? l10n.usersEmailLocked : null,
               ),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
-          Text('Peran',
+          Text(l10n.usersRole,
               style: AppTypography.labelSm
                   .copyWith(color: context.colors.textSecondary)),
           const SizedBox(height: AppSpacing.xs),
           SegmentedButton<GlobalRole>(
-            segments: const [
-              ButtonSegment(value: GlobalRole.owner, label: Text('Pemilik')),
-              ButtonSegment(value: GlobalRole.manager, label: Text('Manajer')),
-              ButtonSegment(value: GlobalRole.cashier, label: Text('Kasir')),
+            segments: [
+              ButtonSegment(
+                value: GlobalRole.owner,
+                label: Text(l10n.settingsRoleOwner),
+              ),
+              ButtonSegment(
+                value: GlobalRole.manager,
+                label: Text(l10n.settingsRoleManager),
+              ),
+              ButtonSegment(
+                value: GlobalRole.cashier,
+                label: Text(l10n.settingsRoleCashier),
+              ),
             ],
             selected: {_role},
             onSelectionChanged: (s) => setState(() => _role = s.first),
@@ -297,12 +307,11 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
             SwitchListTile(
               value: _isActive,
               onChanged: (v) => setState(() => _isActive = v),
-              title:
-                  Text('Pengguna aktif', style: AppTypography.titleMd),
+              title: Text(l10n.usersActiveToggle, style: AppTypography.titleMd),
               subtitle: Text(
                 _isActive
-                    ? 'Bisa login dan akses cabang'
-                    : 'Tidak bisa login (akses dicabut)',
+                    ? l10n.usersActiveSubtitle
+                    : l10n.usersInactiveSubtitle,
                 style: AppTypography.bodySm
                     .copyWith(color: context.colors.textSecondary),
               ),
@@ -315,7 +324,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('AKSES CABANG',
+                Text(l10n.usersBranchAccessSection,
                     style: AppTypography.labelSm.copyWith(
                       color: context.colors.textSecondary,
                       letterSpacing: 0.8,
@@ -323,8 +332,8 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                 const SizedBox(height: AppSpacing.xs),
                 Text(
                   _role == GlobalRole.owner
-                      ? 'Pemilik otomatis akses semua cabang. Pilihan di sini diabaikan.'
-                      : 'Pilih cabang yang boleh diakses pengguna.',
+                      ? l10n.usersOwnerAccessHelp
+                      : l10n.usersBranchAccessHelp,
                   style: AppTypography.bodySm
                       .copyWith(color: context.colors.textSecondary),
                 ),
@@ -334,7 +343,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                     padding: EdgeInsets.all(AppSpacing.md),
                     child: AppLoadingIndicator(),
                   ),
-                  error: (e, _) => Text('Gagal: $e'),
+                  error: (e, _) => Text(l10n.usersLoadBranchesFailed('$e')),
                   data: (branches) => Column(
                     children: [
                       for (final b in branches)
@@ -351,8 +360,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
                                     }
                                   });
                                 },
-                          title:
-                              Text(b.name, style: AppTypography.titleMd),
+                          title: Text(b.name, style: AppTypography.titleMd),
                           subtitle: b.address == null
                               ? null
                               : Text(
@@ -373,12 +381,11 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
           const SizedBox(height: AppSpacing.xxl),
           AppButton(
             label: _saving
-                ? 'Menyimpan…'
+                ? l10n.statusSaving
                 : _isEditing
-                    ? 'Simpan Perubahan'
-                    : 'Kirim Undangan',
-            icon:
-                _isEditing ? Icons.save_outlined : Icons.send_outlined,
+                    ? l10n.usersSaveChanges
+                    : l10n.usersSendInvitation,
+            icon: _isEditing ? Icons.save_outlined : Icons.send_outlined,
             onPressed: _saving ? null : _save,
             isLoading: _saving,
             fullWidth: true,
@@ -386,9 +393,7 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
           if (!_isEditing) ...[
             const SizedBox(height: AppSpacing.md),
             Text(
-              'Bagikan email ini ke pengguna. Setelah mereka daftar di Supabase '
-              'dengan email tersebut dan login ke aplikasi, akses akan otomatis '
-              'aktif.',
+              l10n.usersInviteHelp,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
               textAlign: TextAlign.center,

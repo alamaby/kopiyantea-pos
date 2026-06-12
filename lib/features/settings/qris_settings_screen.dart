@@ -19,6 +19,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'branch_selection_provider.dart';
 
 /// FEAT-013 — per-branch static QRIS image upload.
@@ -27,28 +28,28 @@ class QrisSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final branchesAsync = ref.watch(allBranchesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('QRIS Statis')),
+      appBar: AppBar(title: Text(l10n.settingsStaticQris)),
       body: branchesAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat cabang',
+          title: l10n.settingsBranchesLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (branches) {
           if (branches.isEmpty) {
-            return const AppEmptyState(
-              title: 'Belum ada cabang',
+            return AppEmptyState(
+              title: l10n.settingsNoBranches,
               icon: Icons.store_outlined,
             );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
             itemCount: branches.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(height: AppSpacing.lg),
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
             itemBuilder: (_, i) => _BranchQrisCard(branch: branches[i]),
           );
         },
@@ -89,12 +90,16 @@ class _BranchQrisCardState extends ConsumerState<_BranchQrisCard> {
         }
         if (!mounted) return;
         messenger.showSnackBar(
-          const SnackBar(content: Text('QRIS diperbarui')),
+          SnackBar(content: Text(AppL10n.of(context).settingsQrisUpdated)),
         );
       case Err(:final error):
         if (error == ImageUploadError.cancelled) return;
         messenger.showSnackBar(
-          SnackBar(content: Text('Gagal upload: ${error.name}')),
+          SnackBar(
+            content: Text(
+              AppL10n.of(context).settingsQrisUploadFailed(error.name),
+            ),
+          ),
         );
     }
   }
@@ -124,20 +129,19 @@ class _BranchQrisCardState extends ConsumerState<_BranchQrisCard> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus QRIS?'),
+        title: Text(AppL10n.of(ctx).settingsQrisDeleteTitle),
         content: Text(
-          'QRIS untuk ${widget.branch.name} akan dihapus. Customer tidak '
-          'bisa scan QRIS sampai diunggah ulang.',
+          AppL10n.of(ctx).settingsQrisDeleteMessage(widget.branch.name),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(AppL10n.of(ctx).actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Hapus'),
+            child: Text(AppL10n.of(ctx).actionDelete),
           ),
         ],
       ),
@@ -151,11 +155,14 @@ class _BranchQrisCardState extends ConsumerState<_BranchQrisCard> {
           .deleteByUrl(old, bucket: ImageBuckets.qris);
     }
     if (!mounted) return;
-    messenger.showSnackBar(const SnackBar(content: Text('QRIS dihapus')));
+    messenger.showSnackBar(
+      SnackBar(content: Text(AppL10n.of(context).settingsQrisDeleted)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final hasImage = widget.branch.qrisImageUrl != null &&
         widget.branch.qrisImageUrl!.isNotEmpty;
     return AppCard(
@@ -201,7 +208,7 @@ class _BranchQrisCardState extends ConsumerState<_BranchQrisCard> {
                       size: 56, color: context.colors.textTertiary),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Belum ada QRIS terunggah',
+                    l10n.settingsQrisEmpty,
                     style: AppTypography.bodySm
                         .copyWith(color: context.colors.textSecondary),
                   ),
@@ -213,24 +220,24 @@ class _BranchQrisCardState extends ConsumerState<_BranchQrisCard> {
             children: [
               Expanded(
                 child: AppButton(
-                  label: hasImage ? 'Ganti dari Galeri' : 'Galeri',
+                  label: hasImage
+                      ? l10n.settingsQrisChangeFromGallery
+                      : l10n.settingsQrisGallery,
                   icon: Icons.photo_library_outlined,
                   variant: AppButtonVariant.secondary,
-                  onPressed: _uploading
-                      ? null
-                      : () => _upload(ImageSource_.gallery),
+                  onPressed:
+                      _uploading ? null : () => _upload(ImageSource_.gallery),
                   isLoading: _uploading,
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: AppButton(
-                  label: 'Kamera',
+                  label: l10n.settingsQrisCamera,
                   icon: Icons.camera_alt_outlined,
                   variant: AppButtonVariant.secondary,
-                  onPressed: _uploading
-                      ? null
-                      : () => _upload(ImageSource_.camera),
+                  onPressed:
+                      _uploading ? null : () => _upload(ImageSource_.camera),
                 ),
               ),
             ],
@@ -238,7 +245,7 @@ class _BranchQrisCardState extends ConsumerState<_BranchQrisCard> {
           if (hasImage) ...[
             const SizedBox(height: AppSpacing.sm),
             AppButton(
-              label: 'Hapus QRIS',
+              label: l10n.settingsQrisDeleteAction,
               icon: Icons.delete_outline,
               variant: AppButtonVariant.danger,
               onPressed: _uploading ? null : _remove,

@@ -16,6 +16,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'branch_selection_provider.dart';
 
 /// FEAT-004 — per-branch tax settings.
@@ -28,28 +29,28 @@ class TaxSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final branchesAsync = ref.watch(allBranchesProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan Pajak')),
+      appBar: AppBar(title: Text(l10n.settingsTax)),
       body: branchesAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat cabang',
+          title: l10n.settingsBranchesLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (branches) {
           if (branches.isEmpty) {
-            return const AppEmptyState(
-              title: 'Belum ada cabang',
+            return AppEmptyState(
+              title: l10n.settingsNoBranches,
               icon: Icons.store_outlined,
             );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(AppSpacing.lg),
             itemCount: branches.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(height: AppSpacing.lg),
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
             itemBuilder: (_, i) => _BranchTaxCard(branch: branches[i]),
           );
         },
@@ -105,6 +106,7 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
 
   Future<void> _save() async {
     if (_saving) return;
+    final l10n = AppL10n.of(context);
     setState(() {
       _saving = true;
       _errorPercent = null;
@@ -115,7 +117,7 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
     if (rate == null || rate < 0 || rate > 100) {
       setState(() {
         _saving = false;
-        _errorPercent = 'Masukkan angka 0–100';
+        _errorPercent = l10n.settingsTaxRateInvalid;
       });
       return;
     }
@@ -123,7 +125,7 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
     if (label.isEmpty) {
       setState(() {
         _saving = false;
-        _errorLabel = 'Label wajib diisi';
+        _errorLabel = l10n.settingsTaxLabelRequired;
       });
       return;
     }
@@ -150,13 +152,15 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pengaturan pajak tersimpan')),
+      SnackBar(content: Text(l10n.settingsTaxSaved)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final preview = _previewExample(
+      l10n,
       double.tryParse(_percentCtrl.text.replaceAll(',', '.')) ?? 0,
       _inclusive,
     );
@@ -173,7 +177,7 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
             ),
           const SizedBox(height: AppSpacing.lg),
           _LabeledField(
-            label: 'Tarif (%)',
+            label: l10n.settingsTaxRate,
             child: TextField(
               controller: _percentCtrl,
               keyboardType:
@@ -187,11 +191,11 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
           ),
           const SizedBox(height: AppSpacing.md),
           _LabeledField(
-            label: 'Label',
+            label: l10n.settingsTaxLabel,
             child: TextField(
               controller: _labelCtrl,
               decoration: InputDecoration(
-                hintText: 'PB1 / PPN',
+                hintText: l10n.settingsTaxLabelHint,
                 errorText: _errorLabel,
               ),
             ),
@@ -200,12 +204,12 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
           SwitchListTile(
             value: _inclusive,
             onChanged: (v) => setState(() => _inclusive = v),
-            title: Text('Sudah termasuk dalam harga (inclusive)',
+            title: Text(l10n.settingsTaxInclusiveTitle,
                 style: AppTypography.titleMd),
             subtitle: Text(
               _inclusive
-                  ? 'Harga di menu sudah termasuk pajak'
-                  : 'Pajak ditambahkan di atas subtotal',
+                  ? l10n.settingsTaxInclusiveOn
+                  : l10n.settingsTaxInclusiveOff,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -223,7 +227,7 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'PREVIEW',
+                  l10n.settingsTaxPreview,
                   style: AppTypography.labelSm.copyWith(
                     color: context.colors.textSecondary,
                     letterSpacing: 0.8,
@@ -236,7 +240,7 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
           ),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
-            label: _saving ? 'Menyimpan…' : 'Simpan',
+            label: _saving ? l10n.statusSaving : l10n.actionSave,
             icon: Icons.save_outlined,
             // Always enabled when not currently saving — re-saving identical
             // values is idempotent. The dirty check was confusing users who
@@ -251,17 +255,25 @@ class _BranchTaxCardState extends ConsumerState<_BranchTaxCard> {
     );
   }
 
-  String _previewExample(double rate, bool inclusive) {
+  String _previewExample(AppL10n l10n, double rate, bool inclusive) {
     const base = 10000.0;
-    if (rate <= 0) return 'Tarif 0% — tidak ada pajak';
+    if (rate <= 0) return l10n.settingsTaxPreviewZero;
+    final rateText = rate.toStringAsFixed(2);
     if (inclusive) {
       final taxComponent = base - (base / (1 + rate / 100));
-      return 'Harga ${formatRupiah(base)} sudah termasuk '
-          '${formatRupiah(taxComponent)} pajak (${rate.toStringAsFixed(2)}%)';
+      return l10n.settingsTaxPreviewInclusive(
+        formatRupiah(base),
+        formatRupiah(taxComponent),
+        rateText,
+      );
     }
     final tax = base * rate / 100;
-    return 'Subtotal ${formatRupiah(base)} + pajak ${formatRupiah(tax)} '
-        '(${rate.toStringAsFixed(2)}%) = ${formatRupiah(base + tax)}';
+    return l10n.settingsTaxPreviewExclusive(
+      formatRupiah(base),
+      formatRupiah(tax),
+      rateText,
+      formatRupiah(base + tax),
+    );
   }
 }
 

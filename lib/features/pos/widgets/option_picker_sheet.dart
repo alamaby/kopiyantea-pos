@@ -11,6 +11,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../modifiers/modifier_providers.dart';
 import '../cart_state.dart';
 
@@ -29,6 +30,7 @@ class OptionPickerSheet extends ConsumerStatefulWidget {
 
   final String productId;
   final String productName;
+
   /// When provided, the picker pre-fills with these instead of group defaults.
   /// Used for tap-to-edit of an existing cart item.
   final List<CartItemOption>? initialSelections;
@@ -66,7 +68,8 @@ class _OptionPickerSheetState extends ConsumerState<OptionPickerSheet> {
     if (initial != null && initial.isNotEmpty) {
       // Edit mode — seed from existing selections.
       for (final sel in initial) {
-        _picked.putIfAbsent(sel.optionGroupId, () => <String>{})
+        _picked
+            .putIfAbsent(sel.optionGroupId, () => <String>{})
             .add(sel.optionId);
       }
       return;
@@ -135,7 +138,9 @@ class _OptionPickerSheetState extends ConsumerState<OptionPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final groupsAsync = ref.watch(productOptionGroupsProvider(widget.productId));
+    final l10n = AppL10n.of(context);
+    final groupsAsync =
+        ref.watch(productOptionGroupsProvider(widget.productId));
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -173,10 +178,9 @@ class _OptionPickerSheetState extends ConsumerState<OptionPickerSheet> {
             ),
             Expanded(
               child: groupsAsync.when(
-                loading: () =>
-                    const Center(child: AppLoadingIndicator()),
+                loading: () => const Center(child: AppLoadingIndicator()),
                 error: (e, _) => AppEmptyState(
-                  title: 'Gagal',
+                  title: l10n.modifiersPickerLoadFailed,
                   icon: Icons.error_outline,
                   message: e.toString(),
                 ),
@@ -195,26 +199,27 @@ class _OptionPickerSheetState extends ConsumerState<OptionPickerSheet> {
                     controller: scrollCtrl,
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     children: [
-                      for (final g in groups) _GroupBlock(
-                        group: g,
-                        selected: _picked[g.group.id] ?? const {},
-                        onToggle: (optId) {
-                          setState(() {
-                            final cur = _picked[g.group.id] ?? <String>{};
-                            if (g.group.isMultiSelect) {
-                              final next = {...cur};
-                              if (next.contains(optId)) {
-                                next.remove(optId);
+                      for (final g in groups)
+                        _GroupBlock(
+                          group: g,
+                          selected: _picked[g.group.id] ?? const {},
+                          onToggle: (optId) {
+                            setState(() {
+                              final cur = _picked[g.group.id] ?? <String>{};
+                              if (g.group.isMultiSelect) {
+                                final next = {...cur};
+                                if (next.contains(optId)) {
+                                  next.remove(optId);
+                                } else {
+                                  next.add(optId);
+                                }
+                                _picked[g.group.id] = next;
                               } else {
-                                next.add(optId);
+                                _picked[g.group.id] = {optId};
                               }
-                              _picked[g.group.id] = next;
-                            } else {
-                              _picked[g.group.id] = {optId};
-                            }
-                          });
-                        },
-                      ),
+                            });
+                          },
+                        ),
                     ],
                   );
                 },
@@ -232,7 +237,8 @@ class _OptionPickerSheetState extends ConsumerState<OptionPickerSheet> {
                       children: [
                         if (delta != 0)
                           Padding(
-                            padding: const EdgeInsets.only(right: AppSpacing.md),
+                            padding:
+                                const EdgeInsets.only(right: AppSpacing.md),
                             child: Text(
                               '+${formatRupiah(delta)}',
                               style: AppTypography.titleMd
@@ -242,8 +248,8 @@ class _OptionPickerSheetState extends ConsumerState<OptionPickerSheet> {
                         Expanded(
                           child: AppButton(
                             label: widget.initialSelections == null
-                                ? 'Tambahkan ke Keranjang'
-                                : 'Simpan Perubahan',
+                                ? l10n.modifiersPickerAddToCart
+                                : l10n.actionSaveChanges,
                             icon: widget.initialSelections == null
                                 ? Icons.add_shopping_cart_outlined
                                 : Icons.save_outlined,
@@ -282,6 +288,7 @@ class _GroupBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.lg),
       child: Column(
@@ -293,13 +300,13 @@ class _GroupBlock extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               if (group.group.isRequired)
                 Text(
-                  '· wajib',
-                  style: AppTypography.labelSm
-                      .copyWith(color: AppColors.danger),
+                  l10n.modifiersPickerRequiredSuffix,
+                  style:
+                      AppTypography.labelSm.copyWith(color: AppColors.danger),
                 ),
               if (group.group.isMultiSelect)
                 Text(
-                  '· boleh multi',
+                  l10n.modifiersPickerMultiSuffix,
                   style: AppTypography.labelSm
                       .copyWith(color: context.colors.textSecondary),
                 ),
@@ -310,8 +317,7 @@ class _GroupBlock extends StatelessWidget {
             (o) => InkWell(
               onTap: () => onToggle(o.id),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 child: Row(
                   children: [
                     if (group.group.isMultiSelect)

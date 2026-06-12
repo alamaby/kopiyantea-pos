@@ -9,9 +9,9 @@ import '../../../core/theme/radius.dart';
 import '../../../core/theme/spacing.dart';
 import '../../../core/theme/typography.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../cart_provider.dart';
 import '../held_order_service.dart';
 
@@ -36,6 +36,7 @@ class HeldOrdersSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final heldAsync = ref.watch(heldOrdersForBranchProvider(branchId));
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.78,
@@ -50,7 +51,7 @@ class HeldOrdersSheet extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                Text('Pesanan Tertahan', style: AppTypography.displayMd),
+                Text(l10n.cartHoldOrder, style: AppTypography.displayMd),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -64,17 +65,16 @@ class HeldOrdersSheet extends ConsumerWidget {
             child: heldAsync.when(
               loading: () => const Center(child: AppLoadingIndicator()),
               error: (e, _) => AppEmptyState(
-                title: 'Gagal memuat',
+                title: l10n.heldOrdersLoadFailed,
                 icon: Icons.error_outline,
                 message: e.toString(),
               ),
               data: (rows) {
                 if (rows.isEmpty) {
-                  return const AppEmptyState(
-                    title: 'Tidak ada pesanan tertahan',
+                  return AppEmptyState(
+                    title: l10n.heldOrdersEmptyTitle,
                     icon: Icons.pause_circle_outline,
-                    message: 'Tap "Tahan Pesanan" di keranjang untuk menyimpan '
-                        'cart sementara.',
+                    message: l10n.heldOrdersEmptyMessage,
                   );
                 }
                 return ListView.separated(
@@ -99,6 +99,7 @@ class _HeldOrderTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final previewAsync = ref.watch(heldOrderPreviewProvider(row));
     return Container(
       decoration: BoxDecoration(
@@ -161,7 +162,7 @@ class _HeldOrderTile extends ConsumerWidget {
                       Text(
                         previewAsync.maybeWhen(
                           data: (preview) => preview.firstItemName,
-                          orElse: () => 'Memuat item...',
+                          orElse: () => l10n.heldOrdersLoadingItem,
                         ),
                         style: AppTypography.bodySm.copyWith(
                           color: context.colors.textPrimary,
@@ -182,7 +183,7 @@ class _HeldOrderTile extends ConsumerWidget {
                 IconButton(
                   icon: Icon(Icons.delete_outline,
                       color: context.colors.textTertiary),
-                  tooltip: 'Hapus',
+                  tooltip: l10n.heldOrdersDeleteTooltip,
                   onPressed: () => _confirmDiscard(context, ref),
                 ),
               ],
@@ -205,19 +206,16 @@ class _HeldOrderTile extends ConsumerWidget {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Ganti keranjang?'),
-          content: const Text(
-            'Keranjang saat ini akan dikosongkan dan diganti dengan pesanan '
-            'tertahan ini.',
-          ),
+          title: Text(AppL10n.of(ctx).heldOrdersReplaceCartTitle),
+          content: Text(AppL10n.of(ctx).heldOrdersReplaceCartMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal'),
+              child: Text(AppL10n.of(ctx).actionCancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Ganti'),
+              child: Text(AppL10n.of(ctx).heldOrdersReplaceAction),
             ),
           ],
         ),
@@ -228,9 +226,7 @@ class _HeldOrderTile extends ConsumerWidget {
     final restored = await svc.restore(row);
     if (restored == null) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Cabang pesanan ini tidak ditemukan.'),
-        ),
+        SnackBar(content: Text(AppL10n.of(context).heldOrdersBranchMissing)),
       );
       return;
     }
@@ -238,7 +234,9 @@ class _HeldOrderTile extends ConsumerWidget {
     ref.read(activeHeldOrderIdProvider.notifier).state = row.id;
     nav.pop();
     messenger.showSnackBar(
-      SnackBar(content: Text('Pesanan "${row.label}" dilanjutkan')),
+      SnackBar(
+        content: Text(AppL10n.of(context).heldOrdersRestored(row.label)),
+      ),
     );
   }
 
@@ -246,17 +244,17 @@ class _HeldOrderTile extends ConsumerWidget {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus pesanan tertahan?'),
-        content: Text('"${row.label}" akan dihapus permanen.'),
+        title: Text(AppL10n.of(ctx).heldOrdersDeleteTitle),
+        content: Text(AppL10n.of(ctx).heldOrdersDeleteMessage(row.label)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(AppL10n.of(ctx).actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Hapus'),
+            child: Text(AppL10n.of(ctx).actionDelete),
           ),
         ],
       ),
@@ -281,7 +279,7 @@ class HeldOrdersAction extends ConsumerWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.pause_circle_outline),
-          tooltip: 'Pesanan tertahan',
+          tooltip: AppL10n.of(context).heldOrdersTooltip,
           onPressed: () => HeldOrdersSheet.show(context, branchId),
         ),
         if (count > 0)

@@ -13,6 +13,7 @@ import '../../../core/utils/result.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_empty_state.dart';
 import '../../../core/widgets/undo_snackbar.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../customers/customer_picker_sheet.dart';
 import '../../modifiers/modifier_providers.dart';
 import '../cart_provider.dart';
@@ -35,14 +36,15 @@ class _CartPanelState extends ConsumerState<CartPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final cartState = ref.watch(cartNotifierProvider);
     final notifier = ref.read(cartNotifierProvider.notifier);
 
     if (cartState.items.isEmpty) {
-      return const AppEmptyState(
-        title: 'Keranjang kosong',
+      return AppEmptyState(
+        title: l10n.cartEmptyTitle,
         icon: Icons.shopping_cart_outlined,
-        message: 'Tap produk dari menu untuk menambahkannya.',
+        message: l10n.cartEmptyMessage,
       );
     }
 
@@ -96,8 +98,8 @@ class _CartPanelState extends ConsumerState<CartPanel> {
               children: [
                 AppButton(
                   label: totals == null
-                      ? 'Bayar'
-                      : 'Bayar ${formatRupiah(totals.total)}',
+                      ? l10n.posCheckout
+                      : l10n.cartPayAmount(formatRupiah(totals.total)),
                   onPressed: totals != null && totals.total > 0
                       ? () => _openCheckout(context)
                       : null,
@@ -110,7 +112,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                   children: [
                     Expanded(
                       child: AppButton(
-                        label: 'Cetak Tagihan',
+                        label: l10n.cartPrintBill,
                         icon: Icons.receipt_long_outlined,
                         variant: AppButtonVariant.secondary,
                         onPressed: totals == null
@@ -129,7 +131,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: AppButton(
-                        label: 'Tahan Pesanan',
+                        label: l10n.cartHoldOrder,
                         icon: Icons.pause_circle_outline,
                         variant: AppButtonVariant.secondary,
                         onPressed: cartState.branch == null
@@ -169,8 +171,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
 
     if (!shared) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Gagal menyiapkan tagihan untuk dibagikan')),
+        SnackBar(content: Text(AppL10n.of(context).cartShareBillFailed)),
       );
     }
   }
@@ -182,6 +183,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     TotalsResult totals,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     final result = await ref.read(printReceiptUseCaseProvider).printBill(
           cart: cartState,
           totals: totals,
@@ -191,21 +193,22 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       SnackBar(
         content: Text(
           switch (result) {
-            Ok() => 'Tagihan dikirim ke printer',
+            Ok() => l10n.cartBillSentToPrinter,
             Err(:final error) =>
-              'Gagal cetak tagihan: ${_printerErrorLabel(error)}',
+              l10n.cartBillPrintFailed(_printerErrorLabel(l10n, error)),
           },
         ),
       ),
     );
   }
 
-  String _printerErrorLabel(PrinterError error) => switch (error) {
-        PrinterError.notConnected => 'Printer belum terhubung',
-        PrinterError.deviceNotFound => 'Printer tidak ditemukan',
-        PrinterError.permissionDenied => 'Izin Bluetooth ditolak',
-        PrinterError.bluetoothOff => 'Bluetooth belum aktif',
-        PrinterError.printFailed => 'Gagal mencetak struk',
+  String _printerErrorLabel(AppL10n l10n, PrinterError error) =>
+      switch (error) {
+        PrinterError.notConnected => l10n.cartPrinterNotConnected,
+        PrinterError.deviceNotFound => l10n.cartPrinterNotFound,
+        PrinterError.permissionDenied => l10n.cartBluetoothPermissionDenied,
+        PrinterError.bluetoothOff => l10n.cartBluetoothOff,
+        PrinterError.printFailed => l10n.cartPrintFailed,
       };
 
   /// FEAT-009 — prompt for a label (table # / customer name) then park the
@@ -218,6 +221,7 @@ class _CartPanelState extends ConsumerState<CartPanel> {
   ) async {
     final labelCtrl = TextEditingController();
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     final defaultLabel = cartState.customer?.name ?? '';
     labelCtrl.text = defaultLabel;
     final label = await showDialog<String>(
@@ -225,22 +229,21 @@ class _CartPanelState extends ConsumerState<CartPanel> {
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.pause_circle_outline,
             size: 36, color: AppColors.accent),
-        title: const Text('Tahan Pesanan'),
+        title: Text(l10n.cartHoldOrder),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Beri label supaya mudah ditemukan saat customer kembali '
-              '(mis. nomor meja atau nama).',
+            Text(
+              l10n.cartHoldOrderDescription,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
               controller: labelCtrl,
               autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Label',
-                hintText: 'Meja 5 / Budi',
+              decoration: InputDecoration(
+                labelText: l10n.cartHoldLabel,
+                hintText: l10n.cartHoldHint,
               ),
               onSubmitted: (v) => Navigator.pop(ctx, v.trim()),
             ),
@@ -249,11 +252,11 @@ class _CartPanelState extends ConsumerState<CartPanel> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, labelCtrl.text.trim()),
-            child: const Text('Tahan'),
+            child: Text(l10n.cartHoldAction),
           ),
         ],
       ),
@@ -267,11 +270,11 @@ class _CartPanelState extends ConsumerState<CartPanel> {
           );
       ref.read(cartNotifierProvider.notifier).clear();
       messenger.showSnackBar(
-        SnackBar(content: Text('Pesanan "$label" ditahan')),
+        SnackBar(content: Text(l10n.cartHeldSuccess(label))),
       );
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Gagal menahan pesanan: $e')),
+        SnackBar(content: Text(l10n.cartHoldFailed(e.toString()))),
       );
     }
   }
@@ -291,20 +294,23 @@ class _CartPanelState extends ConsumerState<CartPanel> {
   ) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Kosongkan keranjang?'),
-        content: const Text('Semua item akan dihapus.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Kosongkan'),
-          ),
-        ],
-      ),
+      builder: (_) {
+        final l10n = AppL10n.of(context);
+        return AlertDialog(
+          title: Text(l10n.cartClearTitle),
+          content: Text(l10n.cartClearMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(l10n.actionCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(l10n.cartClearAction),
+            ),
+          ],
+        );
+      },
     );
     if (confirmed ?? false) notifier.clear();
   }
@@ -319,36 +325,39 @@ class _CartPanelState extends ConsumerState<CartPanel> {
     );
     final result = await showDialog<double>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Diskon Manual'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          decoration: const InputDecoration(
-            prefixText: 'Rp ',
-            hintText: '0',
-          ),
-        ),
-        actions: [
-          if (current > 0)
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, 0.0),
-              child: const Text('Hapus'),
+      builder: (dialogCtx) {
+        final l10n = AppL10n.of(dialogCtx);
+        return AlertDialog(
+          title: Text(l10n.cartManualDiscount),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            decoration: const InputDecoration(
+              prefixText: 'Rp ',
+              hintText: '0',
             ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Batal'),
           ),
-          FilledButton(
-            onPressed: () {
-              final parsed = double.tryParse(controller.text) ?? 0;
-              Navigator.pop(dialogCtx, parsed);
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+          actions: [
+            if (current > 0)
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, 0.0),
+                child: Text(l10n.actionDelete),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(l10n.actionCancel),
+            ),
+            FilledButton(
+              onPressed: () {
+                final parsed = double.tryParse(controller.text) ?? 0;
+                Navigator.pop(dialogCtx, parsed);
+              },
+              child: Text(l10n.actionSave),
+            ),
+          ],
+        );
+      },
     );
     if (result != null) notifier.setManualDiscount(result);
   }
@@ -364,6 +373,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.lg,
@@ -373,7 +383,7 @@ class _Header extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text('Keranjang', style: AppTypography.headlineLg),
+          Text(l10n.posCart, style: AppTypography.headlineLg),
           const SizedBox(width: AppSpacing.sm),
           Text(
             '($itemCount)',
@@ -383,7 +393,7 @@ class _Header extends StatelessWidget {
           const Spacer(),
           TextButton.icon(
             icon: const Icon(Icons.delete_outline, size: 18),
-            label: const Text('Kosongkan'),
+            label: Text(l10n.cartClearAction),
             onPressed: onClear,
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
           ),
@@ -404,9 +414,10 @@ class _ShareBillButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final disabled = onPressed == null || isLoading;
     return Tooltip(
-      message: 'Bagikan tagihan',
+      message: l10n.cartShareBill,
       child: Material(
         color: disabled ? context.colors.disabled : AppColors.primarySurface,
         borderRadius: AppRadius.radiusMd,
@@ -451,6 +462,7 @@ class _CustomerSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final hasCustomer = customer != null;
     return Material(
       color: Colors.transparent,
@@ -490,7 +502,7 @@ class _CustomerSection extends StatelessWidget {
                         ],
                       )
                     : Text(
-                        'Tambah pelanggan',
+                        l10n.cartAddCustomer,
                         style: AppTypography.bodyMd
                             .copyWith(color: context.colors.textSecondary),
                       ),
@@ -498,7 +510,7 @@ class _CustomerSection extends StatelessWidget {
               if (hasCustomer)
                 IconButton(
                   icon: const Icon(Icons.close, size: 18),
-                  tooltip: 'Lepas pelanggan',
+                  tooltip: l10n.cartDetachCustomer,
                   onPressed: onClear,
                   visualDensity: VisualDensity.compact,
                 )
@@ -531,6 +543,7 @@ class _CartItemTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final subtotal = item.lineSubtotal;
     final hasNotes = item.notes != null && item.notes!.isNotEmpty;
     final optionGroups =
@@ -578,7 +591,7 @@ class _CartItemTile extends ConsumerWidget {
                               Flexible(
                                 child: Text(
                                   item.selectedOptions.isEmpty
-                                      ? 'Modifier'
+                                      ? l10n.cartModifier
                                       : item.selectedOptions
                                           .map((o) => o.optionName)
                                           .join(' · '),
@@ -626,7 +639,7 @@ class _CartItemTile extends ConsumerWidget {
                 icon: const Icon(Icons.delete_outline, size: 20),
                 color: AppColors.danger,
                 onPressed: () => _deleteWithUndo(context),
-                tooltip: 'Hapus',
+                tooltip: l10n.actionDelete,
               ),
             ],
           ),
@@ -662,7 +675,7 @@ class _CartItemTile extends ConsumerWidget {
     notifier.removeItem(removedIndex);
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(buildUndoSnackBar(
-      message: '"$name" dihapus dari keranjang',
+      message: AppL10n.of(context).cartItemRemoved(name),
       onUndo: () => notifier.restoreItem(removed, index: removedIndex),
     ));
   }
@@ -671,33 +684,36 @@ class _CartItemTile extends ConsumerWidget {
     final controller = TextEditingController(text: item.notes ?? '');
     final result = await showDialog<String?>(
       context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Catatan Item'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: 3,
-          minLines: 1,
-          decoration: const InputDecoration(
-            hintText: 'mis. tanpa gula, extra shot, less ice',
-          ),
-        ),
-        actions: [
-          if ((item.notes ?? '').isNotEmpty)
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx, ''),
-              child: const Text('Hapus'),
+      builder: (dialogCtx) {
+        final l10n = AppL10n.of(dialogCtx);
+        return AlertDialog(
+          title: Text(l10n.cartItemNotes),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLines: 3,
+            minLines: 1,
+            decoration: InputDecoration(
+              hintText: l10n.cartItemNotesHint,
             ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Batal'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogCtx, controller.text.trim()),
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
+          actions: [
+            if ((item.notes ?? '').isNotEmpty)
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, ''),
+                child: Text(l10n.actionDelete),
+              ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(l10n.actionCancel),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogCtx, controller.text.trim()),
+              child: Text(l10n.actionSave),
+            ),
+          ],
+        );
+      },
     );
     if (result == null) return;
     notifier.updateNotes(index, result.isEmpty ? null : result);
@@ -712,6 +728,7 @@ class _NotesField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final hasNotes = notes != null && notes!.isNotEmpty;
     return InkWell(
       onTap: onTap,
@@ -730,7 +747,7 @@ class _NotesField extends StatelessWidget {
             const SizedBox(width: AppSpacing.xs),
             Expanded(
               child: Text(
-                hasNotes ? notes! : 'Tambah catatan',
+                hasNotes ? notes! : l10n.cartAddNote,
                 style: AppTypography.labelSm.copyWith(
                   color: hasNotes
                       ? context.colors.textPrimary
@@ -793,6 +810,7 @@ class _CartTotalsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     // Fallback when no branch is selected — show at least the subtotal so the
     // cashier knows the cart isn't empty/broken.
     if (totals == null) {
@@ -800,12 +818,12 @@ class _CartTotalsView extends StatelessWidget {
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           children: [
-            _TotalRow(label: 'Subtotal', value: formatRupiah(subtotal)),
+            _TotalRow(label: l10n.posSubtotal, value: formatRupiah(subtotal)),
             const SizedBox(height: AppSpacing.xs),
             Text(
               branchSelected
-                  ? 'Menghitung pajak…'
-                  : 'Pilih cabang untuk menghitung total',
+                  ? l10n.cartCalculatingTax
+                  : l10n.cartSelectBranchForTotal,
               style: AppTypography.bodySm.copyWith(color: AppColors.warning),
             ),
           ],
@@ -818,7 +836,7 @@ class _CartTotalsView extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       child: Column(
         children: [
-          _TotalRow(label: 'Subtotal', value: formatRupiah(t.subtotal)),
+          _TotalRow(label: l10n.posSubtotal, value: formatRupiah(t.subtotal)),
           const SizedBox(height: AppSpacing.xs),
           // Discount editor — full-width tap target, primary CTA when empty.
           Material(
@@ -839,7 +857,7 @@ class _CartTotalsView extends StatelessWidget {
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Text(
-                      'Diskon',
+                      l10n.posDiscount,
                       style: AppTypography.bodyMd
                           .copyWith(color: context.colors.textSecondary),
                     ),
@@ -847,7 +865,7 @@ class _CartTotalsView extends StatelessWidget {
                     Text(
                       discountAmount > 0
                           ? '-${formatRupiah(discountAmount)}'
-                          : 'Tambah diskon',
+                          : l10n.cartAddDiscount,
                       style: AppTypography.bodyMd.copyWith(
                         color: discountAmount > 0
                             ? AppColors.accent
@@ -869,12 +887,12 @@ class _CartTotalsView extends StatelessWidget {
           ),
           if (t.taxAmount > 0)
             _TotalRow(
-              label: 'Pajak ($taxLabel)',
+              label: l10n.posTax(taxLabel),
               value: formatRupiah(t.taxAmount),
             ),
           const Divider(height: AppSpacing.lg),
           _TotalRow(
-            label: 'Total',
+            label: l10n.posTotal,
             value: formatRupiah(t.total),
             highlight: true,
           ),

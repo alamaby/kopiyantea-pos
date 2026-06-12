@@ -631,7 +631,7 @@
   "settingsReceiptPrinter": "Printer Struk",
   "settingsNoPrinterConnected": "Belum ada printer terhubung",
   "settingsReceiptDisplay": "Tampilan Struk",
-  "settingsReceiptDisplaySubtitle": "Logo, header, footer per cabang",
+  "settingsReceiptDisplaySubtitle": "Logo global, header, footer per cabang",
   "settingsMenuImage": "Image Menu",
   "settingsMenuImageSubtitle": "Konten, kolom, dan warna share menu",
   "menuImageSettingsSaved": "Pengaturan image menu {branch} tersimpan",
@@ -750,6 +750,9 @@
 
   "receiptSettingsSaved": "Tersimpan untuk {branch}",
   "@receiptSettingsSaved": { "placeholders": { "branch": { "type": "String" } } },
+  "receiptSettingsSavedGlobal": "Logo struk global tersimpan",
+  "receiptSettingsGlobalLogo": "Logo struk global",
+  "receiptSettingsGlobalLogoHelp": "Logo coffee shop yang dikelola owner dan dipakai di struk semua cabang.",
   "receiptSettingsLogo": "Logo",
   "receiptSettingsNoLogo": "Belum ada logo",
   "receiptSettingsUploadLogo": "Unggah Logo",

@@ -7,6 +7,7 @@ import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/database/daos/company_settings_dao.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/database_provider.dart';
 import '../../core/domain/enums.dart';
@@ -52,6 +53,7 @@ class PrintReceiptUseCase {
     if (branch == null) return const Err(PrinterError.printFailed);
     // FEAT-014 — per-branch receipt template settings.
     final setting = await _loadReceiptSetting(tx.branchId);
+    final companySettings = await _ref.read(companySettingsDaoProvider).get();
     final showLoyaltyPoints = setting?.showLoyaltyPoints ?? true;
     final customer = tx.customerId == null
         ? null
@@ -76,7 +78,7 @@ class PrintReceiptUseCase {
       _ref.read(databaseProvider),
     );
 
-    final logoBytes = await _maybeFetchLogo(setting);
+    final logoBytes = await _maybeFetchLogo(companySettings, setting);
 
     // FEAT-014b — cashier name. Prefer the immutable snapshot (set on
     // every new tx); fall back to a live `app_users` lookup for legacy
@@ -140,7 +142,7 @@ class PrintReceiptUseCase {
       footerText: setting?.footerText,
       paperWidthMm: setting?.paperWidthMm ?? 58,
       logoBytes: logoBytes,
-      logoPosition: setting?.logoPosition ?? 'top',
+      logoPosition: _logoPosition(companySettings, setting),
       bankAccountSnapshot: tx.bankAccountSnapshot,
       qrisImageBytes: qrisBytes,
     );
@@ -161,7 +163,8 @@ class PrintReceiptUseCase {
     }
 
     final setting = await _loadReceiptSetting(branch.id);
-    final logoBytes = await _maybeFetchLogo(setting);
+    final companySettings = await _ref.read(companySettingsDaoProvider).get();
+    final logoBytes = await _maybeFetchLogo(companySettings, setting);
     final cashierName = setting?.showCashierName ?? true
         ? _ref.read(currentUserProvider)?.fullName
         : null;
@@ -207,7 +210,7 @@ class PrintReceiptUseCase {
       footerText: billingFooterText,
       paperWidthMm: setting?.paperWidthMm ?? 58,
       logoBytes: logoBytes,
-      logoPosition: setting?.logoPosition ?? 'top',
+      logoPosition: _logoPosition(companySettings, setting),
     );
 
     return _printWithAutoReconnect(payload);
@@ -286,13 +289,22 @@ class PrintReceiptUseCase {
         .getSingleOrNull();
   }
 
-  Future<Uint8List?> _maybeFetchLogo(ReceiptSettingRow? setting) async {
-    if (setting == null) return null;
-    if (!setting.showLogo) return null;
-    final url = setting.logoUrl;
+  Future<Uint8List?> _maybeFetchLogo(
+    CompanySettingsRow? companySettings,
+    ReceiptSettingRow? setting,
+  ) async {
+    final showLogo = companySettings?.showReceiptLogo ?? setting?.showLogo;
+    if (showLogo != true) return null;
+    final url = companySettings?.receiptLogoUrl ?? setting?.logoUrl;
     if (url == null || url.isEmpty) return null;
     return _fetchCached(url);
   }
+
+  String _logoPosition(
+    CompanySettingsRow? companySettings,
+    ReceiptSettingRow? setting,
+  ) =>
+      companySettings?.receiptLogoPosition ?? setting?.logoPosition ?? 'top';
 
   /// HTTP GET with in-memory caching. Returns null on any failure so the
   /// receipt still prints (without the image) rather than aborting.

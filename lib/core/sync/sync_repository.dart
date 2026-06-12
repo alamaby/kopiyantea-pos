@@ -6,6 +6,7 @@ import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../database/app_database.dart';
+import '../database/daos/company_settings_dao.dart';
 import '../database/daos/dao_providers.dart';
 import '../database/database_provider.dart';
 import '../domain/enums.dart';
@@ -273,6 +274,19 @@ class SyncRepository {
       errors++;
     }
 
+    // ── company_settings (chain-wide) ──
+    try {
+      final rows = await sb.from('company_settings').select();
+      final dao = _ref.read(companySettingsDaoProvider);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await dao.upsert(companySettingsFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull company_settings failed', error: e);
+      errors++;
+    }
+
     // ── customers (chain-wide) ──
     try {
       final rows = await sb.from('customers').select();
@@ -484,6 +498,8 @@ class SyncRepository {
             await _pushCategory(id!);
           case OutboxEntityType.customerPointLedger:
             await _pushCustomerPointLedger(id!);
+          case OutboxEntityType.companySetting:
+            await _pushCompanySetting(id!);
           case OutboxEntityType.transactionItem:
             // Children of a transaction; rides on parent push.
             break;
@@ -526,6 +542,7 @@ class SyncRepository {
       case OutboxEntityType.bankAccount:
         return 20;
       case OutboxEntityType.customerPointLedger:
+      case OutboxEntityType.companySetting:
         return 45;
       case OutboxEntityType.category:
       case OutboxEntityType.product:
@@ -820,6 +837,16 @@ class SyncRepository {
       return;
     }
     await sb.from('categories').upsert(row.toSupabaseJson());
+  }
+
+  Future<void> _pushCompanySetting(String id) async {
+    final sb = _sb!;
+    final row = await _ref.read(companySettingsDaoProvider).get();
+    if (row == null || row.id != id) {
+      await sb.from('company_settings').delete().eq('id', id);
+      return;
+    }
+    await sb.from('company_settings').upsert(row.toSupabaseJson());
   }
 
   Future<void> _pushProductRecipe(String recipeId) async {

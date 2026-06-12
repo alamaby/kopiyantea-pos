@@ -631,7 +631,7 @@
   "settingsReceiptPrinter": "Receipt Printer",
   "settingsNoPrinterConnected": "No printer connected",
   "settingsReceiptDisplay": "Receipt Display",
-  "settingsReceiptDisplaySubtitle": "Logo, header, and footer per branch",
+  "settingsReceiptDisplaySubtitle": "Global logo, header, and footer per branch",
   "settingsMenuImage": "Menu Image",
   "settingsMenuImageSubtitle": "Content, columns, and colors for menu sharing",
   "menuImageSettingsSaved": "Menu image settings for {branch} saved",
@@ -750,6 +750,9 @@
 
   "receiptSettingsSaved": "Saved for {branch}",
   "@receiptSettingsSaved": { "placeholders": { "branch": { "type": "String" } } },
+  "receiptSettingsSavedGlobal": "Global receipt logo saved",
+  "receiptSettingsGlobalLogo": "Global receipt logo",
+  "receiptSettingsGlobalLogoHelp": "Owner-managed coffee shop logo used on receipts for every branch.",
   "receiptSettingsLogo": "Logo",
   "receiptSettingsNoLogo": "No logo yet",
   "receiptSettingsUploadLogo": "Upload Logo",

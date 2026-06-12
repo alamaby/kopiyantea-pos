@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/database/daos/company_settings_dao.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/database_provider.dart';
 import '../../core/domain/enums.dart';
@@ -93,7 +94,8 @@ class ShareReceiptUseCase {
         ? null
         : await customerDao.getById(tx.customerId!);
     final setting = await _loadReceiptSetting(tx.branchId);
-    final logoBytes = await _maybeFetchLogo(setting);
+    final companySettings = await _ref.read(companySettingsDaoProvider).get();
+    final logoBytes = await _maybeFetchLogo(companySettings, setting);
     final printQris = setting?.printQrisOnReceipt ?? false;
     final qrisBytes = (printQris &&
             tx.paymentMethod == PaymentMethod.qris &&
@@ -170,7 +172,7 @@ class ShareReceiptUseCase {
       footerText: setting?.footerText,
       paperWidthMm: setting?.paperWidthMm ?? 58,
       logoBytes: logoBytes,
-      logoPosition: setting?.logoPosition ?? 'top',
+      logoPosition: _logoPosition(companySettings, setting),
       bankAccountSnapshot: tx.bankAccountSnapshot,
       qrisImageBytes: qrisBytes,
     );
@@ -184,7 +186,8 @@ class ShareReceiptUseCase {
     if (branch == null || cart.items.isEmpty) return null;
 
     final setting = await _loadReceiptSetting(branch.id);
-    final logoBytes = await _maybeFetchLogo(setting);
+    final companySettings = await _ref.read(companySettingsDaoProvider).get();
+    final logoBytes = await _maybeFetchLogo(companySettings, setting);
     final modifierFilter = await ReceiptModifierFilter.load(
       _ref.read(databaseProvider),
     );
@@ -232,7 +235,7 @@ class ShareReceiptUseCase {
       footerText: PrintReceiptUseCase.billingFooterText,
       paperWidthMm: setting?.paperWidthMm ?? 58,
       logoBytes: logoBytes,
-      logoPosition: setting?.logoPosition ?? 'top',
+      logoPosition: _logoPosition(companySettings, setting),
     );
   }
 
@@ -288,12 +291,22 @@ class ShareReceiptUseCase {
         .getSingleOrNull();
   }
 
-  Future<Uint8List?> _maybeFetchLogo(ReceiptSettingRow? setting) async {
-    if (setting == null || !setting.showLogo) return null;
-    final url = setting.logoUrl;
+  Future<Uint8List?> _maybeFetchLogo(
+    CompanySettingsRow? companySettings,
+    ReceiptSettingRow? setting,
+  ) async {
+    final showLogo = companySettings?.showReceiptLogo ?? setting?.showLogo;
+    if (showLogo != true) return null;
+    final url = companySettings?.receiptLogoUrl ?? setting?.logoUrl;
     if (url == null || url.isEmpty) return null;
     return _fetchCached(url);
   }
+
+  String _logoPosition(
+    CompanySettingsRow? companySettings,
+    ReceiptSettingRow? setting,
+  ) =>
+      companySettings?.receiptLogoPosition ?? setting?.logoPosition ?? 'top';
 
   Future<Uint8List?> _fetchCached(String url) async {
     if (_imageCache.containsKey(url)) return _imageCache[url];

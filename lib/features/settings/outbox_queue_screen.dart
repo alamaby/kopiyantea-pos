@@ -346,6 +346,7 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.category => l10n.outboxEntityCategory,
         OutboxEntityType.customerPointLedger =>
           l10n.outboxEntityCustomerPointLedger,
+        OutboxEntityType.companySetting => l10n.outboxEntityReceiptSetting,
       };
 
   static IconData _iconFor(OutboxEntityType t) => switch (t) {
@@ -368,6 +369,7 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.bankAccount => Icons.account_balance_outlined,
         OutboxEntityType.category => Icons.category_outlined,
         OutboxEntityType.customerPointLedger => Icons.stars_outlined,
+        OutboxEntityType.companySetting => Icons.business_outlined,
       };
 
   static String _payloadPreview(OutboxItemRow row) {

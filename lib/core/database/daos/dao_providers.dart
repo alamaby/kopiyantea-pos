@@ -5,6 +5,7 @@ import 'bank_account_dao.dart';
 import 'branch_dao.dart';
 import 'catalog_dao.dart';
 import 'category_dao.dart';
+import 'company_settings_dao.dart';
 import 'customer_dao.dart';
 import 'customer_point_ledger_dao.dart';
 import 'held_order_dao.dart';
@@ -28,6 +29,10 @@ final catalogDaoProvider = Provider<CatalogDao>(
 
 final categoryDaoProvider = Provider<CategoryDao>(
   (ref) => CategoryDao(ref.watch(databaseProvider)),
+);
+
+final companySettingsDaoProvider = Provider<CompanySettingsDao>(
+  (ref) => CompanySettingsDao(ref.watch(databaseProvider)),
 );
 
 final inventoryDaoProvider = Provider<InventoryDao>(

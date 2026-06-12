@@ -13,7 +13,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/catalog_dao.dart';
 import '../../core/database/daos/dao_providers.dart';
-import '../../core/database/database_provider.dart';
 import '../../core/pricing/pricing.dart';
 import '../../core/utils/formatters.dart';
 import '../settings/menu_image_settings.dart';
@@ -36,12 +35,16 @@ class ShareMenuImageUseCase {
         .first;
     if (rows.isEmpty) return false;
 
-    final setting = await _loadReceiptSetting(branch.id);
+    final companySettings = await _ref.read(companySettingsDaoProvider).get();
     final menuImageSettings =
         await _ref.read(menuImageSettingsRepositoryProvider).getForBranch(
               branch.id,
             );
-    final logoBytes = await _fetchImage(setting?.logoUrl);
+    final logoBytes = await _fetchImage(
+      companySettings?.showReceiptLogo == true
+          ? companySettings?.receiptLogoUrl
+          : null,
+    );
     final items = await Future.wait(
       rows.map(
         (row) async => _ShareMenuItem.fromRow(
@@ -79,13 +82,6 @@ class ShareMenuImageUseCase {
       sharePositionOrigin: sharePositionOrigin,
     );
     return true;
-  }
-
-  Future<ReceiptSettingRow?> _loadReceiptSetting(String branchId) {
-    final db = _ref.read(databaseProvider);
-    return (db.select(db.receiptSettings)
-          ..where((s) => s.branchId.equals(branchId)))
-        .getSingleOrNull();
   }
 
   Future<Uint8List?> _fetchImage(String? url) async {

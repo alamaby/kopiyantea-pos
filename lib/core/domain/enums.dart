@@ -47,4 +47,6 @@ enum OutboxEntityType {
   category,
   // Loyalty point audit ledger.
   customerPointLedger,
+  // Chain-wide owner-managed settings.
+  companySetting,
 }

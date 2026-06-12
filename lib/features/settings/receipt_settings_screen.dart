@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/database/daos/company_settings_dao.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/database_provider.dart';
 import '../../core/domain/enums.dart';
@@ -22,15 +23,41 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../auth/auth_provider.dart';
 import 'branch_selection_provider.dart';
 
-/// FEAT-014 — per-branch receipt template configuration.
-class ReceiptSettingsScreen extends ConsumerWidget {
+/// FEAT-014 — receipt template configuration.
+class ReceiptSettingsScreen extends ConsumerStatefulWidget {
   const ReceiptSettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ReceiptSettingsScreen> createState() =>
+      _ReceiptSettingsScreenState();
+}
+
+class _ReceiptSettingsScreenState extends ConsumerState<ReceiptSettingsScreen> {
+  late Future<CompanySettingsRow?> _companySettingsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _companySettingsFuture = _loadCompanySettings();
+  }
+
+  Future<CompanySettingsRow?> _loadCompanySettings() =>
+      ref.read(companySettingsDaoProvider).get();
+
+  void _reloadCompanySettings() {
+    setState(() {
+      _companySettingsFuture = _loadCompanySettings();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final branchesAsync = ref.watch(allBranchesProvider);
+    final isOwner =
+        ref.watch(currentUserProvider)?.globalRole == GlobalRole.owner;
     final l10n = AppL10n.of(context);
     return Scaffold(
       appBar: AppBar(title: Text(l10n.settingsReceiptDisplay)),
@@ -48,11 +75,30 @@ class ReceiptSettingsScreen extends ConsumerWidget {
               icon: Icons.store_outlined,
             );
           }
-          return ListView.separated(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            itemCount: branches.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.lg),
-            itemBuilder: (_, i) => _BranchReceiptCard(branch: branches[i]),
+          return FutureBuilder<CompanySettingsRow?>(
+            future: _companySettingsFuture,
+            builder: (context, snapshot) {
+              final companySettings = snapshot.data;
+              return ListView.separated(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                itemCount: branches.length + 1,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(height: AppSpacing.lg),
+                itemBuilder: (_, i) {
+                  if (i == 0) {
+                    return _GlobalReceiptLogoCard(
+                      settings: companySettings,
+                      isOwner: isOwner,
+                      onSaved: _reloadCompanySettings,
+                    );
+                  }
+                  return _BranchReceiptCard(
+                    branch: branches[i - 1],
+                    companySettings: companySettings,
+                  );
+                },
+              );
+            },
           );
         },
       ),
@@ -60,117 +106,73 @@ class ReceiptSettingsScreen extends ConsumerWidget {
   }
 }
 
-class _BranchReceiptCard extends ConsumerStatefulWidget {
-  const _BranchReceiptCard({required this.branch});
-  final BranchRow branch;
+class _GlobalReceiptLogoCard extends ConsumerStatefulWidget {
+  const _GlobalReceiptLogoCard({
+    required this.settings,
+    required this.isOwner,
+    required this.onSaved,
+  });
+
+  final CompanySettingsRow? settings;
+  final bool isOwner;
+  final VoidCallback onSaved;
 
   @override
-  ConsumerState<_BranchReceiptCard> createState() => _BranchReceiptCardState();
+  ConsumerState<_GlobalReceiptLogoCard> createState() =>
+      _GlobalReceiptLogoCardState();
 }
 
-class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
-  final _headerCtrl = TextEditingController();
-  final _footerCtrl = TextEditingController();
-  int _paperWidth = 58;
+class _GlobalReceiptLogoCardState
+    extends ConsumerState<_GlobalReceiptLogoCard> {
   bool _showLogo = false;
   String? _logoUrl;
   String _logoPosition = 'top';
-  bool _showCashierName = true;
-  bool _showCustomerName = true;
-  bool _showBranchName = true;
-  bool _showLoyaltyPoints = true;
-  bool _printQrisOnReceipt = false;
-
-  bool _loaded = false;
   bool _saving = false;
   bool _uploadingLogo = false;
-  ReceiptSettingRow? _existing;
 
   @override
   void initState() {
     super.initState();
-    _headerCtrl.addListener(_onTemplateChanged);
-    _footerCtrl.addListener(_onTemplateChanged);
-    _load();
+    _applySettings();
   }
 
   @override
-  void dispose() {
-    _headerCtrl.removeListener(_onTemplateChanged);
-    _footerCtrl.removeListener(_onTemplateChanged);
-    _headerCtrl.dispose();
-    _footerCtrl.dispose();
-    super.dispose();
+  void didUpdateWidget(covariant _GlobalReceiptLogoCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.settings != widget.settings) _applySettings();
   }
 
-  void _onTemplateChanged() {
-    if (mounted && _loaded) setState(() {});
-  }
-
-  Future<void> _load() async {
-    final db = ref.read(databaseProvider);
-    final row = await (db.select(db.receiptSettings)
-          ..where((s) => s.branchId.equals(widget.branch.id)))
-        .getSingleOrNull();
-    if (!mounted) return;
-    setState(() {
-      _existing = row;
-      if (row != null) {
-        _headerCtrl.text = row.headerText ?? '';
-        _footerCtrl.text = row.footerText ?? '';
-        _paperWidth = row.paperWidthMm;
-        _showLogo = row.showLogo;
-        _logoUrl = row.logoUrl;
-        _logoPosition = row.logoPosition;
-        _showCashierName = row.showCashierName;
-        _showCustomerName = row.showCustomerName;
-        _showBranchName = row.showBranchName;
-        _showLoyaltyPoints = row.showLoyaltyPoints;
-        _printQrisOnReceipt = row.printQrisOnReceipt;
-      }
-      _loaded = true;
-    });
+  void _applySettings() {
+    _showLogo = widget.settings?.showReceiptLogo ?? false;
+    _logoUrl = widget.settings?.receiptLogoUrl;
+    _logoPosition = widget.settings?.receiptLogoPosition ?? 'top';
   }
 
   Future<void> _save() async {
     setState(() => _saving = true);
-    final db = ref.read(databaseProvider);
     final now = DateTime.now();
-    final companion = ReceiptSettingsCompanion(
-      id: Value(_existing?.id ?? const Uuid().v7()),
-      branchId: Value(widget.branch.id),
-      headerText: Value(
-          _headerCtrl.text.trim().isEmpty ? null : _headerCtrl.text.trim()),
-      footerText: Value(
-          _footerCtrl.text.trim().isEmpty ? null : _footerCtrl.text.trim()),
-      logoUrl: Value(_logoUrl),
-      logoPosition: Value(_logoPosition),
-      paperWidthMm: Value(_paperWidth),
-      showLogo: Value(_showLogo),
-      showCashierName: Value(_showCashierName),
-      showCustomerName: Value(_showCustomerName),
-      showBranchName: Value(_showBranchName),
-      showLoyaltyPoints: Value(_showLoyaltyPoints),
-      printQrisOnReceipt: Value(_printQrisOnReceipt),
-      updatedAt: Value(now),
+    final row = CompanySettingsRow(
+      id: kCompanySettingsId,
+      receiptLogoUrl: _logoUrl,
+      showReceiptLogo: _showLogo,
+      receiptLogoPosition: _logoPosition,
+      updatedAt: now,
     );
-    await db.into(db.receiptSettings).insertOnConflictUpdate(companion);
-    await ref.read(outboxDaoProvider).enqueue(OutboxItemsCompanion.insert(
-          id: const Uuid().v7(),
-          entityType: OutboxEntityType.receiptSetting,
-          payload: jsonEncode({'id': companion.id.value}),
-          createdAt: now,
-        ));
+    await ref.read(companySettingsDaoProvider).upsert(row);
+    await ref.read(outboxDaoProvider).enqueue(
+          OutboxItemsCompanion.insert(
+            id: const Uuid().v7(),
+            entityType: OutboxEntityType.companySetting,
+            payload: jsonEncode({'id': kCompanySettingsId}),
+            createdAt: now,
+          ),
+        );
     if (!mounted) return;
     setState(() => _saving = false);
+    widget.onSaved();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(AppL10n.of(context).receiptSettingsSaved(
-          widget.branch.name,
-        )),
-      ),
+      SnackBar(content: Text(AppL10n.of(context).receiptSettingsSavedGlobal)),
     );
-    _load();
   }
 
   Future<void> _uploadLogo() async {
@@ -200,7 +202,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
     final result = await svc.pickAndUpload(
       source: source,
       bucket: ImageBuckets.logos,
-      pathPrefix: 'branches/',
+      pathPrefix: 'global/',
       cropTitle: AppL10n.of(context).imageCropTitle,
     );
     if (!mounted) return;
@@ -242,6 +244,226 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppL10n.of(context);
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.receiptSettingsGlobalLogo, style: AppTypography.titleMd),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            l10n.receiptSettingsGlobalLogoHelp,
+            style: AppTypography.bodySm.copyWith(
+              color: context.colors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _LogoPickerPreview(logoUrl: _logoUrl),
+          const SizedBox(height: AppSpacing.sm),
+          if (widget.isOwner) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: AppButton(
+                    label: _logoUrl == null
+                        ? l10n.receiptSettingsUploadLogo
+                        : l10n.receiptSettingsChangeLogo,
+                    icon: Icons.upload_outlined,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: _uploadingLogo ? null : _uploadLogo,
+                    isLoading: _uploadingLogo,
+                  ),
+                ),
+                if (_logoUrl != null) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  IconButton(
+                    onPressed: _uploadingLogo ? null : _removeLogo,
+                    icon: const Icon(Icons.delete_outline),
+                    tooltip: l10n.receiptSettingsDeleteLogo,
+                    color: AppColors.danger,
+                  ),
+                ],
+              ],
+            ),
+            if (_logoUrl != null) ...[
+              const SizedBox(height: AppSpacing.sm),
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                decoration: BoxDecoration(
+                  color: context.colors.surfaceAlt,
+                  borderRadius: AppRadius.radiusSm,
+                ),
+                child: Text(
+                  l10n.receiptSettingsLogoFormatHelp,
+                  style: AppTypography.labelSm.copyWith(
+                    color: context.colors.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              SwitchListTile(
+                value: _showLogo,
+                onChanged: (v) => setState(() => _showLogo = v),
+                title: Text(
+                  l10n.receiptSettingsShowOnReceipt,
+                  style: AppTypography.titleMd,
+                ),
+                contentPadding: EdgeInsets.zero,
+                activeColor: AppColors.primary,
+              ),
+              if (_showLogo) ...[
+                _LabelRow(label: l10n.receiptSettingsLogoPosition),
+                SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                      value: 'top',
+                      label: Text(l10n.receiptSettingsLogoTop),
+                      icon: const Icon(Icons.vertical_align_top),
+                    ),
+                    ButtonSegment(
+                      value: 'bottom',
+                      label: Text(l10n.receiptSettingsLogoBottom),
+                      icon: const Icon(Icons.vertical_align_bottom),
+                    ),
+                  ],
+                  selected: {_logoPosition},
+                  onSelectionChanged: (s) =>
+                      setState(() => _logoPosition = s.first),
+                ),
+              ],
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            AppButton(
+              label: _saving ? l10n.statusSaving : l10n.actionSave,
+              icon: Icons.save_outlined,
+              onPressed: _saving ? null : _save,
+              isLoading: _saving,
+              fullWidth: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _BranchReceiptCard extends ConsumerStatefulWidget {
+  const _BranchReceiptCard({
+    required this.branch,
+    required this.companySettings,
+  });
+
+  final BranchRow branch;
+  final CompanySettingsRow? companySettings;
+
+  @override
+  ConsumerState<_BranchReceiptCard> createState() => _BranchReceiptCardState();
+}
+
+class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
+  final _headerCtrl = TextEditingController();
+  final _footerCtrl = TextEditingController();
+  int _paperWidth = 58;
+  bool _showCashierName = true;
+  bool _showCustomerName = true;
+  bool _showBranchName = true;
+  bool _showLoyaltyPoints = true;
+  bool _printQrisOnReceipt = false;
+
+  bool _loaded = false;
+  bool _saving = false;
+  ReceiptSettingRow? _existing;
+
+  @override
+  void initState() {
+    super.initState();
+    _headerCtrl.addListener(_onTemplateChanged);
+    _footerCtrl.addListener(_onTemplateChanged);
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _headerCtrl.removeListener(_onTemplateChanged);
+    _footerCtrl.removeListener(_onTemplateChanged);
+    _headerCtrl.dispose();
+    _footerCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onTemplateChanged() {
+    if (mounted && _loaded) setState(() {});
+  }
+
+  Future<void> _load() async {
+    final db = ref.read(databaseProvider);
+    final row = await (db.select(db.receiptSettings)
+          ..where((s) => s.branchId.equals(widget.branch.id)))
+        .getSingleOrNull();
+    if (!mounted) return;
+    setState(() {
+      _existing = row;
+      if (row != null) {
+        _headerCtrl.text = row.headerText ?? '';
+        _footerCtrl.text = row.footerText ?? '';
+        _paperWidth = row.paperWidthMm;
+        _showCashierName = row.showCashierName;
+        _showCustomerName = row.showCustomerName;
+        _showBranchName = row.showBranchName;
+        _showLoyaltyPoints = row.showLoyaltyPoints;
+        _printQrisOnReceipt = row.printQrisOnReceipt;
+      }
+      _loaded = true;
+    });
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final db = ref.read(databaseProvider);
+    final now = DateTime.now();
+    final companion = ReceiptSettingsCompanion(
+      id: Value(_existing?.id ?? const Uuid().v7()),
+      branchId: Value(widget.branch.id),
+      headerText: Value(
+          _headerCtrl.text.trim().isEmpty ? null : _headerCtrl.text.trim()),
+      footerText: Value(
+          _footerCtrl.text.trim().isEmpty ? null : _footerCtrl.text.trim()),
+      paperWidthMm: Value(_paperWidth),
+      showCashierName: Value(_showCashierName),
+      showCustomerName: Value(_showCustomerName),
+      showBranchName: Value(_showBranchName),
+      showLoyaltyPoints: Value(_showLoyaltyPoints),
+      printQrisOnReceipt: Value(_printQrisOnReceipt),
+      updatedAt: Value(now),
+    );
+    await db.into(db.receiptSettings).insertOnConflictUpdate(companion);
+    await ref.read(outboxDaoProvider).enqueue(OutboxItemsCompanion.insert(
+          id: const Uuid().v7(),
+          entityType: OutboxEntityType.receiptSetting,
+          payload: jsonEncode({'id': companion.id.value}),
+          createdAt: now,
+        ));
+    if (!mounted) return;
+    setState(() => _saving = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(AppL10n.of(context).receiptSettingsSaved(
+          widget.branch.name,
+        )),
+      ),
+    );
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    final effectiveShowLogo =
+        widget.companySettings?.showReceiptLogo ?? _existing?.showLogo ?? false;
+    final effectiveLogoUrl =
+        widget.companySettings?.receiptLogoUrl ?? _existing?.logoUrl;
+    final effectiveLogoPosition = widget.companySettings?.receiptLogoPosition ??
+        _existing?.logoPosition ??
+        'top';
     if (!_loaded) {
       return const AppCard(
         child: SizedBox(
@@ -261,137 +483,15 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
             headerText: _headerCtrl.text.trim(),
             footerText: _footerCtrl.text.trim(),
             paperWidthMm: _paperWidth,
-            showLogo: _showLogo,
-            logoUrl: _logoUrl,
-            logoPosition: _logoPosition,
+            showLogo: effectiveShowLogo,
+            logoUrl: effectiveLogoUrl,
+            logoPosition: effectiveLogoPosition,
             showCashierName: _showCashierName,
             showCustomerName: _showCustomerName,
             showBranchName: _showBranchName,
             showLoyaltyPoints: _showLoyaltyPoints,
             printQrisOnReceipt: _printQrisOnReceipt,
           ),
-          const SizedBox(height: AppSpacing.lg),
-
-          // Logo
-          _LabelRow(label: l10n.receiptSettingsLogo),
-          if (_logoUrl != null && _logoUrl!.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: Colors.white, // logo dirender di kertas putih
-                borderRadius: AppRadius.radiusMd,
-                border: Border.all(color: context.colors.border),
-              ),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 120),
-                  child: CachedNetworkImage(
-                    imageUrl: _logoUrl!,
-                    fit: BoxFit.contain,
-                    placeholder: (_, __) => const SizedBox(
-                        height: 80, child: AppLoadingIndicator()),
-                    errorWidget: (_, __, ___) => const Icon(
-                      Icons.broken_image_outlined,
-                      color: AppColors.danger,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ] else
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              decoration: BoxDecoration(
-                color: context.colors.surfaceAlt,
-                borderRadius: AppRadius.radiusMd,
-                border: Border.all(color: context.colors.border),
-              ),
-              child: Column(
-                children: [
-                  Icon(Icons.image_outlined,
-                      size: 36, color: context.colors.textTertiary),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    l10n.receiptSettingsNoLogo,
-                    style: AppTypography.bodySm.copyWith(
-                      color: context.colors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: AppButton(
-                  label: _logoUrl == null
-                      ? l10n.receiptSettingsUploadLogo
-                      : l10n.receiptSettingsChangeLogo,
-                  icon: Icons.upload_outlined,
-                  variant: AppButtonVariant.secondary,
-                  onPressed: _uploadingLogo ? null : _uploadLogo,
-                  isLoading: _uploadingLogo,
-                ),
-              ),
-              if (_logoUrl != null) ...[
-                const SizedBox(width: AppSpacing.sm),
-                IconButton(
-                  onPressed: _uploadingLogo ? null : _removeLogo,
-                  icon: const Icon(Icons.delete_outline),
-                  tooltip: l10n.receiptSettingsDeleteLogo,
-                  color: AppColors.danger,
-                ),
-              ],
-            ],
-          ),
-          if (_logoUrl != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              decoration: BoxDecoration(
-                color: context.colors.surfaceAlt,
-                borderRadius: AppRadius.radiusSm,
-              ),
-              child: Text(
-                l10n.receiptSettingsLogoFormatHelp,
-                style: AppTypography.labelSm
-                    .copyWith(color: context.colors.textSecondary),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            SwitchListTile(
-              value: _showLogo,
-              onChanged: (v) => setState(() => _showLogo = v),
-              title: Text(
-                l10n.receiptSettingsShowOnReceipt,
-                style: AppTypography.titleMd,
-              ),
-              contentPadding: EdgeInsets.zero,
-              activeColor: AppColors.primary,
-            ),
-            if (_showLogo) ...[
-              _LabelRow(label: l10n.receiptSettingsLogoPosition),
-              SegmentedButton<String>(
-                segments: [
-                  ButtonSegment(
-                    value: 'top',
-                    label: Text(l10n.receiptSettingsLogoTop),
-                    icon: const Icon(Icons.vertical_align_top),
-                  ),
-                  ButtonSegment(
-                    value: 'bottom',
-                    label: Text(l10n.receiptSettingsLogoBottom),
-                    icon: const Icon(Icons.vertical_align_bottom),
-                  ),
-                ],
-                selected: {_logoPosition},
-                onSelectionChanged: (s) =>
-                    setState(() => _logoPosition = s.first),
-              ),
-            ],
-          ],
-
           const SizedBox(height: AppSpacing.lg),
           // Header
           _LabelRow(label: l10n.receiptSettingsHeaderTextOptional),
@@ -533,6 +633,69 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
             onPressed: _saving ? null : _save,
             isLoading: _saving,
             fullWidth: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogoPickerPreview extends StatelessWidget {
+  const _LogoPickerPreview({required this.logoUrl});
+
+  final String? logoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    if (logoUrl != null && logoUrl!.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: AppRadius.radiusMd,
+          border: Border.all(color: context.colors.border),
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 120),
+            child: CachedNetworkImage(
+              imageUrl: logoUrl!,
+              fit: BoxFit.contain,
+              placeholder: (_, __) => const SizedBox(
+                height: 80,
+                child: AppLoadingIndicator(),
+              ),
+              errorWidget: (_, __, ___) => const Icon(
+                Icons.broken_image_outlined,
+                color: AppColors.danger,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: context.colors.surfaceAlt,
+        borderRadius: AppRadius.radiusMd,
+        border: Border.all(color: context.colors.border),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.image_outlined,
+            size: 36,
+            color: context.colors.textTertiary,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            l10n.receiptSettingsNoLogo,
+            style: AppTypography.bodySm.copyWith(
+              color: context.colors.textSecondary,
+            ),
           ),
         ],
       ),

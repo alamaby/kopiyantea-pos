@@ -65,13 +65,14 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await _createMenuImageSettingsTable();
+          await _createCompanySettingsTable();
         },
         onUpgrade: (m, from, to) async {
           // ADR-0008 — non-destructive migrations only.
@@ -162,6 +163,10 @@ class AppDatabase extends _$AppDatabase {
           if (from >= 17 && from < 19) {
             // Configurable header layout for share menu images.
             await _addMenuImageSettingsHeaderLayoutColumn();
+          }
+          if (from < 20) {
+            // Chain-wide receipt logo managed by owner.
+            await _createCompanySettingsTable();
           }
         },
         beforeOpen: (_) async {
@@ -266,5 +271,31 @@ CREATE TABLE IF NOT EXISTS menu_image_settings (
       "ADD COLUMN header_layout TEXT NOT NULL DEFAULT 'stacked' "
       "CHECK (header_layout IN ('stacked', 'split'))",
     );
+  }
+
+  Future<void> _createCompanySettingsTable() async {
+    await customStatement('''
+CREATE TABLE IF NOT EXISTS company_settings (
+  id TEXT PRIMARY KEY NOT NULL DEFAULT 'global',
+  receipt_logo_url TEXT,
+  show_receipt_logo INTEGER NOT NULL DEFAULT 0,
+  receipt_logo_position TEXT NOT NULL DEFAULT 'top' CHECK (receipt_logo_position IN ('top', 'bottom')),
+  updated_at DATETIME NOT NULL
+)
+''');
+    await customStatement('''
+INSERT OR IGNORE INTO company_settings
+  (id, receipt_logo_url, show_receipt_logo, receipt_logo_position, updated_at)
+SELECT
+  'global',
+  logo_url,
+  show_logo,
+  logo_position,
+  updated_at
+FROM receipt_settings
+WHERE logo_url IS NOT NULL AND TRIM(logo_url) <> ''
+ORDER BY updated_at DESC
+LIMIT 1
+''');
   }
 }

@@ -9,12 +9,13 @@ import '../../../core/theme/typography.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_loading_indicator.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 /// FEAT-013 — fullscreen QRIS display.
 ///
 /// Shows the branch's static QR with an optional [amount] tag (used at
 /// checkout) so customer's banking app can match against the displayed
-/// nominal. Tap-outside dismisses; explicit "Selesai" button confirms
+/// nominal. Tap-outside dismisses; explicit confirm button marks the
 /// payment at checkout flow.
 class QrisDisplaySheet extends StatelessWidget {
   const QrisDisplaySheet({
@@ -26,11 +27,11 @@ class QrisDisplaySheet extends StatelessWidget {
 
   final BranchRow branch;
 
-  /// When non-null, shows "Bayar [amount]" header — used at checkout.
+  /// When non-null, shows a payment amount header - used at checkout.
   /// When null, this is a free-standing QR preview (POS AppBar quick-view).
   final double? amount;
 
-  /// Optional — called when the user taps "Pembayaran Diterima" at the
+  /// Optional - called when the user taps payment received at the
   /// checkout flow. The caller is responsible for closing the sheet.
   final VoidCallback? onConfirmPaid;
 
@@ -60,6 +61,7 @@ class QrisDisplaySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final url = branch.qrisImageUrl;
     if (url == null || url.isEmpty) {
       return Padding(
@@ -70,18 +72,17 @@ class QrisDisplaySheet extends StatelessWidget {
             Icon(Icons.qr_code_2_outlined,
                 size: 56, color: context.colors.textTertiary),
             const SizedBox(height: AppSpacing.md),
-            Text('QRIS belum diunggah', style: AppTypography.titleMd),
+            Text(l10n.qrisNotUploadedTitle, style: AppTypography.titleMd),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Owner perlu upload QRIS lewat Pengaturan → QRIS Statis '
-              'untuk cabang ${branch.name}.',
+              l10n.qrisNotUploadedMessage(branch.name),
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.lg),
             AppButton(
-              label: 'Tutup',
+              label: l10n.qrisClose,
               variant: AppButtonVariant.secondary,
               onPressed: () => Navigator.of(context).pop(),
               fullWidth: true,
@@ -108,7 +109,7 @@ class QrisDisplaySheet extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              amount == null ? 'Scan untuk Bayar' : 'Bayar via QRIS',
+              amount == null ? l10n.qrisScanToPay : l10n.qrisPayViaQris,
               style: AppTypography.headlineMd,
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -152,16 +153,15 @@ class QrisDisplaySheet extends StatelessWidget {
                         const Center(child: AppLoadingIndicator()),
                     errorWidget: (_, __, ___) => Container(
                       color: context.colors.surfaceAlt,
-                      child: const Center(
+                      child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.cloud_off_outlined,
+                            const Icon(Icons.cloud_off_outlined,
                                 size: 48, color: AppColors.danger),
-                            SizedBox(height: AppSpacing.sm),
+                            const SizedBox(height: AppSpacing.sm),
                             Text(
-                              'Gambar tidak tersedia offline.\n'
-                              'Sambungkan internet untuk memuat ulang.',
+                              l10n.qrisImageOffline,
                               textAlign: TextAlign.center,
                             ),
                           ],
@@ -174,8 +174,7 @@ class QrisDisplaySheet extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
-              'Customer scan QR di atas dengan aplikasi mobile banking '
-              'atau e-wallet (GoPay, OVO, DANA, ShopeePay).',
+              l10n.qrisCustomerInstruction,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
               textAlign: TextAlign.center,
@@ -183,7 +182,7 @@ class QrisDisplaySheet extends StatelessWidget {
             const SizedBox(height: AppSpacing.lg),
             if (onConfirmPaid != null) ...[
               AppButton(
-                label: 'Pembayaran Diterima',
+                label: l10n.qrisPaymentReceived,
                 icon: Icons.check_circle_outline,
                 onPressed: onConfirmPaid,
                 size: AppButtonSize.primary,
@@ -191,14 +190,14 @@ class QrisDisplaySheet extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
               AppButton(
-                label: 'Batal',
+                label: l10n.actionCancel,
                 variant: AppButtonVariant.secondary,
                 onPressed: () => Navigator.of(context).pop(),
                 fullWidth: true,
               ),
             ] else
               AppButton(
-                label: 'Tutup',
+                label: l10n.qrisClose,
                 variant: AppButtonVariant.secondary,
                 onPressed: () => Navigator.of(context).pop(),
                 fullWidth: true,

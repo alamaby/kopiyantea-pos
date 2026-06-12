@@ -16,6 +16,7 @@ import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'bank_account_providers.dart';
 
 /// FEAT-015 — owner-only CRUD for global bank transfer accounts.
@@ -24,31 +25,29 @@ class BankAccountsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final accountsAsync = ref.watch(allBankAccountsProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Rekening Bank')),
+      appBar: AppBar(title: Text(l10n.settingsBankAccounts)),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_bank',
         onPressed: () => _showForm(context, ref, existing: null),
         icon: const Icon(Icons.add),
-        label: const Text('Tambah'),
+        label: Text(l10n.actionAdd),
       ),
       body: accountsAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat',
+          title: l10n.bankAccountsLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (rows) {
           if (rows.isEmpty) {
-            return const AppEmptyState(
-              title: 'Belum ada rekening',
+            return AppEmptyState(
+              title: l10n.bankAccountsEmptyTitle,
               icon: Icons.account_balance_outlined,
-              message:
-                  'Tap "Tambah" untuk menambahkan rekening bank. Kasir '
-                  'akan diminta memilih rekening saat metode pembayaran '
-                  'Transfer.',
+              message: l10n.bankAccountsEmptyMessage,
             );
           }
           return ListView.separated(
@@ -59,8 +58,7 @@ class BankAccountsScreen extends ConsumerWidget {
               AppSpacing.xxxxl,
             ),
             itemCount: rows.length,
-            separatorBuilder: (_, __) =>
-                const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (_, i) => _BankAccountTile(
               row: rows[i],
               onEdit: () => _showForm(context, ref, existing: rows[i]),
@@ -84,8 +82,7 @@ class BankAccountsScreen extends ConsumerWidget {
       useRootNavigator: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
       ),
       builder: (_) => _BankAccountForm(existing: existing),
     );
@@ -120,21 +117,22 @@ class BankAccountsScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.warning_amber_outlined,
             size: 36, color: AppColors.warning),
-        title: const Text('Hapus rekening?'),
+        title: Text(AppL10n.of(ctx).bankAccountsDeleteTitle),
         content: Text(
-          '${row.bankName} ${row.accountNumber} akan dihapus permanen. '
-          'Transaksi lama tetap menampilkan rekening ini (snapshot), '
-          'tapi tidak bisa dipilih lagi untuk transaksi baru.',
+          AppL10n.of(ctx).bankAccountsDeleteMessage(
+            row.bankName,
+            row.accountNumber,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(AppL10n.of(ctx).actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Hapus'),
+            child: Text(AppL10n.of(ctx).actionDelete),
           ),
         ],
       ),
@@ -167,6 +165,7 @@ class _BankAccountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -186,8 +185,8 @@ class _BankAccountTile extends StatelessWidget {
                 child: Text(row.bankName, style: AppTypography.titleMd),
               ),
               if (!row.isActive)
-                const AppBadge(
-                  label: 'Nonaktif',
+                AppBadge(
+                  label: l10n.bankAccountsInactive,
                   icon: Icons.pause_circle_outline,
                   tone: AppBadgeTone.neutral,
                 ),
@@ -202,7 +201,7 @@ class _BankAccountTile extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'a.n. ${row.accountHolder}',
+            l10n.checkoutAccountHolderPrefix(row.accountHolder),
             style: AppTypography.bodySm
                 .copyWith(color: context.colors.textSecondary),
           ),
@@ -211,7 +210,7 @@ class _BankAccountTile extends StatelessWidget {
             children: [
               Expanded(
                 child: AppButton(
-                  label: 'Ubah',
+                  label: l10n.bankAccountsEdit,
                   icon: Icons.edit_outlined,
                   variant: AppButtonVariant.secondary,
                   onPressed: onEdit,
@@ -220,7 +219,9 @@ class _BankAccountTile extends StatelessWidget {
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: AppButton(
-                  label: row.isActive ? 'Nonaktifkan' : 'Aktifkan',
+                  label: row.isActive
+                      ? l10n.bankAccountsDeactivate
+                      : l10n.bankAccountsActivate,
                   icon: row.isActive
                       ? Icons.pause_circle_outline
                       : Icons.play_circle_outline,
@@ -233,7 +234,7 @@ class _BankAccountTile extends StatelessWidget {
                 onPressed: onDelete,
                 icon: const Icon(Icons.delete_outline),
                 color: AppColors.danger,
-                tooltip: 'Hapus',
+                tooltip: l10n.actionDelete,
               ),
             ],
           ),
@@ -281,6 +282,7 @@ class _BankAccountFormState extends ConsumerState<_BankAccountForm> {
   }
 
   Future<void> _save() async {
+    final l10n = AppL10n.of(context);
     setState(() {
       _saving = true;
       _errorBank = null;
@@ -294,21 +296,21 @@ class _BankAccountFormState extends ConsumerState<_BankAccountForm> {
     if (bank.isEmpty) {
       setState(() {
         _saving = false;
-        _errorBank = 'Nama bank wajib';
+        _errorBank = l10n.bankAccountsBankRequired;
       });
       return;
     }
     if (number.isEmpty) {
       setState(() {
         _saving = false;
-        _errorNumber = 'Nomor rekening wajib';
+        _errorNumber = l10n.bankAccountsNumberRequired;
       });
       return;
     }
     if (holder.isEmpty) {
       setState(() {
         _saving = false;
-        _errorHolder = 'Nama pemilik wajib';
+        _errorHolder = l10n.bankAccountsHolderRequired;
       });
       return;
     }
@@ -339,6 +341,7 @@ class _BankAccountFormState extends ConsumerState<_BankAccountForm> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -364,7 +367,9 @@ class _BankAccountFormState extends ConsumerState<_BankAccountForm> {
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                widget.existing == null ? 'Tambah Rekening' : 'Ubah Rekening',
+                widget.existing == null
+                    ? l10n.bankAccountsAddTitle
+                    : l10n.bankAccountsEditTitle,
                 style: AppTypography.headlineMd,
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -372,8 +377,8 @@ class _BankAccountFormState extends ConsumerState<_BankAccountForm> {
                 controller: _bankCtrl,
                 autofocus: widget.existing == null,
                 decoration: InputDecoration(
-                  labelText: 'Nama Bank',
-                  hintText: 'mis. BCA, Mandiri, BNI',
+                  labelText: l10n.bankAccountsBankName,
+                  hintText: l10n.bankAccountsBankNameHint,
                   errorText: _errorBank,
                   prefixIcon: const Icon(Icons.account_balance_outlined),
                 ),
@@ -383,7 +388,7 @@ class _BankAccountFormState extends ConsumerState<_BankAccountForm> {
                 controller: _numberCtrl,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Nomor Rekening',
+                  labelText: l10n.bankAccountsAccountNumber,
                   hintText: '1234567890',
                   errorText: _errorNumber,
                   prefixIcon: const Icon(Icons.numbers),
@@ -394,15 +399,15 @@ class _BankAccountFormState extends ConsumerState<_BankAccountForm> {
                 controller: _holderCtrl,
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
-                  labelText: 'Atas Nama',
-                  hintText: 'Sesuai buku tabungan',
+                  labelText: l10n.bankAccountsAccountHolder,
+                  hintText: l10n.bankAccountsAccountHolderHint,
                   errorText: _errorHolder,
                   prefixIcon: const Icon(Icons.person_outline),
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),
               AppButton(
-                label: _saving ? 'Menyimpan…' : 'Simpan',
+                label: _saving ? l10n.bankAccountsSaving : l10n.actionSave,
                 icon: Icons.save_outlined,
                 onPressed: _saving ? null : _save,
                 isLoading: _saving,

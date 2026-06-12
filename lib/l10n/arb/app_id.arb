@@ -176,6 +176,35 @@
   "paymentOther": "Lainnya",
   "paymentBankAccount": "Rekening",
 
+  "bankAccountsLoadFailed": "Gagal memuat",
+  "bankAccountsEmptyTitle": "Belum ada rekening",
+  "bankAccountsEmptyMessage": "Tap \"Tambah\" untuk menambahkan rekening bank. Kasir akan diminta memilih rekening saat metode pembayaran Transfer.",
+  "bankAccountsNoActiveTitle": "Belum ada rekening aktif",
+  "bankAccountsNoActiveMessage": "Owner perlu menambahkan rekening lewat Pengaturan > Rekening Bank.",
+  "bankAccountsInactive": "Nonaktif",
+  "bankAccountsEdit": "Ubah",
+  "bankAccountsDeactivate": "Nonaktifkan",
+  "bankAccountsActivate": "Aktifkan",
+  "bankAccountsDeleteTitle": "Hapus rekening?",
+  "bankAccountsDeleteMessage": "{bankName} {accountNumber} akan dihapus permanen. Transaksi lama tetap menampilkan rekening ini (snapshot), tapi tidak bisa dipilih lagi untuk transaksi baru.",
+  "@bankAccountsDeleteMessage": {
+    "placeholders": {
+      "bankName": { "type": "String" },
+      "accountNumber": { "type": "String" }
+    }
+  },
+  "bankAccountsAddTitle": "Tambah Rekening",
+  "bankAccountsEditTitle": "Ubah Rekening",
+  "bankAccountsBankName": "Nama Bank",
+  "bankAccountsBankNameHint": "mis. BCA, Mandiri, BNI",
+  "bankAccountsAccountNumber": "Nomor Rekening",
+  "bankAccountsAccountHolder": "Atas Nama",
+  "bankAccountsAccountHolderHint": "Sesuai buku tabungan",
+  "bankAccountsBankRequired": "Nama bank wajib",
+  "bankAccountsNumberRequired": "Nomor rekening wajib",
+  "bankAccountsHolderRequired": "Nama pemilik wajib",
+  "bankAccountsSaving": "Menyimpan...",
+
   "homeWelcome": "Selamat datang",
   "homeSubtitle": "Pilih area kerja untuk mulai mengelola toko.",
   "homeShortcuts": "Pintasan",

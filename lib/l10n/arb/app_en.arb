@@ -176,6 +176,35 @@
   "paymentOther": "Other",
   "paymentBankAccount": "Account",
 
+  "bankAccountsLoadFailed": "Failed to load",
+  "bankAccountsEmptyTitle": "No bank accounts yet",
+  "bankAccountsEmptyMessage": "Tap \"Add\" to add a bank account. Cashiers will be asked to choose an account when using Transfer payment.",
+  "bankAccountsNoActiveTitle": "No active bank accounts",
+  "bankAccountsNoActiveMessage": "The owner needs to add a bank account from Settings > Bank Accounts.",
+  "bankAccountsInactive": "Inactive",
+  "bankAccountsEdit": "Edit",
+  "bankAccountsDeactivate": "Deactivate",
+  "bankAccountsActivate": "Activate",
+  "bankAccountsDeleteTitle": "Delete account?",
+  "bankAccountsDeleteMessage": "{bankName} {accountNumber} will be permanently deleted. Old transactions will still show this account snapshot, but it cannot be selected for new transactions.",
+  "@bankAccountsDeleteMessage": {
+    "placeholders": {
+      "bankName": { "type": "String" },
+      "accountNumber": { "type": "String" }
+    }
+  },
+  "bankAccountsAddTitle": "Add Account",
+  "bankAccountsEditTitle": "Edit Account",
+  "bankAccountsBankName": "Bank Name",
+  "bankAccountsBankNameHint": "e.g. BCA, Mandiri, BNI",
+  "bankAccountsAccountNumber": "Account Number",
+  "bankAccountsAccountHolder": "Account Holder",
+  "bankAccountsAccountHolderHint": "As shown in the bank book",
+  "bankAccountsBankRequired": "Bank name is required",
+  "bankAccountsNumberRequired": "Account number is required",
+  "bankAccountsHolderRequired": "Account holder name is required",
+  "bankAccountsSaving": "Saving...",
+
   "homeWelcome": "Welcome",
   "homeSubtitle": "Choose a workspace to start managing the store.",
   "homeShortcuts": "Shortcuts",

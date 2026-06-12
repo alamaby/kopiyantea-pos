@@ -8,6 +8,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'bank_account_providers.dart';
 
 /// FEAT-015 — bottom sheet to pick a bank account at checkout when the
@@ -36,6 +37,7 @@ class BankAccountPickerSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final accountsAsync = ref.watch(activeBankAccountsProvider);
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.7,
@@ -51,8 +53,10 @@ class BankAccountPickerSheet extends ConsumerWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text('Pilih Rekening Tujuan',
-                      style: AppTypography.headlineMd),
+                  child: Text(
+                    l10n.checkoutDestinationAccount,
+                    style: AppTypography.headlineMd,
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -66,18 +70,16 @@ class BankAccountPickerSheet extends ConsumerWidget {
             child: accountsAsync.when(
               loading: () => const Center(child: AppLoadingIndicator()),
               error: (e, _) => AppEmptyState(
-                title: 'Gagal memuat',
+                title: l10n.bankAccountsLoadFailed,
                 icon: Icons.error_outline,
                 message: e.toString(),
               ),
               data: (rows) {
                 if (rows.isEmpty) {
-                  return const AppEmptyState(
-                    title: 'Belum ada rekening aktif',
+                  return AppEmptyState(
+                    title: l10n.bankAccountsNoActiveTitle,
                     icon: Icons.account_balance_outlined,
-                    message:
-                        'Owner perlu menambahkan rekening lewat '
-                        'Pengaturan → Rekening Bank.',
+                    message: l10n.bankAccountsNoActiveMessage,
                   );
                 }
                 return ListView.separated(
@@ -112,9 +114,9 @@ class _AccountTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Material(
-      color:
-          selected ? AppColors.primarySurface : context.colors.surface,
+      color: selected ? AppColors.primarySurface : context.colors.surface,
       borderRadius: AppRadius.radiusLg,
       child: InkWell(
         onTap: onTap,
@@ -123,9 +125,7 @@ class _AccountTile extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             border: Border.all(
-              color: selected
-                  ? AppColors.primary
-                  : context.colors.border,
+              color: selected ? AppColors.primary : context.colors.border,
               width: selected ? 2 : 1,
             ),
             borderRadius: AppRadius.radiusLg,
@@ -150,7 +150,7 @@ class _AccountTile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'a.n. ${row.accountHolder}',
+                      l10n.checkoutAccountHolderPrefix(row.accountHolder),
                       style: AppTypography.bodySm.copyWith(
                         color: context.colors.textSecondary,
                       ),

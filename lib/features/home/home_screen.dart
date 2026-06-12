@@ -15,7 +15,6 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppL10n.of(context);
-    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.appTitle),
@@ -27,13 +26,10 @@ class HomeScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
-          Text(isEnglish ? 'Welcome' : 'Selamat datang',
-              style: AppTypography.displayMd),
+          Text(l10n.homeWelcome, style: AppTypography.displayMd),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            isEnglish
-                ? 'Choose a workspace to start managing the store.'
-                : 'Pilih area kerja untuk mulai mengelola toko.',
+            l10n.homeSubtitle,
             style: AppTypography.bodyMd
                 .copyWith(color: context.colors.textSecondary),
           ),
@@ -42,8 +38,7 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(isEnglish ? 'Shortcuts' : 'Pintasan',
-                    style: AppTypography.headlineMd),
+                Text(l10n.homeShortcuts, style: AppTypography.headlineMd),
                 const SizedBox(height: AppSpacing.md),
                 Wrap(
                   spacing: AppSpacing.sm,

@@ -15,7 +15,6 @@ class MoreScreen extends StatelessWidget {
 
   List<_MoreItem> _items(BuildContext context) {
     final l10n = AppL10n.of(context);
-    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     return [
       _MoreItem(
         label: l10n.navCustomers,
@@ -28,7 +27,7 @@ class MoreScreen extends StatelessWidget {
         route: '/more/inventory',
       ),
       _MoreItem(
-        label: isEnglish ? 'Shift Closing' : 'Tutup Kas',
+        label: l10n.navShiftClosing,
         icon: Icons.point_of_sale_outlined,
         route: '/more/reports/closing',
       ),

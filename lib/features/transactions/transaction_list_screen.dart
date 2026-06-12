@@ -11,11 +11,12 @@ import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/labels.dart';
+import '../../core/utils/localized_labels.dart';
 import '../../core/utils/transaction_numbers.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../customers/customer_providers.dart';
 import '../settings/branch_selection_provider.dart';
 import 'transaction_providers.dart';
@@ -26,6 +27,7 @@ class TransactionListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final branchAsync = ref.watch(selectedBranchProvider);
+    final l10n = AppL10n.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -34,7 +36,7 @@ class TransactionListScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Transaksi'),
+              Text(l10n.transactionsTitle),
               if (b != null)
                 Text(
                   b.name,
@@ -43,22 +45,22 @@ class TransactionListScreen extends ConsumerWidget {
                 ),
             ],
           ),
-          orElse: () => const Text('Transaksi'),
+          orElse: () => Text(l10n.transactionsTitle),
         ),
       ),
       body: branchAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat cabang',
+          title: l10n.transactionsLoadBranchFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (branch) {
           if (branch == null) {
-            return const AppEmptyState(
-              title: 'Belum memilih cabang',
+            return AppEmptyState(
+              title: l10n.transactionsNoBranchTitle,
               icon: Icons.store_outlined,
-              message: 'Pilih cabang aktif di Pengaturan.',
+              message: l10n.transactionsNoBranchMessage,
             );
           }
           return _TransactionList(branchId: branch.id);
@@ -107,6 +109,7 @@ class _TransactionListState extends ConsumerState<_TransactionList> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final txAsync = ref.watch(branchTransactionsProvider(widget.branchId));
     final customersMap = <String, String>{
       for (final c in (ref.watch(allCustomersProvider).valueOrNull ??
@@ -128,13 +131,13 @@ class _TransactionListState extends ConsumerState<_TransactionList> {
             onChanged: _onChanged,
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Cari #ID, pelanggan, total, metode bayar',
+              hintText: l10n.transactionsSearchHint,
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _query.isEmpty
                   ? null
                   : IconButton(
                       icon: const Icon(Icons.clear),
-                      tooltip: 'Bersihkan',
+                      tooltip: l10n.transactionsClearSearch,
                       onPressed: _clear,
                     ),
               border: OutlineInputBorder(
@@ -147,17 +150,16 @@ class _TransactionListState extends ConsumerState<_TransactionList> {
           child: txAsync.when(
             loading: () => const Center(child: AppLoadingIndicator()),
             error: (e, _) => AppEmptyState(
-              title: 'Gagal memuat transaksi',
+              title: l10n.transactionsLoadFailed,
               icon: Icons.error_outline,
               message: e.toString(),
             ),
             data: (txns) {
               if (txns.isEmpty) {
-                return const AppEmptyState(
-                  title: 'Belum ada transaksi',
+                return AppEmptyState(
+                  title: l10n.transactionsEmptyTitle,
                   icon: Icons.receipt_long_outlined,
-                  message:
-                      'Transaksi yang Anda buat di Kasir akan muncul di sini.',
+                  message: l10n.transactionsEmptyMessage,
                 );
               }
               final filtered = _query.isEmpty
@@ -167,17 +169,19 @@ class _TransactionListState extends ConsumerState<_TransactionList> {
                             tx: tx,
                             query: _query,
                             customerNameById: customersMap,
+                            l10n: l10n,
                           ))
                       .toList();
               if (filtered.isEmpty) {
                 return AppEmptyState(
-                  title: 'Tidak ditemukan',
+                  title: l10n.transactionsSearchNoResultTitle,
                   icon: Icons.search_off,
-                  message:
-                      'Tidak ada transaksi cocok dengan "${_searchCtrl.text}".',
+                  message: l10n.transactionsSearchNoResultMessage(
+                    _searchCtrl.text,
+                  ),
                 );
               }
-              final entries = _groupByDate(filtered);
+              final entries = _groupByDate(filtered, l10n);
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.lg,
@@ -207,6 +211,7 @@ bool _matchesQuery({
   required TransactionRow tx,
   required String query,
   required Map<String, String> customerNameById,
+  required AppL10n l10n,
 }) {
   final q = query.toLowerCase().replaceAll('#', '').trim();
   if (q.isEmpty) return true;
@@ -219,7 +224,9 @@ bool _matchesQuery({
 
   if (tx.total.toStringAsFixed(0).contains(q)) return true;
 
-  if (paymentMethodLabel(tx.paymentMethod).toLowerCase().contains(q)) {
+  if (localizedPaymentMethodLabel(l10n, tx.paymentMethod)
+      .toLowerCase()
+      .contains(q)) {
     return true;
   }
 
@@ -240,6 +247,7 @@ class _TxTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final transactionNumber = displayTransactionRowNumber(tx);
     final voided = tx.status == TransactionStatus.voided;
 
@@ -273,14 +281,14 @@ class _TxTile extends StatelessWidget {
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         if (voided)
-                          const AppBadge(
-                            label: 'Dibatalkan',
+                          AppBadge(
+                            label: l10n.transactionsStatusVoided,
                             icon: Icons.cancel_outlined,
                             tone: AppBadgeTone.danger,
                           )
                         else
-                          const AppBadge(
-                            label: 'Selesai',
+                          AppBadge(
+                            label: l10n.transactionsStatusCompleted,
                             icon: Icons.check_circle_outline,
                             tone: AppBadgeTone.success,
                           ),
@@ -288,7 +296,8 @@ class _TxTile extends StatelessWidget {
                     ),
                     const SizedBox(height: AppSpacing.xs),
                     Text(
-                      '${formatTime(tx.clientCreatedAt)}  ·  ${paymentMethodLabel(tx.paymentMethod)}',
+                      '${formatTime(tx.clientCreatedAt)}  ·  '
+                      '${localizedPaymentMethodLabel(l10n, tx.paymentMethod)}',
                       style: AppTypography.bodySm
                           .copyWith(color: context.colors.textSecondary),
                     ),
@@ -364,13 +373,13 @@ class _Row extends _Entry {
   final TransactionRow tx;
 }
 
-List<_Entry> _groupByDate(List<TransactionRow> txns) {
+List<_Entry> _groupByDate(List<TransactionRow> txns, AppL10n l10n) {
   final out = <_Entry>[];
   String? lastKey;
   for (final tx in txns) {
     final key = _dateKey(tx.clientCreatedAt);
     if (key != lastKey) {
-      out.add(_Header(_dateLabel(tx.clientCreatedAt)));
+      out.add(_Header(_dateLabel(tx.clientCreatedAt, l10n)));
       lastKey = key;
     }
     out.add(_Row(tx));
@@ -381,11 +390,11 @@ List<_Entry> _groupByDate(List<TransactionRow> txns) {
 String _dateKey(DateTime dt) =>
     '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
 
-String _dateLabel(DateTime dt) {
+String _dateLabel(DateTime dt, AppL10n l10n) {
   final today = DateTime.now();
   final yesterday = today.subtract(const Duration(days: 1));
-  if (_sameDay(dt, today)) return 'Hari ini';
-  if (_sameDay(dt, yesterday)) return 'Kemarin';
+  if (_sameDay(dt, today)) return l10n.dateToday;
+  if (_sameDay(dt, yesterday)) return l10n.dateYesterday;
   return formatDate(dt);
 }
 

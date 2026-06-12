@@ -40,7 +40,7 @@ class SettingsScreen extends ConsumerWidget {
       body: settings.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat pengaturan',
+          title: AppL10n.of(context).settingsLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
@@ -80,58 +80,59 @@ class _OwnerSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader(label: 'Khusus Pemilik'),
+          _SectionHeader(label: l10n.settingsOwnerOnly),
           const SizedBox(height: AppSpacing.sm),
           _SettingsNavTile(
             icon: Icons.people_outline,
-            title: 'Pengguna',
-            subtitle: 'Tambah kasir, manajer, atur akses cabang',
+            title: l10n.settingsUsers,
+            subtitle: l10n.settingsUsersSubtitle,
             route: '/more/settings/users',
           ),
           const Divider(height: 1),
           _SettingsNavTile(
             icon: Icons.category_outlined,
-            title: 'Kategori Produk',
-            subtitle: 'Atur nama, urutan & warna kategori menu',
+            title: l10n.settingsProductCategories,
+            subtitle: l10n.settingsProductCategoriesSubtitle,
             route: '/more/settings/categories',
           ),
           const Divider(height: 1),
           _SettingsNavTile(
             icon: Icons.tune_outlined,
-            title: 'Modifier Produk',
-            subtitle: 'Atur grup pilihan (gula, ukuran, dll.)',
+            title: l10n.settingsProductModifiers,
+            subtitle: l10n.settingsProductModifiersSubtitle,
             route: '/more/settings/modifiers',
           ),
           const Divider(height: 1),
           _SettingsNavTile(
             icon: Icons.percent_outlined,
-            title: 'Pajak',
-            subtitle: 'Tarif & label per cabang (PB1/PPN)',
+            title: l10n.settingsTax,
+            subtitle: l10n.settingsTaxSubtitle,
             route: '/more/settings/tax',
           ),
           const Divider(height: 1),
           _SettingsNavTile(
             icon: Icons.qr_code_2_outlined,
-            title: 'QRIS Statis',
-            subtitle: 'Unggah gambar QRIS per cabang',
+            title: l10n.settingsStaticQris,
+            subtitle: l10n.settingsStaticQrisSubtitle,
             route: '/more/settings/qris',
           ),
           const Divider(height: 1),
           _SettingsNavTile(
             icon: Icons.account_balance_outlined,
-            title: 'Rekening Bank',
-            subtitle: 'Daftar rekening untuk pembayaran transfer',
+            title: l10n.settingsBankAccounts,
+            subtitle: l10n.settingsBankAccountsSubtitle,
             route: '/more/settings/bank-accounts',
           ),
           const Divider(height: 1),
           _SettingsNavTile(
             icon: Icons.analytics_outlined,
-            title: 'Telemetri',
-            subtitle: 'Ukuran DB, antrian sinkronisasi, versi',
+            title: l10n.settingsTelemetry,
+            subtitle: l10n.settingsTelemetrySubtitle,
             route: '/more/settings/telemetry',
           ),
         ],
@@ -196,11 +197,12 @@ class _BranchSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader(label: 'Cabang'),
+          _SectionHeader(label: l10n.settingsBranch),
           const SizedBox(height: AppSpacing.sm),
           branchesAsync.when(
             loading: () => const Padding(
@@ -208,13 +210,13 @@ class _BranchSection extends ConsumerWidget {
               child: AppLoadingIndicator(),
             ),
             error: (e, _) => Text(
-              'Gagal memuat cabang: $e',
+              l10n.settingsBranchLoadFailed(e.toString()),
               style: AppTypography.bodySm.copyWith(color: AppColors.danger),
             ),
             data: (branches) {
               if (branches.isEmpty) {
                 return Text(
-                  'Tidak ada cabang tersedia',
+                  l10n.settingsNoBranches,
                   style: AppTypography.bodyMd
                       .copyWith(color: context.colors.textSecondary),
                 );
@@ -263,28 +265,29 @@ class _ThemeSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader(label: 'Tampilan'),
+          _SectionHeader(label: l10n.settingsAppearance),
           const SizedBox(height: AppSpacing.md),
           SegmentedButton<String>(
-            segments: const [
+            segments: [
               ButtonSegment(
                 value: 'system',
-                label: Text('Sistem'),
-                icon: Icon(Icons.smartphone_outlined),
+                label: Text(l10n.settingsThemeSystem),
+                icon: const Icon(Icons.smartphone_outlined),
               ),
               ButtonSegment(
                 value: 'light',
-                label: Text('Terang'),
-                icon: Icon(Icons.light_mode_outlined),
+                label: Text(l10n.settingsThemeLight),
+                icon: const Icon(Icons.light_mode_outlined),
               ),
               ButtonSegment(
                 value: 'dark',
-                label: Text('Gelap'),
-                icon: Icon(Icons.dark_mode_outlined),
+                label: Text(l10n.settingsThemeDark),
+                icon: const Icon(Icons.dark_mode_outlined),
               ),
             ],
             selected: {settings.themeMode},
@@ -315,13 +318,13 @@ class _LanguageSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final locale = ref.watch(localeControllerProvider);
-    final isEnglish = locale.languageCode == 'en';
+    final l10n = AppL10n.of(context);
 
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _SectionHeader(label: isEnglish ? 'Language' : 'Bahasa'),
+          _SectionHeader(label: l10n.settingsLanguage),
           const SizedBox(height: AppSpacing.md),
           SegmentedButton<String>(
             segments: const [
@@ -365,11 +368,12 @@ class _DeviceSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader(label: 'Perangkat'),
+          _SectionHeader(label: l10n.settingsDevice),
           SwitchListTile(
             value: settings.printEnabled,
             onChanged: (v) async {
@@ -378,11 +382,11 @@ class _DeviceSection extends ConsumerWidget {
                   .setPrintEnabled(v);
             },
             title: Text(
-              'Cetak struk otomatis',
+              l10n.settingsAutoPrintReceipt,
               style: AppTypography.titleMd,
             ),
             subtitle: Text(
-              'Kirim struk ke printer Bluetooth setelah pembayaran',
+              l10n.settingsAutoPrintReceiptSubtitle,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -403,10 +407,11 @@ class _DeviceSection extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Printer Struk', style: AppTypography.titleMd),
+                        Text(l10n.settingsReceiptPrinter,
+                            style: AppTypography.titleMd),
                         Text(
                           settings.lastPrinterAddress ??
-                              'Belum ada printer terhubung',
+                              l10n.settingsNoPrinterConnected,
                           style: AppTypography.bodySm.copyWith(
                             color: context.colors.textSecondary,
                           ),
@@ -437,9 +442,10 @@ class _DeviceSection extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Tampilan Struk', style: AppTypography.titleMd),
+                        Text(l10n.settingsReceiptDisplay,
+                            style: AppTypography.titleMd),
                         Text(
-                          'Logo, header, footer per cabang',
+                          l10n.settingsReceiptDisplaySubtitle,
                           style: AppTypography.bodySm.copyWith(
                             color: context.colors.textSecondary,
                           ),
@@ -473,9 +479,10 @@ class _DeviceSection extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Image Menu', style: AppTypography.titleMd),
+                        Text(l10n.settingsMenuImage,
+                            style: AppTypography.titleMd),
                         Text(
-                          'Konten, kolom, dan warna share menu',
+                          l10n.settingsMenuImageSubtitle,
                           style: AppTypography.bodySm.copyWith(
                             color: context.colors.textSecondary,
                           ),
@@ -507,15 +514,15 @@ class _BackupSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader(label: 'Backup Pengaturan'),
+          _SectionHeader(label: l10n.settingsBackup),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            'Salin pengaturan device ini ke clipboard untuk dipindahkan '
-            'ke device lain. Tidak termasuk data transaksi.',
+            l10n.settingsBackupDescription,
             style: AppTypography.bodySm
                 .copyWith(color: context.colors.textSecondary),
           ),
@@ -523,14 +530,14 @@ class _BackupSection extends ConsumerWidget {
           Row(
             children: [
               AppButton(
-                label: 'Ekspor',
+                label: l10n.actionExport,
                 icon: Icons.upload_outlined,
                 variant: AppButtonVariant.secondary,
                 onPressed: () => _export(context, ref),
               ),
               const SizedBox(width: AppSpacing.sm),
               AppButton(
-                label: 'Impor',
+                label: l10n.actionImport,
                 icon: Icons.download_outlined,
                 variant: AppButtonVariant.secondary,
                 onPressed: () => _import(context, ref),
@@ -544,46 +551,45 @@ class _BackupSection extends ConsumerWidget {
 
   Future<void> _export(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     try {
       final json =
           await ref.read(settingsNotifierProvider.notifier).exportToJson();
       await Clipboard.setData(ClipboardData(text: json));
       messenger.showSnackBar(
-        const SnackBar(content: Text('Pengaturan disalin ke clipboard')),
+        SnackBar(content: Text(l10n.settingsCopiedToClipboard)),
       );
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Gagal ekspor: $e')),
+        SnackBar(content: Text(l10n.settingsExportFailed(e.toString()))),
       );
     }
   }
 
   Future<void> _import(BuildContext context, WidgetRef ref) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     final raw = data?.text?.trim();
     if (raw == null || raw.isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('Clipboard kosong')),
+        SnackBar(content: Text(l10n.settingsClipboardEmpty)),
       );
       return;
     }
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Impor pengaturan?'),
-        content: const Text(
-          'Pengaturan device ini akan ditimpa dengan isi clipboard. '
-          'Tindakan ini tidak bisa di-undo.',
-        ),
+        title: Text(l10n.settingsImportTitle),
+        content: Text(l10n.settingsImportMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Timpa'),
+            child: Text(l10n.actionOverwrite),
           ),
         ],
       ),
@@ -594,15 +600,15 @@ class _BackupSection extends ConsumerWidget {
           await ref.read(settingsNotifierProvider.notifier).applyFromJson(raw);
       await ref.read(localeControllerProvider.notifier).reload();
       messenger.showSnackBar(
-        SnackBar(content: Text('$n pengaturan dipulihkan')),
+        SnackBar(content: Text(l10n.settingsRestoredCount(n))),
       );
     } on FormatException catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Gagal impor: ${e.message}')),
+        SnackBar(content: Text(l10n.settingsImportFailed(e.message))),
       );
     } catch (e) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Gagal impor: $e')),
+        SnackBar(content: Text(l10n.settingsImportFailed(e.toString()))),
       );
     }
   }
@@ -620,6 +626,7 @@ class _AboutSectionState extends State<_AboutSection> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return AppCard(
       child: FutureBuilder<PackageInfo>(
         future: _packageInfo,
@@ -627,16 +634,16 @@ class _AboutSectionState extends State<_AboutSection> {
           final packageInfo = snapshot.data;
           final appName = packageInfo?.appName ?? AppConstants.appName;
           final version = packageInfo == null
-              ? 'Memuat...'
+              ? l10n.statusLoadingPlain
               : '${packageInfo.version}+${packageInfo.buildNumber}';
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _SectionHeader(label: 'Tentang'),
+              _SectionHeader(label: l10n.settingsAbout),
               const SizedBox(height: AppSpacing.sm),
               _SettingsNavTile(
                 icon: Icons.info_outline,
-                title: 'Tentang Aplikasi',
+                title: l10n.settingsAboutApp,
                 subtitle: '$appName $version',
                 route: '/more/settings/about',
               ),
@@ -679,12 +686,13 @@ class _SignOutSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final user = ref.watch(currentUserProvider);
     final branchesAsync = ref.watch(allBranchesProvider);
     final selectedBranchAsync = ref.watch(selectedBranchProvider);
     final authUser = ref.watch(supabaseClientProvider).auth.currentUser;
-    final loginProviders = _loginProviders(authUser?.appMetadata);
-    final lastLogin = _lastLoginLabel(authUser?.lastSignInAt);
+    final loginProviders = _loginProviders(authUser?.appMetadata, l10n);
+    final lastLogin = _lastLoginLabel(authUser?.lastSignInAt, l10n);
     final hasSaved =
         settings.lastLoginEmail != null && settings.lastLoginEmail!.isNotEmpty;
 
@@ -692,7 +700,7 @@ class _SignOutSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionHeader(label: 'Akun'),
+          _SectionHeader(label: l10n.settingsAccount),
           const SizedBox(height: AppSpacing.sm),
           if (user != null) ...[
             Row(
@@ -719,7 +727,9 @@ class _SignOutSection extends ConsumerWidget {
                       Text(user.fullName, style: AppTypography.titleMd),
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        user.email ?? authUser?.email ?? 'Email tidak tersedia',
+                        user.email ??
+                            authUser?.email ??
+                            l10n.settingsEmailUnavailable,
                         style: AppTypography.bodySm.copyWith(
                           color: context.colors.textSecondary,
                         ),
@@ -734,28 +744,28 @@ class _SignOutSection extends ConsumerWidget {
             const SizedBox(height: AppSpacing.lg),
             _AccountInfoRow(
               icon: Icons.storefront_outlined,
-              label: 'Cabang aktif',
+              label: l10n.settingsActiveBranch,
               value: selectedBranchAsync.maybeWhen(
-                data: (branch) => branch?.name ?? 'Belum dipilih',
-                orElse: () => 'Memuat...',
+                data: (branch) => branch?.name ?? l10n.settingsNotSelected,
+                orElse: () => l10n.statusLoadingPlain,
               ),
             ),
             _AccountInfoRow(
               icon: Icons.account_tree_outlined,
-              label: 'Akses cabang',
+              label: l10n.settingsBranchAccess,
               value: branchesAsync.maybeWhen(
-                data: (branches) => '${branches.length} cabang',
-                orElse: () => 'Memuat...',
+                data: (branches) => l10n.settingsBranchCount(branches.length),
+                orElse: () => l10n.statusLoadingPlain,
               ),
             ),
             _AccountInfoRow(
               icon: Icons.verified_user_outlined,
-              label: 'Login',
+              label: l10n.settingsLogin,
               value: loginProviders,
             ),
             _AccountInfoRow(
               icon: Icons.history_outlined,
-              label: 'Terakhir login',
+              label: l10n.settingsLastLogin,
               value: lastLogin,
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -767,11 +777,12 @@ class _SignOutSection extends ConsumerWidget {
                   .read(settingsNotifierProvider.notifier)
                   .setRememberMe(v);
             },
-            title: Text('Ingat email login', style: AppTypography.titleMd),
+            title: Text(l10n.settingsRememberLoginEmail,
+                style: AppTypography.titleMd),
             subtitle: Text(
               hasSaved && settings.rememberMe
-                  ? 'Tersimpan: ${settings.lastLoginEmail}'
-                  : 'Email akan otomatis terisi di layar masuk',
+                  ? l10n.settingsSavedEmail(settings.lastLoginEmail!)
+                  : l10n.settingsLoginEmailPrefill,
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -781,7 +792,7 @@ class _SignOutSection extends ConsumerWidget {
           if (hasSaved) ...[
             const SizedBox(height: AppSpacing.sm),
             AppButton(
-              label: 'Hapus Email Tersimpan',
+              label: l10n.settingsClearSavedEmail,
               icon: Icons.delete_sweep_outlined,
               variant: AppButtonVariant.secondary,
               onPressed: () async {
@@ -794,7 +805,7 @@ class _SignOutSection extends ConsumerWidget {
           ],
           const SizedBox(height: AppSpacing.lg),
           AppButton(
-            label: 'Keluar',
+            label: l10n.actionSignOut,
             icon: Icons.logout,
             variant: AppButtonVariant.danger,
             onPressed: () => _confirmSignOut(context, ref),
@@ -806,22 +817,21 @@ class _SignOutSection extends ConsumerWidget {
   }
 
   Future<void> _confirmSignOut(BuildContext context, WidgetRef ref) async {
+    final l10n = AppL10n.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Keluar dari akun?'),
-        content: const Text(
-          'Anda akan kembali ke layar masuk. Transaksi yang belum tersinkron akan tetap tersimpan di perangkat.',
-        ),
+        title: Text(l10n.settingsSignOutTitle),
+        content: Text(l10n.settingsSignOutMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Batal'),
+            child: Text(l10n.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Keluar'),
+            child: Text(l10n.actionSignOut),
           ),
         ],
       ),
@@ -838,19 +848,20 @@ class _RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return switch (role) {
-      GlobalRole.owner => const AppBadge(
-          label: 'Owner',
+      GlobalRole.owner => AppBadge(
+          label: l10n.settingsRoleOwner,
           icon: Icons.admin_panel_settings_outlined,
           tone: AppBadgeTone.warning,
         ),
-      GlobalRole.manager => const AppBadge(
-          label: 'Manager',
+      GlobalRole.manager => AppBadge(
+          label: l10n.settingsRoleManager,
           icon: Icons.supervisor_account_outlined,
           tone: AppBadgeTone.info,
         ),
-      GlobalRole.cashier => const AppBadge(
-          label: 'Kasir',
+      GlobalRole.cashier => AppBadge(
+          label: l10n.settingsRoleCashier,
           icon: Icons.point_of_sale_outlined,
           tone: AppBadgeTone.success,
         ),
@@ -900,14 +911,14 @@ class _AccountInfoRow extends StatelessWidget {
   }
 }
 
-String _loginProviders(Map<String, dynamic>? metadata) {
+String _loginProviders(Map<String, dynamic>? metadata, AppL10n l10n) {
   final raw = metadata?['providers'];
   final providers = raw is List
       ? raw.whereType<String>().toList()
       : <String>[
           if (metadata?['provider'] case final String provider) provider,
         ];
-  if (providers.isEmpty) return 'Tidak diketahui';
+  if (providers.isEmpty) return l10n.statusUnknown;
   return providers.map(_providerLabel).join(' + ');
 }
 
@@ -917,10 +928,12 @@ String _providerLabel(String provider) => switch (provider) {
       _ => provider,
     };
 
-String _lastLoginLabel(String? raw) {
-  if (raw == null || raw.isEmpty) return 'Tidak tersedia';
+String _lastLoginLabel(String? raw, AppL10n l10n) {
+  if (raw == null || raw.isEmpty) return l10n.statusUnavailable;
   final parsed = DateTime.tryParse(raw);
-  return parsed == null ? 'Tidak tersedia' : formatDateTime(parsed.toLocal());
+  return parsed == null
+      ? l10n.statusUnavailable
+      : formatDateTime(parsed.toLocal());
 }
 
 // ── Sync section ──────────────────────────────────────────────────────────────
@@ -930,6 +943,7 @@ class _SyncSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppL10n.of(context);
     final pendingAsync = ref.watch(pendingOutboxCountProvider);
     final syncState = ref.watch(syncProvider);
 
@@ -939,17 +953,17 @@ class _SyncSection extends ConsumerWidget {
         children: [
           Row(
             children: [
-              const _SectionHeader(label: 'Sinkronisasi'),
+              _SectionHeader(label: l10n.settingsSync),
               const Spacer(),
               pendingAsync.maybeWhen(
                 data: (count) => count > 0
                     ? AppBadge(
-                        label: '$count menunggu',
+                        label: l10n.settingsWaitingCount(count),
                         icon: Icons.cloud_upload_outlined,
                         tone: AppBadgeTone.warning,
                       )
-                    : const AppBadge(
-                        label: 'Tersinkron',
+                    : AppBadge(
+                        label: l10n.statusSyncCompleted,
                         icon: Icons.cloud_done_outlined,
                         tone: AppBadgeTone.success,
                       ),
@@ -959,19 +973,21 @@ class _SyncSection extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           _Row(
-            label: 'Terakhir sinkron',
+            label: l10n.settingsLastSync,
             value: syncState.lastSyncAt == null
-                ? 'Belum pernah'
+                ? l10n.statusNever
                 : formatDateTime(syncState.lastSyncAt!),
           ),
           if (syncState.lastPushed > 0 ||
               syncState.lastFailed > 0 ||
               syncState.lastPulled > 0)
             _Row(
-              label: 'Hasil terakhir',
-              value: '${syncState.lastPushed} kirim · '
-                  '${syncState.lastPulled} terima · '
-                  '${syncState.lastFailed} gagal',
+              label: l10n.settingsLastResult,
+              value: l10n.settingsSyncResult(
+                syncState.lastPushed,
+                syncState.lastPulled,
+                syncState.lastFailed,
+              ),
             ),
           if (syncState.lastError != null) ...[
             const SizedBox(height: AppSpacing.sm),
@@ -989,7 +1005,8 @@ class _SyncSection extends ConsumerWidget {
           ],
           const SizedBox(height: AppSpacing.md),
           AppButton(
-            label: syncState.isSyncing ? 'Menyinkronkan…' : 'Sinkron Sekarang',
+            label:
+                syncState.isSyncing ? l10n.statusSyncing : l10n.settingsSyncNow,
             icon: Icons.sync,
             onPressed: syncState.isSyncing
                 ? null
@@ -1006,7 +1023,7 @@ class _SyncSection extends ConsumerWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           AppButton(
-            label: 'Lihat Antrian',
+            label: l10n.settingsViewQueue,
             icon: Icons.list_alt_outlined,
             variant: AppButtonVariant.secondary,
             onPressed: () => context.push('/more/settings/sync'),

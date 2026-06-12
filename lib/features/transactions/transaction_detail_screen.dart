@@ -8,13 +8,14 @@ import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
-import '../../core/utils/labels.dart';
+import '../../core/utils/localized_labels.dart';
 import '../../core/utils/transaction_numbers.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import '../../core/utils/result.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../auth/auth_provider.dart';
 import '../customers/customer_providers.dart';
 import '../pos/print_receipt_use_case.dart';
@@ -30,20 +31,21 @@ class TransactionDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailAsync = ref.watch(transactionDetailProvider(transactionId));
+    final l10n = AppL10n.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detail Transaksi')),
+      appBar: AppBar(title: Text(l10n.transactionsDetailTitle)),
       body: detailAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat transaksi',
+          title: l10n.transactionsLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (data) {
           if (data == null) {
-            return const AppEmptyState(
-              title: 'Transaksi tidak ditemukan',
+            return AppEmptyState(
+              title: l10n.transactionsNotFound,
               icon: Icons.search_off_outlined,
             );
           }
@@ -127,6 +129,7 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final tx = widget.tx;
     if (widget.voided) {
       // It's a void row — nothing to act on.
@@ -147,7 +150,7 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _SectionLabel('Aksi'),
+          _SectionLabel(l10n.transactionsActions),
           const SizedBox(height: AppSpacing.sm),
           if (alreadyVoided) ...[
             voidAsync.maybeWhen(
@@ -167,8 +170,10 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
                           Expanded(
                             child: Text(
                               v.voidReason == null || v.voidReason!.isEmpty
-                                  ? 'Transaksi ini sudah dibatalkan'
-                                  : 'Sudah dibatalkan — ${v.voidReason}',
+                                  ? l10n.transactionsAlreadyVoided
+                                  : l10n.transactionsAlreadyVoidedReason(
+                                      v.voidReason!,
+                                    ),
                               style: AppTypography.bodySm
                                   .copyWith(color: AppColors.danger),
                             ),
@@ -181,7 +186,7 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
             const SizedBox(height: AppSpacing.sm),
           ],
           AppButton(
-            label: 'Share Struk',
+            label: l10n.receiptShare,
             icon: Icons.ios_share_outlined,
             variant: AppButtonVariant.secondary,
             onPressed: _isSharing ? null : () => _share(context),
@@ -190,7 +195,7 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
           ),
           const SizedBox(height: AppSpacing.sm),
           AppButton(
-            label: 'Cetak Ulang Struk',
+            label: l10n.receiptReprint,
             icon: Icons.print_outlined,
             variant: AppButtonVariant.secondary,
             onPressed: _isPrinting ? null : () => _reprint(context),
@@ -200,7 +205,7 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
           if (canVoid && !alreadyVoided) ...[
             const SizedBox(height: AppSpacing.sm),
             AppButton(
-              label: 'Batalkan Transaksi',
+              label: l10n.transactionsVoidAction,
               icon: Icons.cancel_outlined,
               variant: AppButtonVariant.danger,
               onPressed: () => _confirmVoid(context, ref),
@@ -214,6 +219,7 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
 
   Future<void> _share(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     setState(() => _isSharing = true);
     final renderObject = context.findRenderObject();
     final box = renderObject is RenderBox ? renderObject : null;
@@ -228,13 +234,13 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
       if (!context.mounted) return;
       if (!shared) {
         messenger.showSnackBar(
-          const SnackBar(content: Text('Struk tidak bisa dibagikan')),
+          SnackBar(content: Text(l10n.receiptCannotShare)),
         );
       }
     } catch (e) {
       if (!context.mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('Gagal share struk: $e')),
+        SnackBar(content: Text(l10n.receiptShareFailed(e.toString()))),
       );
     } finally {
       if (mounted) setState(() => _isSharing = false);
@@ -243,6 +249,7 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
 
   Future<void> _reprint(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     setState(() => _isPrinting = true);
     try {
       final result =
@@ -251,11 +258,11 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
       switch (result) {
         case Ok():
           messenger.showSnackBar(
-            const SnackBar(content: Text('Struk dikirim ke printer')),
+            SnackBar(content: Text(l10n.receiptSentToPrinter)),
           );
         case Err(:final error):
           messenger.showSnackBar(
-            SnackBar(content: Text('Gagal cetak: ${error.name}')),
+            SnackBar(content: Text(l10n.receiptPrintFailed(error.name))),
           );
       }
     } finally {
@@ -266,28 +273,29 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
   Future<void> _confirmVoid(BuildContext context, WidgetRef ref) async {
     final reasonCtrl = TextEditingController();
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppL10n.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         icon: const Icon(Icons.warning_amber_outlined,
             size: 36, color: AppColors.danger),
-        title: const Text('Batalkan transaksi?'),
+        title: Text(l10n.transactionsVoidTitle),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Transaksi #${displayTransactionRowNumber(widget.tx)} akan '
-              'dibatalkan. Stok bahan akan dikembalikan secara otomatis. '
-              'Aksi ini tidak bisa dibatalkan.',
+              l10n.transactionsVoidMessage(
+                displayTransactionRowNumber(widget.tx),
+              ),
               style: AppTypography.bodySm,
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
               controller: reasonCtrl,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Alasan (opsional)',
-                hintText: 'mis. Salah pesan, item rusak',
+              decoration: InputDecoration(
+                labelText: l10n.transactionsVoidReasonLabel,
+                hintText: l10n.transactionsVoidReasonHint,
               ),
             ),
           ],
@@ -295,12 +303,12 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Tidak'),
+            child: Text(l10n.transactionsVoidNo),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Batalkan Transaksi'),
+            child: Text(l10n.transactionsVoidAction),
           ),
         ],
       ),
@@ -317,11 +325,11 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
         ref.invalidate(transactionDetailProvider(widget.tx.id));
         ref.invalidate(voidForTransactionProvider(widget.tx.id));
         messenger.showSnackBar(
-          const SnackBar(content: Text('Transaksi dibatalkan')),
+          SnackBar(content: Text(l10n.transactionsVoidedSuccess)),
         );
       case Err(:final error):
         messenger.showSnackBar(
-          SnackBar(content: Text('Gagal membatalkan: ${error.name}')),
+          SnackBar(content: Text(l10n.transactionsVoidFailed(error.name))),
         );
     }
   }
@@ -338,6 +346,7 @@ class _CustomerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
@@ -360,7 +369,7 @@ class _CustomerCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('PELANGGAN',
+                Text(l10n.transactionsCustomer.toUpperCase(),
                     style: AppTypography.labelSm.copyWith(
                       color: context.colors.textSecondary,
                       letterSpacing: 0.8,
@@ -376,7 +385,9 @@ class _CustomerCard extends StatelessWidget {
                   ),
                 if (transactionPoints != 0)
                   Text(
-                    'Poin transaksi: ${transactionPoints > 0 ? '+' : ''}$transactionPoints',
+                    l10n.transactionsPointsDelta(
+                      '${transactionPoints > 0 ? '+' : ''}$transactionPoints',
+                    ),
                     style: AppTypography.bodySm.copyWith(
                       color: context.colors.textSecondary,
                     ),
@@ -395,7 +406,7 @@ class _CustomerCard extends StatelessWidget {
                 borderRadius: AppRadius.radiusSm,
               ),
               child: Text(
-                '${customer.loyaltyPoints} poin',
+                l10n.transactionsPoints(customer.loyaltyPoints),
                 style: AppTypography.labelSm.copyWith(color: AppColors.accent),
               ),
             ),
@@ -420,6 +431,7 @@ class _HeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,14 +446,14 @@ class _HeaderCard extends StatelessWidget {
               ),
               const Spacer(),
               if (voided)
-                const AppBadge(
-                  label: 'Dibatalkan',
+                AppBadge(
+                  label: l10n.transactionsStatusVoided,
                   icon: Icons.cancel_outlined,
                   tone: AppBadgeTone.danger,
                 )
               else
-                const AppBadge(
-                  label: 'Selesai',
+                AppBadge(
+                  label: l10n.transactionsStatusCompleted,
                   icon: Icons.check_circle_outline,
                   tone: AppBadgeTone.success,
                 ),
@@ -456,7 +468,7 @@ class _HeaderCard extends StatelessWidget {
           if (voided && tx.voidReason != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
-              'Alasan pembatalan: ${tx.voidReason}',
+              l10n.transactionsVoidReason(tx.voidReason!),
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
@@ -475,11 +487,12 @@ class _ItemsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionLabel('Item'),
+          _SectionLabel(l10n.transactionsItems),
           const SizedBox(height: AppSpacing.sm),
           for (var i = 0; i < items.length; i++) ...[
             if (i > 0) const Divider(height: AppSpacing.lg),
@@ -502,6 +515,7 @@ class _ItemRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final qty = item.quantity == item.quantity.roundToDouble()
         ? item.quantity.toStringAsFixed(0)
         : item.quantity.toString();
@@ -522,7 +536,7 @@ class _ItemRow extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          '${formatRupiah(item.priceSnapshot)} per item',
+          l10n.transactionsPerItem(formatRupiah(item.priceSnapshot)),
           style: AppTypography.bodySm
               .copyWith(color: context.colors.textSecondary),
         ),
@@ -584,27 +598,31 @@ class _TotalsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
+    final taxLabel = tx.taxInclusiveSnapshot
+        ? l10n.transactionsTaxInclusive(tx.taxLabelSnapshot)
+        : l10n.transactionsTax(tx.taxLabelSnapshot);
+
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionLabel('Ringkasan'),
+          _SectionLabel(l10n.transactionsSummary),
           const SizedBox(height: AppSpacing.sm),
-          _KV(label: 'Subtotal', value: formatRupiah(tx.subtotal)),
+          _KV(label: l10n.posSubtotal, value: formatRupiah(tx.subtotal)),
           if (tx.discountAmount > 0)
             _KV(
-              label: 'Diskon',
+              label: l10n.posDiscount,
               value: '-${formatRupiah(tx.discountAmount)}',
               valueColor: AppColors.accent,
             ),
           _KV(
-            label:
-                'Pajak (${tx.taxLabelSnapshot}${tx.taxInclusiveSnapshot ? " inc." : ""})',
+            label: taxLabel,
             value: formatRupiah(tx.taxAmount),
           ),
           const Divider(height: AppSpacing.lg),
           _KV(
-            label: 'Total',
+            label: l10n.posTotal,
             value: formatRupiah(tx.total),
             highlight: true,
           ),
@@ -621,21 +639,28 @@ class _PaymentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _SectionLabel('Pembayaran'),
+          _SectionLabel(l10n.transactionsPayment),
           const SizedBox(height: AppSpacing.sm),
-          _KV(label: 'Metode', value: paymentMethodLabel(tx.paymentMethod)),
+          _KV(
+            label: l10n.paymentMethod,
+            value: localizedPaymentMethodLabel(l10n, tx.paymentMethod),
+          ),
           if (tx.bankAccountSnapshot != null &&
               tx.bankAccountSnapshot!.isNotEmpty)
-            _KV(label: 'Rekening', value: tx.bankAccountSnapshot!),
+            _KV(label: l10n.paymentBankAccount, value: tx.bankAccountSnapshot!),
           if (tx.paymentReceived != null)
-            _KV(label: 'Diterima', value: formatRupiah(tx.paymentReceived!)),
+            _KV(
+              label: l10n.posPaymentReceived,
+              value: formatRupiah(tx.paymentReceived!),
+            ),
           if (tx.paymentChange != null && tx.paymentChange! > 0)
             _KV(
-              label: 'Kembalian',
+              label: l10n.posPaymentChange,
               value: formatRupiah(tx.paymentChange!),
               valueColor: AppColors.success,
             ),

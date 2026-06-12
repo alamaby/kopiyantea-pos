@@ -21,6 +21,7 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'branch_selection_provider.dart';
 
 /// FEAT-014 — per-branch receipt template configuration.
@@ -30,19 +31,20 @@ class ReceiptSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final branchesAsync = ref.watch(allBranchesProvider);
+    final l10n = AppL10n.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Tampilan Struk')),
+      appBar: AppBar(title: Text(l10n.settingsReceiptDisplay)),
       body: branchesAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => AppEmptyState(
-          title: 'Gagal memuat cabang',
+          title: l10n.settingsBranchesLoadFailed,
           icon: Icons.error_outline,
           message: e.toString(),
         ),
         data: (branches) {
           if (branches.isEmpty) {
-            return const AppEmptyState(
-              title: 'Belum ada cabang',
+            return AppEmptyState(
+              title: l10n.settingsNoBranches,
               icon: Icons.store_outlined,
             );
           }
@@ -162,7 +164,11 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
     if (!mounted) return;
     setState(() => _saving = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Tersimpan untuk ${widget.branch.name}')),
+      SnackBar(
+        content: Text(AppL10n.of(context).receiptSettingsSaved(
+          widget.branch.name,
+        )),
+      ),
     );
     _load();
   }
@@ -175,12 +181,12 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           children: [
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Pilih dari Galeri'),
+              title: Text(AppL10n.of(ctx).catalogProductChooseFromGallery),
               onTap: () => Navigator.pop(ctx, ImageSource_.gallery),
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Ambil dari Kamera'),
+              title: Text(AppL10n.of(ctx).catalogProductTakeFromCamera),
               onTap: () => Navigator.pop(ctx, ImageSource_.camera),
             ),
           ],
@@ -211,7 +217,11 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
       case Err(:final error):
         if (error == ImageUploadError.cancelled) return;
         messenger.showSnackBar(
-          SnackBar(content: Text('Gagal upload: ${error.name}')),
+          SnackBar(
+            content: Text(AppL10n.of(context).catalogProductUploadFailed(
+              error.name,
+            )),
+          ),
         );
     }
   }
@@ -230,6 +240,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (!_loaded) {
       return const AppCard(
         child: SizedBox(
@@ -261,7 +272,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           const SizedBox(height: AppSpacing.lg),
 
           // Logo
-          _LabelRow(label: 'Logo'),
+          _LabelRow(label: l10n.receiptSettingsLogo),
           if (_logoUrl != null && _logoUrl!.isNotEmpty) ...[
             Container(
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -300,7 +311,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
                       size: 36, color: context.colors.textTertiary),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Belum ada logo',
+                    l10n.receiptSettingsNoLogo,
                     style: AppTypography.bodySm.copyWith(
                       color: context.colors.textSecondary,
                     ),
@@ -313,7 +324,9 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
             children: [
               Expanded(
                 child: AppButton(
-                  label: _logoUrl == null ? 'Unggah Logo' : 'Ganti Logo',
+                  label: _logoUrl == null
+                      ? l10n.receiptSettingsUploadLogo
+                      : l10n.receiptSettingsChangeLogo,
                   icon: Icons.upload_outlined,
                   variant: AppButtonVariant.secondary,
                   onPressed: _uploadingLogo ? null : _uploadLogo,
@@ -325,7 +338,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
                 IconButton(
                   onPressed: _uploadingLogo ? null : _removeLogo,
                   icon: const Icon(Icons.delete_outline),
-                  tooltip: 'Hapus logo',
+                  tooltip: l10n.receiptSettingsDeleteLogo,
                   color: AppColors.danger,
                 ),
               ],
@@ -340,9 +353,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
                 borderRadius: AppRadius.radiusSm,
               ),
               child: Text(
-                'Format ideal: PNG hitam-putih, latar putih, max 384px '
-                'lebar (58mm) atau 576px (80mm). Logo dengan gradasi/warna '
-                'akan di-dither ke B&W oleh printer.',
+                l10n.receiptSettingsLogoFormatHelp,
                 style: AppTypography.labelSm
                     .copyWith(color: context.colors.textSecondary),
               ),
@@ -351,23 +362,26 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
             SwitchListTile(
               value: _showLogo,
               onChanged: (v) => setState(() => _showLogo = v),
-              title: Text('Tampilkan di struk', style: AppTypography.titleMd),
+              title: Text(
+                l10n.receiptSettingsShowOnReceipt,
+                style: AppTypography.titleMd,
+              ),
               contentPadding: EdgeInsets.zero,
               activeColor: AppColors.primary,
             ),
             if (_showLogo) ...[
-              _LabelRow(label: 'Posisi logo'),
+              _LabelRow(label: l10n.receiptSettingsLogoPosition),
               SegmentedButton<String>(
-                segments: const [
+                segments: [
                   ButtonSegment(
                     value: 'top',
-                    label: Text('Atas'),
-                    icon: Icon(Icons.vertical_align_top),
+                    label: Text(l10n.receiptSettingsLogoTop),
+                    icon: const Icon(Icons.vertical_align_top),
                   ),
                   ButtonSegment(
                     value: 'bottom',
-                    label: Text('Bawah'),
-                    icon: Icon(Icons.vertical_align_bottom),
+                    label: Text(l10n.receiptSettingsLogoBottom),
+                    icon: const Icon(Icons.vertical_align_bottom),
                   ),
                 ],
                 selected: {_logoPosition},
@@ -379,35 +393,34 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
 
           const SizedBox(height: AppSpacing.lg),
           // Header
-          _LabelRow(label: 'Teks header (opsional)'),
+          _LabelRow(label: l10n.receiptSettingsHeaderTextOptional),
           TextField(
             controller: _headerCtrl,
             maxLines: 2,
-            decoration: const InputDecoration(
-              hintText: 'mis. Selamat datang di Kopiyantea!',
+            decoration: InputDecoration(
+              hintText: l10n.receiptSettingsHeaderHint,
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Muncul di bawah nama+alamat cabang.',
+            l10n.receiptSettingsHeaderHelp,
             style: AppTypography.labelXs
                 .copyWith(color: context.colors.textSecondary),
           ),
 
           const SizedBox(height: AppSpacing.lg),
           // Footer
-          _LabelRow(label: 'Teks footer (opsional)'),
+          _LabelRow(label: l10n.receiptSettingsFooterTextOptional),
           TextField(
             controller: _footerCtrl,
             maxLines: 3,
-            decoration: const InputDecoration(
-              hintText:
-                  'mis. Barang yang sudah dibeli tidak dapat ditukar/dikembalikan',
+            decoration: InputDecoration(
+              hintText: l10n.receiptSettingsFooterHint,
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            'Muncul setelah "Terima Kasih".',
+            l10n.receiptSettingsFooterHelp,
             style: AppTypography.labelXs
                 .copyWith(color: context.colors.textSecondary),
           ),
@@ -417,9 +430,12 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           SwitchListTile(
             value: _showBranchName,
             onChanged: (v) => setState(() => _showBranchName = v),
-            title: Text('Tampilkan nama cabang', style: AppTypography.titleMd),
+            title: Text(
+              l10n.receiptSettingsShowBranchName,
+              style: AppTypography.titleMd,
+            ),
             subtitle: Text(
-              'Cetak nama cabang seperti "${widget.branch.name}" di bagian atas struk',
+              l10n.receiptSettingsShowBranchNameHelp(widget.branch.name),
               style: AppTypography.bodySm.copyWith(
                 color: context.colors.textSecondary,
               ),
@@ -431,9 +447,12 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           SwitchListTile(
             value: _showCashierName,
             onChanged: (v) => setState(() => _showCashierName = v),
-            title: Text('Tampilkan nama kasir', style: AppTypography.titleMd),
+            title: Text(
+              l10n.receiptSettingsShowCashierName,
+              style: AppTypography.titleMd,
+            ),
             subtitle: Text(
-              'Cetak "Kasir: Nama" di header struk untuk audit',
+              l10n.receiptSettingsShowCashierNameHelp,
               style: AppTypography.bodySm.copyWith(
                 color: context.colors.textSecondary,
               ),
@@ -445,10 +464,12 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           SwitchListTile(
             value: _showCustomerName,
             onChanged: (v) => setState(() => _showCustomerName = v),
-            title:
-                Text('Tampilkan nama pelanggan', style: AppTypography.titleMd),
+            title: Text(
+              l10n.receiptSettingsShowCustomerName,
+              style: AppTypography.titleMd,
+            ),
             subtitle: Text(
-              'Cetak nama pelanggan dan nomor telepon yang dimasking jika transaksi punya pelanggan',
+              l10n.receiptSettingsShowCustomerNameHelp,
               style: AppTypography.bodySm.copyWith(
                 color: context.colors.textSecondary,
               ),
@@ -460,9 +481,12 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           SwitchListTile(
             value: _showLoyaltyPoints,
             onChanged: (v) => setState(() => _showLoyaltyPoints = v),
-            title: Text('Tampilkan poin loyalti', style: AppTypography.titleMd),
+            title: Text(
+              l10n.receiptSettingsShowLoyaltyPoints,
+              style: AppTypography.titleMd,
+            ),
             subtitle: Text(
-              'Cetak poin yang didapat dan total poin pelanggan pada struk pembayaran',
+              l10n.receiptSettingsShowLoyaltyPointsHelp,
               style: AppTypography.bodySm.copyWith(
                 color: context.colors.textSecondary,
               ),
@@ -475,12 +499,12 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
           SwitchListTile(
             value: _printQrisOnReceipt,
             onChanged: (v) => setState(() => _printQrisOnReceipt = v),
-            title: Text('Cetak QRIS di struk', style: AppTypography.titleMd),
+            title: Text(
+              l10n.receiptSettingsPrintQris,
+              style: AppTypography.titleMd,
+            ),
             subtitle: Text(
-              'Untuk transaksi QRIS, cetak QR cabang di struk. Berguna '
-              'untuk skenario bayar belakangan (takeaway, delivery, '
-              'pro-forma invoice). Customer scan QR + masukkan nominal '
-              'manual sesuai TOTAL.',
+              l10n.receiptSettingsPrintQrisHelp,
               style: AppTypography.bodySm.copyWith(
                 color: context.colors.textSecondary,
               ),
@@ -491,7 +515,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
 
           const SizedBox(height: AppSpacing.lg),
           // Paper width
-          _LabelRow(label: 'Lebar kertas'),
+          _LabelRow(label: l10n.receiptSettingsPaperWidth),
           SegmentedButton<int>(
             segments: const [
               ButtonSegment(value: 58, label: Text('58mm')),
@@ -503,7 +527,7 @@ class _BranchReceiptCardState extends ConsumerState<_BranchReceiptCard> {
 
           const SizedBox(height: AppSpacing.lg),
           AppButton(
-            label: _saving ? 'Menyimpan…' : 'Simpan',
+            label: _saving ? l10n.statusSaving : l10n.actionSave,
             icon: Icons.save_outlined,
             onPressed: _saving ? null : _save,
             isLoading: _saving,
@@ -548,10 +572,11 @@ class _ReceiptPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final paperWidth = paperWidthMm == 80 ? 360.0 : 288.0;
     final now = DateTime.now();
+    final l10n = AppL10n.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _LabelRow(label: 'Preview struk'),
+        _LabelRow(label: l10n.receiptSettingsPreview),
         Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
@@ -601,76 +626,82 @@ class _ReceiptPreview extends StatelessWidget {
                           _CenterText(branch.phone!),
                         if (headerText.isNotEmpty) _CenterText(headerText),
                         const _ReceiptRule(),
-                        _PreviewRow(label: 'No:', value: '#PREVIEW'),
                         _PreviewRow(
-                          label: 'Tanggal:',
+                          label: l10n.receiptSettingsPreviewNumber,
+                          value: l10n.receiptSettingsPreviewNumberValue,
+                        ),
+                        _PreviewRow(
+                          label: l10n.receiptSettingsPreviewDate,
                           value: formatDateTime(now),
                         ),
                         if (showCustomerName)
-                          const _PreviewRow(
-                            label: 'Pelanggan:',
-                            value: 'Contoh (081******379)',
+                          _PreviewRow(
+                            label: l10n.receiptSettingsPreviewCustomer,
+                            value: l10n.receiptSettingsPreviewCustomerValue,
                           ),
                         if (showCashierName)
-                          const _PreviewRow(
-                            label: 'Kasir:',
-                            value: 'Kasir Demo',
+                          _PreviewRow(
+                            label: l10n.receiptSettingsPreviewCashier,
+                            value: l10n.receiptSettingsPreviewCashierValue,
                           ),
                         if (showLoyaltyPoints)
-                          const _PreviewRow(
-                            label: 'Poin:',
-                            value: '+5 / 125 poin',
+                          _PreviewRow(
+                            label: l10n.receiptSettingsPreviewPoints,
+                            value: l10n.receiptSettingsPreviewPointsValue,
                           ),
                         const _ReceiptRule(),
-                        const Text('Kopi Susu Aren x 1'),
+                        Text(l10n.receiptSettingsPreviewCoffee),
                         _PreviewRow(
                           label: '  ${formatRupiah(22000)}',
                           value: formatRupiah(22000),
                         ),
-                        const Text('Nasi Goreng x 1'),
+                        Text(l10n.receiptSettingsPreviewRice),
                         _PreviewRow(
                           label: '  ${formatRupiah(28000)}',
                           value: formatRupiah(28000),
                         ),
-                        const Text('  - Level Pedas: Normal'),
+                        Text(l10n.receiptSettingsPreviewModifier),
                         const _ReceiptRule(),
                         _PreviewRow(
-                          label: 'Subtotal',
+                          label: l10n.posSubtotal,
                           value: formatRupiah(50000),
                         ),
                         _PreviewRow(
-                          label: 'Diskon',
+                          label: l10n.posDiscount,
                           value: '-${formatRupiah(5000)}',
                         ),
                         _PreviewRow(
-                          label: 'Pajak (${branch.taxLabel})',
+                          label: l10n.posTax(branch.taxLabel),
                           value: formatRupiah(4500),
                         ),
                         const _ReceiptRule(),
                         _PreviewRow(
-                          label: 'TOTAL',
+                          label: l10n.posTotal.toUpperCase(),
                           value: formatRupiah(49500),
                           bold: true,
                           size: 15,
                         ),
                         const _ReceiptRule(),
-                        const _PreviewRow(label: 'Bayar', value: 'Tunai'),
                         _PreviewRow(
-                          label: 'Diterima',
+                          label: l10n.receiptSettingsPreviewPayment,
+                          value: l10n.paymentCash,
+                        ),
+                        _PreviewRow(
+                          label: l10n.posPaymentReceived,
                           value: formatRupiah(50000),
                         ),
                         _PreviewRow(
-                          label: 'Kembalian',
+                          label: l10n.posPaymentChange,
                           value: formatRupiah(500),
                         ),
                         if (printQrisOnReceipt) ...[
                           const SizedBox(height: AppSpacing.sm),
-                          const _CenterText(
-                            'SCAN QRIS UNTUK BAYAR',
+                          _CenterText(
+                            l10n.receiptSettingsPreviewQrisTitle,
                             bold: true,
                           ),
-                          const _CenterText(
-                            'Masukkan nominal sesuai TOTAL di atas',
+                          _CenterText(
+                            l10n.receiptSettingsPreviewQrisHelp,
                           ),
                           const SizedBox(height: AppSpacing.xs),
                           Center(
@@ -690,7 +721,7 @@ class _ReceiptPreview extends StatelessWidget {
                           ),
                         ],
                         const SizedBox(height: AppSpacing.sm),
-                        const _CenterText('Terima Kasih', bold: true),
+                        _CenterText(l10n.receiptThankYou, bold: true),
                         if (footerText.isNotEmpty) _CenterText(footerText),
                         if (_shouldShowLogo && logoPosition == 'bottom') ...[
                           const SizedBox(height: AppSpacing.sm),

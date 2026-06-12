@@ -6,6 +6,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/app_card.dart';
+import '../../l10n/generated/app_localizations.dart';
 
 class AboutAppScreen extends StatelessWidget {
   const AboutAppScreen({super.key});
@@ -13,14 +14,14 @@ class AboutAppScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tentang Aplikasi')),
+      appBar: AppBar(title: Text(AppL10n.of(context).settingsAboutApp)),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
-        children: const [
+        children: [
           _ApplicationInfoCard(),
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           _CreatorCard(),
-          SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.lg),
           _CreatorLinksCard(),
         ],
       ),
@@ -45,41 +46,42 @@ class _ApplicationInfoCardState extends State<_ApplicationInfoCard> {
         future: _packageInfo,
         builder: (context, snapshot) {
           final packageInfo = snapshot.data;
+          final l10n = AppL10n.of(context);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const _SectionHeader(label: 'Aplikasi'),
+              _SectionHeader(label: l10n.aboutAppSection),
               const SizedBox(height: AppSpacing.sm),
               _InfoRow(
-                label: 'Nama aplikasi',
+                label: l10n.aboutAppName,
                 value: packageInfo?.appName ?? AppConstants.appName,
               ),
               _InfoRow(
-                label: 'Versi',
-                value: packageInfo?.version ?? 'Memuat...',
+                label: l10n.aboutVersion,
+                value: packageInfo?.version ?? l10n.statusLoadingPlain,
               ),
               _InfoRow(
-                label: 'Build number',
-                value: packageInfo?.buildNumber ?? 'Memuat...',
+                label: l10n.aboutBuildNumber,
+                value: packageInfo?.buildNumber ?? l10n.statusLoadingPlain,
               ),
-              const _InfoRow(
-                label: 'Lisensi',
+              _InfoRow(
+                label: l10n.aboutLicense,
                 value: AppConstants.appLicense,
               ),
               const Divider(height: AppSpacing.xl),
-              const _LinkRow(
+              _LinkRow(
                 icon: Icons.privacy_tip_outlined,
-                label: 'Privacy Policy',
+                label: l10n.aboutPrivacyPolicy,
                 url: AppLinks.privacyPolicy,
               ),
-              const _LinkRow(
+              _LinkRow(
                 icon: Icons.description_outlined,
-                label: 'Term of Service',
+                label: l10n.aboutTermsOfService,
                 url: AppLinks.termsOfService,
               ),
-              const _LinkRow(
+              _LinkRow(
                 icon: Icons.feedback_outlined,
-                label: 'Submit Feedback',
+                label: l10n.aboutSubmitFeedback,
                 url: AppLinks.submitFeedback,
               ),
             ],
@@ -95,13 +97,17 @@ class _CreatorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _SectionHeader(label: 'Pembuat'),
-          SizedBox(height: AppSpacing.sm),
-          _InfoRow(label: 'Nama pembuat', value: AppConstants.creatorName),
+        children: [
+          _SectionHeader(label: l10n.aboutCreatorSection),
+          const SizedBox(height: AppSpacing.sm),
+          _InfoRow(
+            label: l10n.aboutCreatorName,
+            value: AppConstants.creatorName,
+          ),
         ],
       ),
     );
@@ -113,50 +119,51 @@ class _CreatorLinksCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          _SectionHeader(label: 'Tautan'),
-          SizedBox(height: AppSpacing.sm),
+        children: [
+          _SectionHeader(label: l10n.aboutLinksSection),
+          const SizedBox(height: AppSpacing.sm),
           _LinkRow(
             icon: Icons.business_center_outlined,
-            label: 'LinkedIn',
+            label: l10n.aboutLinkedIn,
             url: AppLinks.linkedin,
           ),
           _LinkRow(
             icon: Icons.code_outlined,
-            label: 'GitHub',
+            label: l10n.aboutGithub,
             url: AppLinks.github,
           ),
           _LinkRow(
             icon: Icons.article_outlined,
-            label: 'Blog',
+            label: l10n.aboutBlog,
             url: AppLinks.blog,
           ),
           _LinkRow(
             icon: Icons.work_outline,
-            label: 'Upwork',
+            label: l10n.aboutUpwork,
             url: AppLinks.upwork,
           ),
           _LinkRow(
             icon: Icons.coffee_outlined,
-            label: 'Buy Me a Coffee',
+            label: l10n.aboutBuyMeACoffee,
             url: AppLinks.buyMeACoffee,
           ),
           _LinkRow(
             icon: Icons.volunteer_activism_outlined,
-            label: 'Saweria',
+            label: l10n.aboutSaweria,
             url: AppLinks.saweria,
           ),
           _LinkRow(
             icon: Icons.favorite_border,
-            label: 'Trakteer',
+            label: l10n.aboutTrakteer,
             url: AppLinks.trakteer,
           ),
           _LinkRow(
             icon: Icons.workspace_premium_outlined,
-            label: 'Patreon',
+            label: l10n.aboutPatreon,
             url: AppLinks.patreon,
           ),
         ],

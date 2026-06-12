@@ -12,6 +12,7 @@ import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'settings_provider.dart';
 
 /// Bluetooth thermal printer connection management.
@@ -36,6 +37,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
   bool _statusIsError = false;
 
   Future<void> _scan() async {
+    final l10n = AppL10n.of(context);
     setState(() {
       _isScanning = true;
       _statusMessage = null;
@@ -48,8 +50,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       _isScanning = false;
       if (devices.isEmpty) {
         _statusIsError = true;
-        _statusMessage =
-            'Tidak ada printer terpasang. Pastikan printer sudah dipair lewat Pengaturan Bluetooth perangkat.';
+        _statusMessage = l10n.printerNoPairedDevicesMessage;
       }
     });
   }
@@ -75,12 +76,12 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
         if (!mounted) return;
         setState(() {
           _statusIsError = false;
-          _statusMessage = 'Terhubung ke ${device.name}';
+          _statusMessage = AppL10n.of(context).printerConnectedTo(device.name);
         });
       case Err(:final error):
         setState(() {
           _statusIsError = true;
-          _statusMessage = _errorLabel(error);
+          _statusMessage = _errorLabel(AppL10n.of(context), error);
         });
     }
   }
@@ -91,12 +92,13 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
     if (!mounted) return;
     setState(() {
       _statusIsError = false;
-      _statusMessage = 'Printer terputus';
+      _statusMessage = AppL10n.of(context).printerDisconnectedMessage;
     });
   }
 
   Future<void> _testPrint() async {
     final printer = ref.read(printerServiceProvider);
+    final l10n = AppL10n.of(context);
     setState(() {
       _statusMessage = null;
     });
@@ -105,7 +107,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
     if (ready case Err(:final error)) {
       setState(() {
         _statusIsError = true;
-        _statusMessage = _errorLabel(error);
+        _statusMessage = _errorLabel(AppL10n.of(context), error);
       });
       return;
     }
@@ -113,10 +115,10 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       transactionId: '00000000-0000-0000-0000-000000000000',
       timestamp: DateTime.now(),
       branchName: 'KopiyanteaPOS',
-      branchAddress: 'Test Print',
-      items: const [
+      branchAddress: l10n.printerTestPrintReceiptLabel,
+      items: [
         ReceiptItem(
-          name: 'Tes Cetak',
+          name: l10n.printerTestPrintItem,
           quantity: 1,
           priceSnapshot: 1000,
           subtotal: 1000,
@@ -127,7 +129,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       taxLabel: 'PB1',
       taxAmount: 100,
       total: 1100,
-      paymentMethodLabel: 'Tunai',
+      paymentMethodLabel: l10n.paymentCash,
     );
     final result = await printer.printReceipt(payload);
     if (!mounted) return;
@@ -135,12 +137,12 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
       case Ok():
         setState(() {
           _statusIsError = false;
-          _statusMessage = 'Tes cetak terkirim';
+          _statusMessage = AppL10n.of(context).printerTestPrintSent;
         });
       case Err(:final error):
         setState(() {
           _statusIsError = true;
-          _statusMessage = _errorLabel(error);
+          _statusMessage = _errorLabel(AppL10n.of(context), error);
         });
     }
   }
@@ -157,13 +159,12 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
     return printer.connect(address);
   }
 
-  String _errorLabel(PrinterError e) => switch (e) {
-        PrinterError.notConnected => 'Printer belum terhubung',
-        PrinterError.deviceNotFound => 'Printer tidak ditemukan',
-        PrinterError.permissionDenied => 'Izin Bluetooth ditolak',
-        PrinterError.bluetoothOff =>
-          'Bluetooth perangkat tidak aktif — nyalakan dulu',
-        PrinterError.printFailed => 'Gagal mencetak',
+  String _errorLabel(AppL10n l10n, PrinterError e) => switch (e) {
+        PrinterError.notConnected => l10n.printerNotConnected,
+        PrinterError.deviceNotFound => l10n.printerDeviceNotFound,
+        PrinterError.permissionDenied => l10n.printerPermissionDenied,
+        PrinterError.bluetoothOff => l10n.printerBluetoothOff,
+        PrinterError.printFailed => l10n.printerPrintFailed,
       };
 
   @override
@@ -175,7 +176,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
         rememberedAddress != null && rememberedAddress.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Printer')),
+      appBar: AppBar(title: Text(AppL10n.of(context).settingsReceiptPrinter)),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
@@ -189,7 +190,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           AppButton(
-            label: 'Cari Printer',
+            label: AppL10n.of(context).printerSearch,
             icon: Icons.bluetooth_searching,
             onPressed: _isScanning ? null : _scan,
             isLoading: _isScanning,
@@ -233,7 +234,7 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
           if (_statusMessage != null) const SizedBox(height: AppSpacing.lg),
           if (_devices != null) ...[
             Text(
-              'PERANGKAT TERPASANG',
+              AppL10n.of(context).printerPairedDevicesSection,
               style: AppTypography.labelSm.copyWith(
                 color: context.colors.textSecondary,
                 letterSpacing: 0.8,
@@ -241,11 +242,10 @@ class _PrinterSettingsScreenState extends ConsumerState<PrinterSettingsScreen> {
             ),
             const SizedBox(height: AppSpacing.sm),
             if (_devices!.isEmpty)
-              const AppEmptyState(
-                title: 'Tidak ada printer',
+              AppEmptyState(
+                title: AppL10n.of(context).printerEmptyTitle,
                 icon: Icons.bluetooth_disabled,
-                message:
-                    'Pair printer melalui Pengaturan Bluetooth perangkat dulu, lalu kembali ke sini.',
+                message: AppL10n.of(context).printerEmptyMessage,
               )
             else
               for (final device in _devices!) ...[
@@ -283,6 +283,7 @@ class _StatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasRememberedPrinter =
         rememberedAddress != null && rememberedAddress!.isNotEmpty;
+    final l10n = AppL10n.of(context);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -297,7 +298,7 @@ class _StatusCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                'STATUS',
+                l10n.printerStatusSection,
                 style: AppTypography.labelSm.copyWith(
                   color: context.colors.textSecondary,
                   letterSpacing: 0.8,
@@ -305,14 +306,14 @@ class _StatusCard extends StatelessWidget {
               ),
               const Spacer(),
               if (isConnected)
-                const AppBadge(
-                  label: 'Terhubung',
+                AppBadge(
+                  label: l10n.printerConnected,
                   icon: Icons.check_circle_outline,
                   tone: AppBadgeTone.success,
                 )
               else
-                const AppBadge(
-                  label: 'Tidak terhubung',
+                AppBadge(
+                  label: l10n.printerDisconnected,
                   icon: Icons.bluetooth_disabled,
                   tone: AppBadgeTone.neutral,
                 ),
@@ -323,8 +324,8 @@ class _StatusCard extends StatelessWidget {
             isConnected
                 ? (address ?? '-')
                 : hasRememberedPrinter
-                    ? 'Terakhir: $rememberedAddress'
-                    : 'Belum ada printer aktif',
+                    ? l10n.printerLastRemembered(rememberedAddress!)
+                    : l10n.printerNoActivePrinter,
             style: AppTypography.titleMd,
           ),
           if (onTestPrint != null || onDisconnect != null) ...[
@@ -333,7 +334,7 @@ class _StatusCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: AppButton(
-                    label: 'Tes Cetak',
+                    label: l10n.printerTestPrint,
                     variant: AppButtonVariant.secondary,
                     icon: Icons.print_outlined,
                     onPressed: onTestPrint,
@@ -344,7 +345,7 @@ class _StatusCard extends StatelessWidget {
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: AppButton(
-                      label: 'Putuskan',
+                      label: l10n.printerDisconnect,
                       variant: AppButtonVariant.ghost,
                       icon: Icons.link_off,
                       onPressed: onDisconnect,

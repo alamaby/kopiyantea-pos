@@ -25,6 +25,8 @@ import 'cart_state.dart';
 import 'print_receipt_use_case.dart';
 import 'receipt_modifier_filter.dart';
 
+const shareReceiptImageEncodeFailedCode = 'share_receipt_image_encode_failed';
+
 class ShareReceiptUseCase {
   ShareReceiptUseCase(this._ref);
 
@@ -354,7 +356,7 @@ class _ReceiptImageRenderer {
     layout.paint(canvas, height.toDouble());
     final image = await recorder.endRecording().toImage(width, height);
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (data == null) throw StateError('Gagal membuat gambar struk');
+    if (data == null) throw StateError(shareReceiptImageEncodeFailedCode);
     return data.buffer.asUint8List();
   }
 

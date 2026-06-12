@@ -18,6 +18,8 @@ import '../../core/pricing/pricing.dart';
 import '../../core/utils/formatters.dart';
 import '../settings/menu_image_settings.dart';
 
+const shareMenuImageEncodeFailedCode = 'share_menu_image_encode_failed';
+
 class ShareMenuImageUseCase {
   ShareMenuImageUseCase(this._ref);
 
@@ -194,7 +196,7 @@ class _ShareMenuImageRenderer {
           outputHeight,
         );
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    if (data == null) throw StateError('Gagal membuat gambar menu');
+    if (data == null) throw StateError(shareMenuImageEncodeFailedCode);
     return data.buffer.asUint8List();
   }
 

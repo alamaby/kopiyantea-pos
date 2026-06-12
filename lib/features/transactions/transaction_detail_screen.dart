@@ -240,11 +240,23 @@ class _ActionsCardState extends ConsumerState<_ActionsCard> {
     } catch (e) {
       if (!context.mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text(l10n.receiptShareFailed(e.toString()))),
+        SnackBar(
+          content: Text(l10n.receiptShareFailed(
+            _shareReceiptErrorLabel(l10n, e),
+          )),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSharing = false);
     }
+  }
+
+  String _shareReceiptErrorLabel(AppL10n l10n, Object error) {
+    if (error is StateError &&
+        error.message == shareReceiptImageEncodeFailedCode) {
+      return l10n.receiptCreateImageFailed;
+    }
+    return error.toString();
   }
 
   Future<void> _reprint(BuildContext context) async {

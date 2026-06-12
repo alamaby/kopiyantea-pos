@@ -183,11 +183,23 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
     } catch (e) {
       if (!context.mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text(l10n.catalogProductsShareImageFailed('$e'))),
+        SnackBar(
+          content: Text(l10n.catalogProductsShareImageFailed(
+            _shareMenuImageErrorLabel(l10n, e),
+          )),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSharingMenuImage = false);
     }
+  }
+
+  String _shareMenuImageErrorLabel(AppL10n l10n, Object error) {
+    if (error is StateError &&
+        error.message == shareMenuImageEncodeFailedCode) {
+      return l10n.catalogProductsCreateImageFailed;
+    }
+    return error.toString();
   }
 
   Future<void> _exportCsv(BuildContext context, WidgetRef ref) async {

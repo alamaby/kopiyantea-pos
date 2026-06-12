@@ -9,6 +9,15 @@ import 'auth_provider.dart';
 part 'bootstrap_provider.freezed.dart';
 part 'bootstrap_provider.g.dart';
 
+const bootstrapStepBranchAccess = 'branchAccess';
+const bootstrapStepMenuStock = 'menuStock';
+const bootstrapStepTransactionHistory = 'transactionHistory';
+
+const bootstrapErrorSessionMissing = 'sessionMissing';
+const bootstrapErrorNoBranchAccess = 'noBranchAccess';
+const bootstrapErrorMasterDataFailed = 'masterDataFailed';
+const bootstrapErrorUnknownPrefix = 'unknown:';
+
 /// Post-login data hydration state.
 ///
 /// `complete` is the default — set when the cache is trusted (session
@@ -45,13 +54,13 @@ class Bootstrap extends _$Bootstrap {
     final user = ref.read(currentUserProvider);
     if (user == null) {
       state = const BootstrapState.failed(
-        error: 'Sesi pengguna tidak ditemukan — silakan login ulang.',
+        error: bootstrapErrorSessionMissing,
       );
       return;
     }
 
     try {
-      state = const BootstrapState.running(step: 'Memuat akses cabang…');
+      state = const BootstrapState.running(step: bootstrapStepBranchAccess);
       // pullMyAuthContext was already called inside signIn — re-running is
       // idempotent and ensures the local user/access cache is fresh.
       await repo.pullMyAuthContext(user.id);
@@ -59,29 +68,28 @@ class Bootstrap extends _$Bootstrap {
       final branchIds = await _accessibleBranchIds(user.id);
       if (branchIds.isEmpty) {
         state = const BootstrapState.failed(
-          error:
-              'Pengguna tidak punya akses ke cabang manapun. Hubungi pemilik.',
+          error: bootstrapErrorNoBranchAccess,
         );
         return;
       }
 
-      state = const BootstrapState.running(step: 'Memuat menu & stok…');
+      state = const BootstrapState.running(step: bootstrapStepMenuStock);
       final master = await repo.pullMasterData(branchIds);
       if (master.errors > 0 && master.upserted == 0) {
         state = const BootstrapState.failed(
-          error:
-              'Gagal memuat data master. Periksa koneksi internet lalu coba lagi.',
+          error: bootstrapErrorMasterDataFailed,
         );
         return;
       }
 
-      state = const BootstrapState.running(step: 'Memuat riwayat transaksi…');
+      state =
+          const BootstrapState.running(step: bootstrapStepTransactionHistory);
       await repo.pullTransactions(branchIds);
 
       state = const BootstrapState.complete();
     } catch (e) {
       state = BootstrapState.failed(
-        error: 'Terjadi kesalahan saat memuat data: $e',
+        error: '$bootstrapErrorUnknownPrefix$e',
       );
     }
   }

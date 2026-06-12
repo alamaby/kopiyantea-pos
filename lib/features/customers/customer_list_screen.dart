@@ -10,6 +10,7 @@ import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'customer_providers.dart';
 
 class CustomerListScreen extends ConsumerStatefulWidget {
@@ -32,17 +33,18 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final customersAsync = ref.watch(allCustomersProvider);
     final latestTransactionAt =
         ref.watch(customerLatestTransactionAtProvider).valueOrNull ?? const {};
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pelanggan')),
+      appBar: AppBar(title: Text(l10n.navCustomers)),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab_customers',
         onPressed: () => context.push('/more/customers/new'),
         icon: const Icon(Icons.person_add_outlined),
-        label: const Text('Tambah'),
+        label: Text(l10n.actionAdd),
       ),
       body: Column(
         children: [
@@ -54,7 +56,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
-                    hintText: 'Cari nama atau telepon…',
+                    hintText: l10n.customersSearchHint,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _query.isEmpty
                         ? null
@@ -71,16 +73,16 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 SegmentedButton<_CustomerSort>(
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: _CustomerSort.latestTransaction,
-                      icon: Icon(Icons.schedule_outlined),
-                      label: Text('Terbaru'),
+                      icon: const Icon(Icons.schedule_outlined),
+                      label: Text(l10n.customersSortLatest),
                     ),
                     ButtonSegment(
                       value: _CustomerSort.points,
-                      icon: Icon(Icons.stars_outlined),
-                      label: Text('Poin'),
+                      icon: const Icon(Icons.stars_outlined),
+                      label: Text(l10n.receiptPoints),
                     ),
                   ],
                   selected: {_sort},
@@ -94,7 +96,7 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
             child: customersAsync.when(
               loading: () => const Center(child: AppLoadingIndicator()),
               error: (e, _) => AppEmptyState(
-                title: 'Gagal memuat pelanggan',
+                title: l10n.customersLoadFailed,
                 icon: Icons.error_outline,
                 message: e.toString(),
               ),
@@ -106,14 +108,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 if (filtered.isEmpty) {
                   return AppEmptyState(
                     title: _query.isEmpty
-                        ? 'Belum ada pelanggan'
-                        : 'Tidak ditemukan',
+                        ? l10n.customersEmptyTitle
+                        : l10n.customersNotFound,
                     icon: _query.isEmpty
                         ? Icons.people_outline
                         : Icons.search_off_outlined,
-                    message: _query.isEmpty
-                        ? 'Tap "Tambah" untuk mendaftarkan pelanggan baru.'
-                        : null,
+                    message: _query.isEmpty ? l10n.customersEmptyMessage : null,
                   );
                 }
                 return ListView.separated(
@@ -188,6 +188,7 @@ class _CustomerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     return Material(
       color: context.colors.surface,
       borderRadius: AppRadius.radiusLg,
@@ -229,7 +230,9 @@ class _CustomerTile extends StatelessWidget {
                     if (latestTransactionAt != null) ...[
                       const SizedBox(height: AppSpacing.xs),
                       Text(
-                        'Transaksi terakhir: ${formatDateTime(latestTransactionAt!)}',
+                        l10n.customersLastTransaction(
+                          formatDateTime(latestTransactionAt!),
+                        ),
                         style: AppTypography.bodySm.copyWith(
                           color: context.colors.textSecondary,
                         ),
@@ -249,7 +252,7 @@ class _CustomerTile extends StatelessWidget {
                     borderRadius: AppRadius.radiusSm,
                   ),
                   child: Text(
-                    '${customer.loyaltyPoints} poin',
+                    l10n.transactionsPoints(customer.loyaltyPoints),
                     style:
                         AppTypography.labelSm.copyWith(color: AppColors.accent),
                   ),

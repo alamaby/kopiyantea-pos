@@ -8,6 +8,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'customer_form_screen.dart';
 import 'customer_providers.dart';
 
@@ -50,6 +51,7 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final customersAsync = ref.watch(allCustomersProvider);
 
     return SafeArea(
@@ -81,11 +83,12 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
                 child: Row(
                   children: [
-                    Text('Pilih Pelanggan', style: AppTypography.headlineLg),
+                    Text(l10n.customersPickerTitle,
+                        style: AppTypography.headlineLg),
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.person_add_outlined),
-                      tooltip: 'Tambah Pelanggan',
+                      tooltip: l10n.customersAdd,
                       onPressed: () => _createCustomer(context),
                     ),
                   ],
@@ -97,7 +100,7 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
                 child: TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
-                    hintText: 'Cari nama atau telepon…',
+                    hintText: l10n.customersSearchHint,
                     prefixIcon: const Icon(Icons.search),
                     suffixIcon: _query.isEmpty
                         ? null
@@ -118,7 +121,7 @@ class _CustomerPickerSheetState extends ConsumerState<CustomerPickerSheet> {
                 child: customersAsync.when(
                   loading: () => const Center(child: AppLoadingIndicator()),
                   error: (e, _) => AppEmptyState(
-                    title: 'Gagal memuat',
+                    title: l10n.customersLoadFailed,
                     icon: Icons.error_outline,
                     message: e.toString(),
                   ),
@@ -162,6 +165,7 @@ class _List extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     final filtered = query.isEmpty
         ? customers
         : customers.where((c) {
@@ -181,15 +185,15 @@ class _List extends StatelessWidget {
       children: [
         // Always-available "no customer" option
         _Tile(
-          name: 'Tanpa pelanggan',
-          subtitle: 'Transaksi tidak terkait pelanggan',
+          name: l10n.customersNoCustomer,
+          subtitle: l10n.customersNoCustomerSubtitle,
           icon: Icons.person_off_outlined,
           onTap: () => onPick(null),
         ),
         if (filtered.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.md),
           Text(
-            'PELANGGAN'.toUpperCase(),
+            l10n.customersSection.toUpperCase(),
             style: AppTypography.labelSm.copyWith(
               color: context.colors.textSecondary,
               letterSpacing: 0.8,
@@ -201,7 +205,9 @@ class _List extends StatelessWidget {
               name: c.name,
               subtitle: c.phone,
               icon: Icons.person_outline,
-              trailing: c.loyaltyPoints > 0 ? '${c.loyaltyPoints} poin' : null,
+              trailing: c.loyaltyPoints > 0
+                  ? l10n.transactionsPoints(c.loyaltyPoints)
+                  : null,
               onTap: () => onPick(c),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -210,7 +216,7 @@ class _List extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           Center(
             child: Text(
-              'Tidak ada hasil untuk "$query"',
+              l10n.customersNoResultForQuery(query),
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),

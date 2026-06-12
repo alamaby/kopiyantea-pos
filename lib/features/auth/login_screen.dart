@@ -8,6 +8,7 @@ import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/result.dart';
 import '../../core/widgets/app_button.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../settings/settings_provider.dart';
 import 'auth_provider.dart';
 import 'auth_repository.dart';
@@ -36,10 +37,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _signIn() async {
+    final l10n = AppL10n.of(context);
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
     if (email.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Email dan password wajib diisi');
+      setState(() => _error = l10n.authEmailPasswordRequired);
       return;
     }
     setState(() {
@@ -57,7 +59,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         // Router redirect will navigate away.
         break;
       case Err(:final error):
-        setState(() => _error = _label(error));
+        setState(() => _error = _label(l10n, error));
     }
   }
 
@@ -74,9 +76,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _signInWithMagicLink() async {
+    final l10n = AppL10n.of(context);
     final email = _emailCtrl.text.trim();
     if (email.isEmpty) {
-      setState(() => _error = 'Masukkan email dulu');
+      setState(() => _error = l10n.authEmailRequired);
       return;
     }
     setState(() {
@@ -95,26 +98,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           builder: (ctx) => AlertDialog(
             icon: const Icon(Icons.mark_email_read_outlined,
                 size: 48, color: AppColors.primary),
-            title: const Text('Cek email Anda'),
-            content: Text(
-              'Link masuk sudah dikirim ke $email. Buka email tersebut '
-              'di perangkat ini lalu tap "Masuk ke Kopiyantea" — Anda '
-              'akan otomatis masuk ke aplikasi.',
-            ),
+            title: Text(l10n.authCheckEmailTitle),
+            content: Text(l10n.authCheckEmailMessage(email)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
+                child: Text(l10n.actionOk),
               ),
             ],
           ),
         );
       case Err(:final error):
-        setState(() => _error = _label(error));
+        setState(() => _error = _label(l10n, error));
     }
   }
 
   Future<void> _signInWithGoogle() async {
+    final l10n = AppL10n.of(context);
     setState(() {
       _isSubmitting = true;
       _error = null;
@@ -123,24 +123,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     setState(() => _isSubmitting = false);
     if (result is Err<Unit, AuthError>) {
-      setState(() => _error = _label(result.error));
+      setState(() => _error = _label(l10n, result.error));
     }
     // On Ok the browser is launched; session arrives via onAuthStateChange
     // and the router redirects automatically once Authenticated.
   }
 
-  String _label(AuthError e) => switch (e) {
-        AuthError.invalidCredentials => 'Email atau password salah',
-        AuthError.userInactive =>
-          'Akun nonaktif — hubungi pemilik untuk aktivasi',
-        AuthError.userNotRegistered => 'Pengguna belum terdaftar di aplikasi',
-        AuthError.noBranchAccess =>
-          'Pengguna tidak punya akses ke cabang manapun',
-        AuthError.networkUnavailable =>
-          'Tidak ada koneksi ke server — coba lagi',
-        AuthError.emailDispatchFailed =>
-          'Gagal mengirim email — coba lagi sebentar',
-        AuthError.unknown => 'Terjadi kesalahan, coba lagi',
+  String _label(AppL10n l10n, AuthError e) => switch (e) {
+        AuthError.invalidCredentials => l10n.authInvalidCredentials,
+        AuthError.userInactive => l10n.authUserInactive,
+        AuthError.userNotRegistered => l10n.authUserNotRegistered,
+        AuthError.noBranchAccess => l10n.authNoBranchAccess,
+        AuthError.networkUnavailable => l10n.authNetworkUnavailable,
+        AuthError.emailDispatchFailed => l10n.authEmailDispatchFailed,
+        AuthError.unknown => l10n.authUnknownError,
       };
 
   @override
@@ -150,6 +146,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // tersimpan" elsewhere and comes back. Guarded by `_prefilled` so we
     // don't clobber a partially-typed email on rebuild.
     final settingsAsync = ref.watch(settingsNotifierProvider);
+    final l10n = AppL10n.of(context);
     settingsAsync.whenData((s) {
       if (!_prefilled) {
         _prefilled = true;
@@ -182,7 +179,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   Text(
-                    'Masuk untuk mulai bertransaksi',
+                    l10n.authLoginSubtitle,
                     style: AppTypography.bodyMd.copyWith(
                       color: context.colors.textSecondary,
                     ),
@@ -203,9 +200,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             AutofillHints.email,
                           ],
                           enabled: !_isSubmitting,
-                          decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
+                          decoration: InputDecoration(
+                            labelText: l10n.authEmail,
+                            prefixIcon: const Icon(Icons.email_outlined),
                           ),
                         ),
                         const SizedBox(height: AppSpacing.lg),
@@ -221,7 +218,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           enabled: !_isSubmitting,
                           onSubmitted: (_) => _signIn(),
                           decoration: InputDecoration(
-                            labelText: 'Password',
+                            labelText: l10n.authPassword,
                             prefixIcon: const Icon(Icons.lock_outline),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -256,7 +253,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               : () =>
                                   setState(() => _rememberMe = !_rememberMe),
                           child: Text(
-                            'Ingat email saya di perangkat ini',
+                            l10n.authRememberEmail,
                             style: AppTypography.bodySm,
                           ),
                         ),
@@ -294,7 +291,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Sign in
                   AppButton(
-                    label: 'Masuk',
+                    label: l10n.authSignIn,
                     icon: Icons.login,
                     onPressed: _isSubmitting ? null : _signIn,
                     isLoading: _isSubmitting,
@@ -306,7 +303,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Magic link
                   AppButton(
-                    label: 'Masuk via Link Email',
+                    label: l10n.authMagicLinkSignIn,
                     icon: Icons.mark_email_read_outlined,
                     variant: AppButtonVariant.secondary,
                     onPressed: _isSubmitting ? null : _signInWithMagicLink,
@@ -314,8 +311,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Untuk pengguna baru yang diundang Pemilik — '
-                    'tanpa perlu password.',
+                    l10n.authMagicLinkHelp,
                     style: AppTypography.labelXs.copyWith(
                       color: context.colors.textTertiary,
                     ),
@@ -326,7 +322,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // FEAT-008 — Google OAuth
                   AppButton(
-                    label: 'Lanjutkan dengan Google',
+                    label: l10n.authContinueWithGoogle,
                     icon: Icons.account_circle_outlined,
                     variant: AppButtonVariant.secondary,
                     onPressed: _isSubmitting ? null : _signInWithGoogle,

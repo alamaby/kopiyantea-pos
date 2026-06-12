@@ -5,6 +5,7 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/widgets/app_button.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'auth_provider.dart';
 import 'bootstrap_provider.dart';
 
@@ -37,6 +38,7 @@ class _BootstrapScreenState extends ConsumerState<BootstrapScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(bootstrapProvider);
     final user = ref.watch(currentUserProvider);
+    final l10n = AppL10n.of(context);
 
     return Scaffold(
       body: SafeArea(
@@ -53,20 +55,21 @@ class _BootstrapScreenState extends ConsumerState<BootstrapScreen> {
                   const SizedBox(height: AppSpacing.xxxl),
                   if (user != null) ...[
                     Text(
-                      'Halo, ${user.fullName}',
+                      l10n.authHelloUser(user.fullName),
                       textAlign: TextAlign.center,
                       style: AppTypography.headlineMd,
                     ),
                     const SizedBox(height: AppSpacing.xs),
                   ],
                   switch (state) {
-                    BootstrapComplete() ||
-                    BootstrapPending() =>
-                      _LoadingBlock(
-                        step: 'Menyiapkan…',
+                    BootstrapComplete() || BootstrapPending() => _LoadingBlock(
+                        step: l10n.authBootstrapPreparing,
                       ),
-                    BootstrapRunning(:final step) => _LoadingBlock(step: step),
-                    BootstrapFailed(:final error) => _ErrorBlock(error: error),
+                    BootstrapRunning(:final step) =>
+                      _LoadingBlock(step: _stepLabel(l10n, step)),
+                    BootstrapFailed(:final error) => _ErrorBlock(
+                        error: _errorLabel(l10n, error),
+                      ),
                   },
                 ],
               ),
@@ -76,6 +79,24 @@ class _BootstrapScreenState extends ConsumerState<BootstrapScreen> {
       ),
     );
   }
+
+  String _stepLabel(AppL10n l10n, String step) => switch (step) {
+        bootstrapStepBranchAccess => l10n.authBootstrapBranchAccess,
+        bootstrapStepMenuStock => l10n.authBootstrapMenuStock,
+        bootstrapStepTransactionHistory => l10n.authBootstrapTransactionHistory,
+        _ => step,
+      };
+
+  String _errorLabel(AppL10n l10n, String error) => switch (error) {
+        bootstrapErrorSessionMissing => l10n.authBootstrapSessionMissing,
+        bootstrapErrorNoBranchAccess => l10n.authBootstrapNoBranchAccess,
+        bootstrapErrorMasterDataFailed => l10n.authBootstrapMasterDataFailed,
+        _ when error.startsWith(bootstrapErrorUnknownPrefix) =>
+          l10n.authBootstrapUnknownFailed(
+            error.substring(bootstrapErrorUnknownPrefix.length),
+          ),
+        _ => error,
+      };
 }
 
 class _Brand extends StatelessWidget {
@@ -129,7 +150,7 @@ class _LoadingBlock extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Mengambil data terbaru dari server. Jangan tutup aplikasi.',
+          AppL10n.of(context).authBootstrapLoadingHelp,
           textAlign: TextAlign.center,
           style: AppTypography.labelSm
               .copyWith(color: context.colors.textTertiary),
@@ -155,7 +176,7 @@ class _ErrorBlock extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          'Gagal Memuat Data',
+          AppL10n.of(context).authBootstrapFailedTitle,
           textAlign: TextAlign.center,
           style: AppTypography.headlineMd,
         ),
@@ -168,7 +189,7 @@ class _ErrorBlock extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.xxl),
         AppButton(
-          label: 'Coba Lagi',
+          label: AppL10n.of(context).actionRetry,
           icon: Icons.refresh,
           onPressed: () {
             ref.read(bootstrapProvider.notifier).markPending();
@@ -178,7 +199,7 @@ class _ErrorBlock extends ConsumerWidget {
         ),
         const SizedBox(height: AppSpacing.sm),
         AppButton(
-          label: 'Keluar',
+          label: AppL10n.of(context).actionSignOut,
           icon: Icons.logout,
           variant: AppButtonVariant.secondary,
           onPressed: () async {

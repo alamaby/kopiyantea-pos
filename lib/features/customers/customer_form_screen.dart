@@ -15,6 +15,7 @@ import '../../core/utils/transaction_numbers.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
+import '../../l10n/generated/app_localizations.dart';
 import 'customer_providers.dart';
 
 class CustomerFormScreen extends ConsumerStatefulWidget {
@@ -71,6 +72,7 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
   }
 
   Future<void> _save() async {
+    final l10n = AppL10n.of(context);
     if (_isSaving) return;
     setState(() {
       _isSaving = true;
@@ -89,14 +91,14 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
     if (name.isEmpty) {
       setState(() {
         _isSaving = false;
-        _errorName = 'Nama wajib diisi';
+        _errorName = l10n.customersNameRequired;
       });
       return;
     }
     if (email != null && !_isLikelyEmail(email)) {
       setState(() {
         _isSaving = false;
-        _errorEmail = 'Format email tidak valid';
+        _errorEmail = l10n.customersInvalidEmail;
       });
       return;
     }
@@ -107,7 +109,7 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
       if (existing != null && existing.id != _existing?.id) {
         setState(() {
           _isSaving = false;
-          _errorPhone = 'Nomor telepon sudah dipakai pelanggan lain';
+          _errorPhone = l10n.customersPhoneAlreadyUsed;
         });
         return;
       }
@@ -149,17 +151,18 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppL10n.of(context);
     if (_isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Memuat…')),
+        appBar: AppBar(title: Text(l10n.statusLoading)),
         body: const Center(child: AppLoadingIndicator()),
       );
     }
     if (_isEditing && _existing == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Pelanggan')),
-        body: const AppEmptyState(
-          title: 'Pelanggan tidak ditemukan',
+        appBar: AppBar(title: Text(l10n.navCustomers)),
+        body: AppEmptyState(
+          title: l10n.customersNotFoundTitle,
           icon: Icons.search_off_outlined,
         ),
       );
@@ -167,46 +170,46 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEditing ? 'Ubah Pelanggan' : 'Tambah Pelanggan'),
+        title: Text(_isEditing ? l10n.customersEdit : l10n.customersAdd),
       ),
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
         children: [
           _Field(
-            label: 'Nama',
+            label: l10n.customersName,
             controller: _nameCtrl,
-            hint: 'Nama lengkap pelanggan',
+            hint: l10n.customersNameHint,
             errorText: _errorName,
             autofocus: !_isEditing,
             required: true,
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
-            label: 'Telepon',
+            label: l10n.customersPhone,
             controller: _phoneCtrl,
-            hint: 'Opsional · +62…',
+            hint: l10n.customersOptionalPhoneHint,
             errorText: _errorPhone,
             keyboardType: TextInputType.phone,
           ),
           const SizedBox(height: AppSpacing.lg),
           _Field(
-            label: 'Email',
+            label: l10n.authEmail,
             controller: _emailCtrl,
-            hint: 'Opsional',
+            hint: l10n.customersOptional,
             errorText: _errorEmail,
             keyboardType: TextInputType.emailAddress,
           ),
           if (_isEditing && _existing != null) ...[
             const SizedBox(height: AppSpacing.xl),
             Text(
-              'Poin loyalti: ${_existing!.loyaltyPoints}',
+              l10n.customersLoyaltyPoints(_existing!.loyaltyPoints),
               style: AppTypography.bodySm
                   .copyWith(color: context.colors.textSecondary),
             ),
           ],
           const SizedBox(height: AppSpacing.xxl),
           AppButton(
-            label: _isEditing ? 'Simpan Perubahan' : 'Tambah Pelanggan',
+            label: _isEditing ? l10n.customersSaveChanges : l10n.customersAdd,
             icon: Icons.save_outlined,
             onPressed: _isSaving ? null : _save,
             isLoading: _isSaving,
@@ -232,6 +235,7 @@ class _CustomerTransactionsList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final transactionsAsync =
         ref.watch(customerTransactionsProvider(customerId));
+    final l10n = AppL10n.of(context);
 
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
@@ -243,18 +247,19 @@ class _CustomerTransactionsList extends ConsumerWidget {
       child: transactionsAsync.when(
         loading: () => const Center(child: AppLoadingIndicator()),
         error: (e, _) => Text(
-          'Gagal memuat transaksi pelanggan: $e',
+          l10n.customersTransactionsLoadFailed(e.toString()),
           style: AppTypography.bodySm.copyWith(color: AppColors.danger),
         ),
         data: (transactions) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Transaksi Pelanggan', style: AppTypography.titleMd),
+              Text(l10n.customersTransactionsTitle,
+                  style: AppTypography.titleMd),
               const SizedBox(height: AppSpacing.sm),
               if (transactions.isEmpty)
                 Text(
-                  'Belum ada transaksi untuk pelanggan ini.',
+                  l10n.customersTransactionsEmpty,
                   style: AppTypography.bodySm.copyWith(
                     color: context.colors.textSecondary,
                   ),

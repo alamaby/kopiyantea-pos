@@ -29,6 +29,7 @@ key.properties
 supabase/.temp/
 supabase/.branches/
 supabase/.env
+supabase/
 
 # Platform
 .gradle/

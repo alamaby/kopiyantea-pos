@@ -9,6 +9,7 @@
   "navProducts": "Menu",
   "navInventory": "Stok",
   "navTransactions": "Transaksi",
+  "navTransactionsCompact": "Transaksi",
   "navCustomers": "Pelanggan",
   "navReports": "Laporan",
   "navSettings": "Pengaturan",

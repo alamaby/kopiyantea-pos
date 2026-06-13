@@ -9,6 +9,7 @@
   "navProducts": "Menu",
   "navInventory": "Stock",
   "navTransactions": "Transactions",
+  "navTransactionsCompact": "History",
   "navCustomers": "Customers",
   "navReports": "Reports",
   "navSettings": "Settings",

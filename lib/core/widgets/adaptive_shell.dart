@@ -41,6 +41,7 @@ class AdaptiveShell extends StatelessWidget {
       ),
       _NavDestination(
         label: l10n.navTransactions,
+        compactLabel: l10n.navTransactionsCompact,
         icon: Icons.receipt_long_outlined,
         selectedIcon: Icons.receipt_long,
       ),
@@ -110,7 +111,7 @@ class _BottomNavScaffold extends StatelessWidget {
             NavigationDestination(
               icon: Icon(d.icon),
               selectedIcon: Icon(d.selectedIcon),
-              label: d.label,
+              label: d.compactLabel ?? d.label,
             ),
         ],
       ),
@@ -179,9 +180,11 @@ class _NavDestination {
     required this.label,
     required this.icon,
     required this.selectedIcon,
+    this.compactLabel,
   });
 
   final String label;
+  final String? compactLabel;
   final IconData icon;
   final IconData selectedIcon;
 }

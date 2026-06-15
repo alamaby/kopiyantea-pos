@@ -276,17 +276,29 @@ class _ThemeSection extends ConsumerWidget {
             segments: [
               ButtonSegment(
                 value: 'system',
-                label: Text(l10n.settingsThemeSystem),
+                label: Text(
+                  l10n.settingsThemeSystem,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 icon: const Icon(Icons.smartphone_outlined),
               ),
               ButtonSegment(
                 value: 'light',
-                label: Text(l10n.settingsThemeLight),
+                label: Text(
+                  l10n.settingsThemeLight,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 icon: const Icon(Icons.light_mode_outlined),
               ),
               ButtonSegment(
                 value: 'dark',
-                label: Text(l10n.settingsThemeDark),
+                label: Text(
+                  l10n.settingsThemeDark,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 icon: const Icon(Icons.dark_mode_outlined),
               ),
             ],

@@ -271,26 +271,34 @@ class _TxTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          '#$transactionNumber',
-                          style: AppTypography.titleMd.copyWith(
-                            fontFeatures: const [
-                              FontFeature.tabularFigures(),
-                            ],
+                        Flexible(
+                          child: Text(
+                            '#$transactionNumber',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.titleMd.copyWith(
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         if (voided)
-                          AppBadge(
-                            label: l10n.transactionsStatusVoided,
-                            icon: Icons.cancel_outlined,
-                            tone: AppBadgeTone.danger,
+                          Flexible(
+                            child: AppBadge(
+                              label: l10n.transactionsStatusVoided,
+                              icon: Icons.cancel_outlined,
+                              tone: AppBadgeTone.danger,
+                            ),
                           )
                         else
-                          AppBadge(
-                            label: l10n.transactionsStatusCompleted,
-                            icon: Icons.check_circle_outline,
-                            tone: AppBadgeTone.success,
+                          Flexible(
+                            child: AppBadge(
+                              label: l10n.transactionsStatusCompleted,
+                              icon: Icons.check_circle_outline,
+                              tone: AppBadgeTone.success,
+                            ),
                           ),
                       ],
                     ),

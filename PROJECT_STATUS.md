@@ -287,12 +287,13 @@
 
 ## Tech Debt
 
-### [TD-001] Codegen ecosystem upgrade — analyzer 6.x → 13.x
+### [TD-001] Codegen ecosystem upgrade — analyzer 6.x → 13.x ✅ **RESOLVED** (2026-06-16)
 - **Discovered:** 2026-05-18 (FEAT-001 batch A)
-- **Symptom:** drift_dev 2.21+ crashes with `Null is not InterfaceElement` on analyzer 6.4.x
-- **Workaround:** Pinned `drift` and `drift_dev` to `>=2.20.0 <2.21.0`
-- **Root cause:** `freezed ^2.5.2` + `riverpod_generator ^2.4.0` transitively constrain analyzer to 6.x. Upgrading to analyzer 13.x requires major version bumps of all codegen tools (freezed 2→3 has breaking changes, riverpod 2→3 has new APIs).
-- **Resolution path:** Do a coordinated upgrade — bump `freezed`, `freezed_annotation`, `riverpod`, `riverpod_annotation`, `riverpod_generator`, `json_serializable`, `analyzer`, `drift`, `drift_dev` together. Schedule for a dedicated maintenance phase.
+- **Symptom:** drift_dev 2.20.x crashes with `Null is not InterfaceElement` on Dart SDK 3.11.5 + analyzer 6.4.x
+- **Root cause:** drift_dev 2.20.x analyzer element lookup incompatible with newer Dart SDK language features (analyzer 6.4.1 reports language version 3.4.0, SDK is 3.11.0)
+- **Resolution:** Bumped `drift` and `drift_dev` from `>=2.20.0 <2.21.0` to `^2.21.0`. drift_dev 2.21.0 supports analyzer ^6.0.0 and still uses `build ^2.0.0` / `source_gen >=0.9.4 <2.0.0` — compatible with existing `freezed ^2.5.2` + `riverpod_generator ^2.4.0` WITHOUT requiring a coordinated major-version upgrade. No other codegen packages needed changes.
+- **Result:** `app_database.g.dart` regenerated successfully (770 KB, 28+ tables). Build_runner completes with 1522 outputs, zero errors.
+- **Lesson:** The `pinned to 2.20.x` workaround was overly conservative. The fix was already available in 2.21.0 without ecosystem churn.
 
 ## Backlog (deferred features)
 
@@ -308,7 +309,9 @@
   - ✅ Sync repository — `_pullMyAuthContext` sekarang pull `organizations`, `organization_members`, `organization_subscriptions`
   - ✅ Subscription plan seed — `free`/`plus` di `_seedSubscriptionPlans` (migration v21)
   - ✅ Settings UI — tombol subscription "(segera)" + `SubscriptionCard` placeholder
-  - 🚫 **Blocker (TD-001):** `drift_dev` 2.20.x tidak bisa generate `app_database.g.dart` di Dart SDK 3.11.5 (analyzer 6.4.1 mismatch). File `.g.dart` yang valid hilang karena overwrite kosong. Tidak ada backup yang komplit (worktree backup cuma punya 18 dari ~28 tabel). **Tidak bisa compile tanpa `app_database.g.dart` yang valid.**
+  - 🚫 **Blocker (TD-001):** ~~`drift_dev` 2.20.x tidak bisa generate `app_database.g.dart`~~
+    - ✅ **Resolved (2026-06-16):** Upgraded `drift` / `drift_dev` to `^2.21.0`. Generator works with existing analyzer 6.4.1 + Dart SDK 3.11.5. `app_database.g.dart` regenerated penuh (770 KB, 28+ tabel). Tidak perlu upgrade `freezed` / `riverpod` major version.
+    - Migration code v1–v20 dikembalikan ke drift API (`m.createTable` / `m.addColumn`). Raw-SQL workaround dihapus.
 - **Scope (Phase 8):**
   - Add `tenants` table (id, name, created_at, owner_user_id)
   - Add `tenant_id` column to all chain-wide tables: `branches`, `products`, `customers`, `option_groups`, `options`, `app_users` (and propagate via branch chain for branch-scoped tables)
@@ -317,7 +320,7 @@
   - Onboarding flow: signup creates new tenant; invite flow joins existing tenant
   - Add tenant indicator in UI (branch picker shows tenant scope)
 - **Estimated effort:** 15-20 SQL migration files + RLS rewrite + onboarding UI + tenant-aware sync. Substantial — typically pre-launch hardening for SaaS pivot. Not needed for single-business deployment.
-- **Resolution path (TD-001):** Coordinated upgrade `drift`, `drift_dev`, `freezed`, `freezed_annotation`, `riverpod`, `riverpod_annotation`, `riverpod_generator`, `json_serializable`, `analyzer` — dedicated maintenance phase (~~1 hari).
+- **Resolution path (TD-001):** ~~Coordinated upgrade~~ unnecessary. Bumping `drift` + `drift_dev` from 2.20.x → 2.21.0 alone resolves the codegen blocker without touching other packages.
 
 ### [FEAT-003] Outbox Queue Detail Screen — **DONE DEV** (2026-05-20)
 **Implemented:**

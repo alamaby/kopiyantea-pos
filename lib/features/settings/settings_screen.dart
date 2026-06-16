@@ -23,6 +23,7 @@ import '../../core/widgets/app_loading_indicator.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../auth/auth_provider.dart';
 import 'branch_selection_provider.dart';
+import 'organization_card.dart';
 import 'settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -47,6 +48,9 @@ class SettingsScreen extends ConsumerWidget {
         data: (s) => ListView(
           padding: const EdgeInsets.all(AppSpacing.lg),
           children: [
+            // FEAT-002 Stage 5 — Organization section (shown for all authenticated users)
+            const OrganizationCard(),
+            const SizedBox(height: AppSpacing.lg),
             _BranchSection(settings: s, branchesAsync: branches),
             const SizedBox(height: AppSpacing.lg),
             _ThemeSection(settings: s),

@@ -15,30 +15,32 @@ import 'features/catalog/product_form_screen.dart';
 import 'features/customers/customer_form_screen.dart';
 import 'features/customers/customer_list_screen.dart';
 import 'features/inventory/inventory_detail_screen.dart';
-import 'features/inventory/inventory_list_screen.dart';
-import 'features/more/more_screen.dart';
-import 'features/placeholders/placeholder_screen.dart';
-import 'features/pos/pos_screen.dart';
-import 'features/reports/reports_screen.dart';
 import 'features/inventory/inventory_item_form_screen.dart';
+import 'features/inventory/inventory_list_screen.dart';
 import 'features/inventory/stock_movement_screen.dart';
 import 'features/modifiers/option_group_form_screen.dart';
 import 'features/modifiers/option_groups_screen.dart';
 import 'features/modifiers/product_options_screen.dart';
+import 'features/more/more_screen.dart';
+import 'features/onboarding/create_org_screen.dart';
+import 'features/onboarding/join_org_screen.dart';
+import 'features/onboarding/onboarding_screen.dart';
+import 'features/pos/pos_screen.dart';
+import 'features/reports/reports_screen.dart';
 import 'features/settings/about_app_screen.dart';
 import 'features/settings/menu_image_settings_screen.dart';
 import 'features/settings/outbox_queue_screen.dart';
-import 'features/shift/shift_closing_screen.dart';
 import 'features/settings/printer_settings_screen.dart';
 import 'features/settings/qris_settings_screen.dart';
 import 'features/settings/receipt_settings_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/settings/tax_settings_screen.dart';
 import 'features/settings/telemetry_screen.dart';
-import 'features/users/user_form_screen.dart';
-import 'features/users/user_list_screen.dart';
+import 'features/shift/shift_closing_screen.dart';
 import 'features/transactions/transaction_detail_screen.dart';
 import 'features/transactions/transaction_list_screen.dart';
+import 'features/users/user_form_screen.dart';
+import 'features/users/user_list_screen.dart';
 import 'l10n/generated/app_localizations.dart';
 
 /// Typed shell routing via [StatefulShellRoute.indexedStack].
@@ -61,7 +63,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final bootstrap = ref.read(bootstrapProvider);
       final isAuthed = auth is Authenticated;
       final isLoading = auth is AuthLoading;
+      final needsOnboarding = auth is NeedsOnboarding;
       final isLogin = state.matchedLocation == '/login';
+      final isOnboarding = state.matchedLocation.startsWith('/onboarding');
       final isBootstrap = state.matchedLocation == '/bootstrap';
       final bootstrapInFlight = bootstrap is BootstrapPending ||
           bootstrap is BootstrapRunning ||
@@ -69,6 +73,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // During initial session restore, don't redirect — keeps screen stable.
       if (isLoading) return null;
+
+      // FEAT-002 Stage 5 — user signed in but needs onboarding setup.
+      // Redirect to /onboarding unless already there.
+      if (needsOnboarding) {
+        return isOnboarding ? null : '/onboarding';
+      }
 
       // Unauthenticated — only the login screen is reachable.
       if (!isAuthed) return isLogin ? null : '/login';
@@ -79,8 +89,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isBootstrap ? null : '/bootstrap';
       }
 
-      // Bootstrap is complete — bounce off /login or /bootstrap.
-      if (isLogin || isBootstrap) return '/pos';
+      // Bootstrap is complete — bounce off /login or /bootstrap or /onboarding.
+      if (isLogin || isBootstrap || isOnboarding) return '/pos';
       return null;
     },
     routes: [
@@ -88,6 +98,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/login',
         name: 'login',
         builder: (_, __) => const LoginScreen(),
+      ),
+      // FEAT-002 Stage 5 — onboarding routes (outside shell, like login).
+      GoRoute(
+        path: '/onboarding',
+        name: 'onboarding',
+        builder: (_, __) => const OnboardingScreen(),
+        routes: [
+          GoRoute(
+            path: 'create',
+            name: 'createOrg',
+            builder: (_, __) => const CreateOrgScreen(),
+          ),
+          GoRoute(
+            path: 'join',
+            name: 'joinOrg',
+            builder: (_, __) => const JoinOrgScreen(),
+          ),
+        ],
       ),
       GoRoute(
         path: '/bootstrap',

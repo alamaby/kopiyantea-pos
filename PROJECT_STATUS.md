@@ -297,10 +297,10 @@
 
 ## Backlog (deferred features)
 
-### [FEAT-002] Multi-Tenant Isolation — **DONE DEV** (tunggu drift codegen)
+### [FEAT-002] Multi-Tenant Isolation — **DONE DEV** (2026-06-16)
 - **Requested:** 2026-05-18
 - **Use case:** Vendor model — owner A runs "Kopiyantea" chain, owner B runs separate "Cafe XYZ", both use the same app/Supabase project with **data isolated per business**.
-- **Stage 4 (2026-06-16) — Implementasi selesai, terblok drift codegen (TD-001):**
+- **Stage 4 (2026-06-16) — Organization scaffold:**
   - ✅ Schema DDL — `organizations`, `organization_members`, `subscription_plans`, `organization_subscriptions` (Supabase migration + local raw-SQL migration v21)
   - ✅ Fresh RLS — `user_org_tier()`, `user_org()`, `user_own_org()`, `user_in_org_active()` + rewrite all tables
   - ✅ Organization DAO (`OrganizationDao`) — raw-SQL approach karena `@DriftAccessor` codegen mati; 6 enum types ditambahkan (`BusinessType`, `OrganizationStatus`, `SubscriptionStatus`, `OrganizationMemberRole`, `OrganizationMemberStatus`, `SubscriptionPlanCode`)
@@ -312,6 +312,14 @@
   - 🚫 **Blocker (TD-001):** ~~`drift_dev` 2.20.x tidak bisa generate `app_database.g.dart`~~
     - ✅ **Resolved (2026-06-16):** Upgraded `drift` / `drift_dev` to `^2.21.0`. Generator works with existing analyzer 6.4.1 + Dart SDK 3.11.5. `app_database.g.dart` regenerated penuh (770 KB, 28+ tabel). Tidak perlu upgrade `freezed` / `riverpod` major version.
     - Migration code v1–v20 dikembalikan ke drift API (`m.createTable` / `m.addColumn`). Raw-SQL workaround dihapus.
+- **Stage 5 (2026-06-16) — Organization integration ke seluruh aplikasi:**
+  - ✅ Auth provider — `needsOnboarding` state case, `completeOnboarding()` transition dari `needsOnboarding` → `authenticated`. `currentOrganizationIdProvider` + `currentOrganizationProvider`.
+  - ✅ Onboarding UI — `OnboardingScreen` (create/join options), `CreateOrgScreen` (form create org + `OrganizationDao` insert), `JoinOrgScreen` (MVP placeholder)
+  - ✅ Router — `/onboarding`, `/onboarding/create`, `/onboarding/join` routes + redirect logic untuk `needsOnboarding` state
+  - ✅ Settings — `OrganizationCard` (show org name + subscription tier + tap to switch) ganti placeholder subscription. `OrganizationSwitcherBottomSheet` (list org + create new org button)
+  - ✅ L10n — 25+ keys onboarding + settings di `app_id.arb` + `app_en.arb`
+  - ✅ `AppTextField` — upgraded to `TextFormField` untuk support `validator` parameter
+  - ✅ TD-001 resolved — drift/drift_dev bumped ke 2.21.0, `app_database.g.dart` regenerated (770 KB, 28+ tables)
 - **Scope (Phase 8):**
   - Add `tenants` table (id, name, created_at, owner_user_id)
   - Add `tenant_id` column to all chain-wide tables: `branches`, `products`, `customers`, `option_groups`, `options`, `app_users` (and propagate via branch chain for branch-scoped tables)

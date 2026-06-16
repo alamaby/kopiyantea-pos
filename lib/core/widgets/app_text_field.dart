@@ -25,6 +25,7 @@ class AppTextField extends StatelessWidget {
     this.suffixIcon,
     this.maxLines = 1,
     this.textInputAction,
+    this.validator,
   });
 
   final String label;
@@ -43,6 +44,7 @@ class AppTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final int maxLines;
   final TextInputAction? textInputAction;
+  final String? Function(String?)? validator;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +59,7 @@ class AppTextField extends StatelessWidget {
                 .copyWith(color: context.colors.textSecondary),
           ),
         ),
-        TextField(
+        TextFormField(
           controller: controller,
           enabled: enabled,
           autofocus: autofocus,
@@ -65,10 +67,11 @@ class AppTextField extends StatelessWidget {
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
           onChanged: onChanged,
-          onSubmitted: onSubmitted,
+          onFieldSubmitted: onSubmitted,
           maxLines: maxLines,
           textInputAction: textInputAction,
           style: AppTypography.bodyLg,
+          validator: validator,
           decoration: InputDecoration(
             hintText: hint,
             errorText: errorText,

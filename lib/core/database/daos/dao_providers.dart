@@ -11,6 +11,7 @@ import 'customer_point_ledger_dao.dart';
 import 'held_order_dao.dart';
 import 'inventory_dao.dart';
 import 'option_dao.dart';
+import 'organization_dao.dart';
 import 'outbox_dao.dart';
 import 'shift_closing_dao.dart';
 import 'transaction_dao.dart';
@@ -69,4 +70,8 @@ final shiftClosingDaoProvider = Provider<ShiftClosingDao>(
 
 final bankAccountDaoProvider = Provider<BankAccountDao>(
   (ref) => BankAccountDao(ref.watch(databaseProvider)),
+);
+
+final organizationDaoProvider = Provider<OrganizationDao>(
+  (ref) => OrganizationDao(ref.watch(databaseProvider)),
 );

@@ -296,9 +296,19 @@
 
 ## Backlog (deferred features)
 
-### [FEAT-002] Multi-Tenant Isolation
+### [FEAT-002] Multi-Tenant Isolation — **DONE DEV** (tunggu drift codegen)
 - **Requested:** 2026-05-18
-- **Use case:** Vendor model — owner A runs "Kopiyantea" chain, owner B runs separate "Cafe XYZ", both use the same app/Supabase project with **data isolated per business**. Currently the schema is single-tenant (master prompt §14 risk #7) — all owners share `products`/`customers`/`option_groups`/`branches` across the project.
+- **Use case:** Vendor model — owner A runs "Kopiyantea" chain, owner B runs separate "Cafe XYZ", both use the same app/Supabase project with **data isolated per business**.
+- **Stage 4 (2026-06-16) — Implementasi selesai, terblok drift codegen (TD-001):**
+  - ✅ Schema DDL — `organizations`, `organization_members`, `subscription_plans`, `organization_subscriptions` (Supabase migration + local raw-SQL migration v21)
+  - ✅ Fresh RLS — `user_org_tier()`, `user_org()`, `user_own_org()`, `user_in_org_active()` + rewrite all tables
+  - ✅ Organization DAO (`OrganizationDao`) — raw-SQL approach karena `@DriftAccessor` codegen mati; 6 enum types ditambahkan (`BusinessType`, `OrganizationStatus`, `SubscriptionStatus`, `OrganizationMemberRole`, `OrganizationMemberStatus`, `SubscriptionPlanCode`)
+  - ✅ Auth layer — `organizationId` masuk `AuthedSession`/`AuthState`; `_resolveAppUser` lookup org context lokal + Supabase
+  - ✅ Sync DTOs — `OrganizationSyncDto`, `OrganizationMemberSyncDto`, plan/subscription mappers
+  - ✅ Sync repository — `_pullMyAuthContext` sekarang pull `organizations`, `organization_members`, `organization_subscriptions`
+  - ✅ Subscription plan seed — `free`/`plus` di `_seedSubscriptionPlans` (migration v21)
+  - ✅ Settings UI — tombol subscription "(segera)" + `SubscriptionCard` placeholder
+  - 🚫 **Blocker (TD-001):** `drift_dev` 2.20.x tidak bisa generate `app_database.g.dart` di Dart SDK 3.11.5 (analyzer 6.4.1 mismatch). File `.g.dart` yang valid hilang karena overwrite kosong. Tidak ada backup yang komplit (worktree backup cuma punya 18 dari ~28 tabel). **Tidak bisa compile tanpa `app_database.g.dart` yang valid.**
 - **Scope (Phase 8):**
   - Add `tenants` table (id, name, created_at, owner_user_id)
   - Add `tenant_id` column to all chain-wide tables: `branches`, `products`, `customers`, `option_groups`, `options`, `app_users` (and propagate via branch chain for branch-scoped tables)
@@ -307,6 +317,7 @@
   - Onboarding flow: signup creates new tenant; invite flow joins existing tenant
   - Add tenant indicator in UI (branch picker shows tenant scope)
 - **Estimated effort:** 15-20 SQL migration files + RLS rewrite + onboarding UI + tenant-aware sync. Substantial — typically pre-launch hardening for SaaS pivot. Not needed for single-business deployment.
+- **Resolution path (TD-001):** Coordinated upgrade `drift`, `drift_dev`, `freezed`, `freezed_annotation`, `riverpod`, `riverpod_annotation`, `riverpod_generator`, `json_serializable`, `analyzer` — dedicated maintenance phase (~~1 hari).
 
 ### [FEAT-003] Outbox Queue Detail Screen — **DONE DEV** (2026-05-20)
 **Implemented:**

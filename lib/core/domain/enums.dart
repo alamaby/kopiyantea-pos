@@ -21,32 +21,35 @@ enum OutboxEntityType {
   transactionItem,
   inventoryMovement,
   customer,
-  // FEAT-004 — branch tax settings update.
-  branch,
-  // FEAT-005 — inventory item create/update + standalone (non-tx) movements.
-  inventoryItem,
-  // FEAT-006 — user/access management + pending invitations.
-  appUser,
-  userBranchAccess,
-  pendingInvitation,
-  // FEAT-001 — modifier system master writes.
-  optionGroup,
-  optionItem,
-  productOptionGroup,
-  // FEAT-014 — per-branch receipt template/settings.
-  receiptSetting,
-  // Opsi C (seed sync) — chain-wide catalog + per-branch overrides + recipes
-  // are pushed to Supabase via outbox so first-device seed data appears in
-  // server tables (otherwise transaction FKs reject sync).
   product,
   branchProduct,
-  productRecipe,
-  // FEAT-015 — global bank accounts for transfer payment.
-  bankAccount,
-  // Tier 1 — product category registry sync.
-  category,
-  // Loyalty point audit ledger.
-  customerPointLedger,
-  // Chain-wide owner-managed settings.
+  branch,
+  appUser,
+  userBranchAccess,
+  heldOrder,
+  receiptSetting,
   companySetting,
+  bankAccount,
+  pendingInvitation,
+  optionGroup,
+  option,
+  productOptionGroup,
+  category,
+  inventoryItem,
+  productRecipe,
+  shiftClosing,
 }
+
+// ── SaaS / Multi-tenant enums (FEAT-002) ────────────────────────────────────
+
+enum BusinessType { generic, fnb, retail, service, other }
+
+enum OrganizationStatus { active, suspended, deleted }
+
+enum OrganizationMemberRole { owner, admin, manager, cashier }
+
+enum OrganizationMemberStatus { active, invited, inactive }
+
+enum SubscriptionStatus { trialing, active, past_due, canceled, expired }
+
+enum SubscriptionPlanCode { free, plus }

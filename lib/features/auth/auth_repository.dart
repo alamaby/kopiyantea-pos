@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/branch_dao.dart';
 import '../../core/database/daos/dao_providers.dart';
+import '../../core/database/daos/organization_dao.dart';
 import '../../core/database/daos/outbox_dao.dart';
 import '../../core/domain/enums.dart';
 import '../../core/network/supabase_providers.dart';
@@ -39,9 +40,14 @@ const String kAuthDeepLink = 'kopiyantea://login-callback';
 
 /// Lightweight result type for sign-in.
 class AuthedSession {
-  const AuthedSession({required this.user, required this.branchId});
+  const AuthedSession({
+    required this.user,
+    required this.branchId,
+    this.organizationId,
+  });
   final AppUserRow user;
   final String branchId;
+  final String? organizationId;
 }
 
 /// Wraps Supabase Auth + maps to the local `app_users` row.
@@ -55,12 +61,14 @@ class AuthRepository {
     required this.outboxDao,
     required this.secureStorage,
     required this.syncRepository,
+    required this.organizationDao,
   });
 
   final BranchDao branchDao;
   final OutboxDao outboxDao;
   final SecureStorage secureStorage;
   final SyncRepository syncRepository;
+  final OrganizationDao organizationDao;
   final Logger _log = Logger();
 
   /// Lazy access — returns null when Supabase isn't initialized (e.g. dev
@@ -347,7 +355,12 @@ class AuthRepository {
       if (signOutOnFailure) await _supabase?.auth.signOut();
       return const Err(AuthError.noBranchAccess);
     }
-    return Ok(AuthedSession(user: localUser, branchId: access.first.branchId));
+    final org = await organizationDao.getOrganizationForUser(uid);
+    return Ok(AuthedSession(
+      user: localUser,
+      branchId: access.first.branchId,
+      organizationId: org?.id,
+    ));
   }
 }
 
@@ -357,5 +370,6 @@ final authRepositoryProvider = Provider<AuthRepository>(
     outboxDao: ref.watch(outboxDaoProvider),
     secureStorage: ref.watch(secureStorageProvider),
     syncRepository: ref.watch(syncRepositoryProvider),
+    organizationDao: ref.watch(organizationDaoProvider),
   ),
 );

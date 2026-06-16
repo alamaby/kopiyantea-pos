@@ -96,8 +96,35 @@ class SyncRepository {
         await dao.upsertUserBranchAccess(userBranchAccessFromJson(row));
       }
 
+      // 5. Organization memberships for this user (FEAT-002).
+      final orgMemberRows = await sb
+          .from('organization_members')
+          .select()
+          .eq('user_id', userId)
+          .eq('status', 'active');
+      final orgDao = _ref.read(organizationDaoProvider);
+      for (final row
+          in (orgMemberRows as List).cast<Map<String, dynamic>>()) {
+        await orgDao.upsertOrganizationMember(
+            organizationMemberFromJson(row) as OrganizationMembersCompanion);
+      }
+
+      // 6. Organizations the user belongs to.
+      final orgIds = (orgMemberRows as List)
+          .cast<Map<String, dynamic>>()
+          .map((r) => r['organization_id'] as String)
+          .toList();
+      if (orgIds.isNotEmpty) {
+        final orgsJson =
+            await sb.from('organizations').select().inFilter('id', orgIds);
+        for (final json in (orgsJson as List).cast<Map<String, dynamic>>()) {
+          await orgDao.upsertOrganization(
+              organizationFromJson(json) as OrganizationsCompanion);
+        }
+      }
+
       _log.i('[Sync] pulled auth context for $userId '
-          '(${accessList.length} access rows)');
+          '(${accessList.length} access rows, ${orgIds.length} orgs)');
       return true;
     } catch (e, st) {
       _log.e('[Sync] pullMyAuthContext failed', error: e, stackTrace: st);

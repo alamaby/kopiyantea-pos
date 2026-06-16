@@ -15,6 +15,7 @@ import 'tables/customer_tables.dart';
 import 'tables/customer_point_ledger_table.dart';
 import 'tables/held_order_table.dart';
 import 'tables/inventory_tables.dart';
+// import 'tables/organization_tables.dart'; -- codegen blocked (TD-001), tables via raw SQL
 import 'tables/option_tables.dart';
 import 'tables/outbox_table.dart';
 import 'tables/settings_tables.dart';
@@ -54,6 +55,13 @@ part 'app_database.g.dart';
     HeldOrders,
     // ENH-001 — daily cash reconciliation log (added at schemaVersion 5)
     ShiftClosings,
+    // FEAT-002 — SaaS multi-tenant tables (schemaVersion 21)
+    // Drift codegen blocked by analyzer version (TD-001).
+    // Tables created via raw SQL in migration v21.
+    // Organizations,
+    // OrganizationMembers,
+    // SubscriptionPlans,
+    // OrganizationSubscriptions,
     // FEAT-015 — global bank accounts for transfer payment (schemaVersion 9)
     BankAccounts,
     // Tier 1 — kategori produk registry (schemaVersion 12)
@@ -65,7 +73,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -167,6 +175,16 @@ class AppDatabase extends _$AppDatabase {
           if (from < 20) {
             // Chain-wide receipt logo managed by owner.
             await _createCompanySettingsTable();
+          }
+          if (from < 21) {
+            // FEAT-002 — multi-tenant SaaS tables (raw SQL because drift
+            // codegen is blocked by analyzer version mismatch — TD-001).
+            await _createOrganizationsTable();
+            await _createOrganizationMembersTable();
+            await _createSubscriptionPlansTable();
+            await _createOrganizationSubscriptionsTable();
+            // Seed subscription plans (static catalog).
+            await _seedSubscriptionPlans();
           }
         },
         beforeOpen: (_) async {
@@ -296,6 +314,88 @@ FROM receipt_settings
 WHERE logo_url IS NOT NULL AND TRIM(logo_url) <> ''
 ORDER BY updated_at DESC
 LIMIT 1
+''');
+  }
+
+  Future<void> _seedSubscriptionPlans() async {
+    final now = DateTime.now().toIso8601String();
+    await customStatement(
+      'INSERT OR IGNORE INTO subscription_plans '
+      '(code, name, monthly_price, yearly_price, currency, max_products, '
+      'max_monthly_transactions, max_branches_included, '
+      'max_employees_per_paid_branch, features_json, is_active, created_at, updated_at) '
+      'VALUES '
+      "('free', 'Free', 0, 0, 'IDR', 50, 100, 1, 0, '{\"plus_features\": false}', 1, ?, ?), "
+      "('plus', 'Plus', 0, 0, 'IDR', 500, 1000, 1, 2, '{\"plus_features\": true}', 1, ?, ?)",
+      [now, now, now, now],
+    );
+  }
+
+  Future<void> _createOrganizationsTable() async {
+    await customStatement('''
+CREATE TABLE IF NOT EXISTS organizations (
+  id TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  business_type TEXT NOT NULL DEFAULT 'generic',
+  address TEXT,
+  phone TEXT,
+  owner_user_id TEXT,
+  default_timezone TEXT NOT NULL DEFAULT 'Asia/Jakarta',
+  status TEXT NOT NULL DEFAULT 'active',
+  trial_ends_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
+''');
+  }
+
+  Future<void> _createOrganizationMembersTable() async {
+    await customStatement('''
+CREATE TABLE IF NOT EXISTS organization_members (
+  organization_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (organization_id, user_id)
+)
+''');
+  }
+
+  Future<void> _createSubscriptionPlansTable() async {
+    await customStatement('''
+CREATE TABLE IF NOT EXISTS subscription_plans (
+  code TEXT PRIMARY KEY NOT NULL,
+  name TEXT NOT NULL,
+  monthly_price REAL NOT NULL DEFAULT 0,
+  yearly_price REAL NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'IDR',
+  max_products INTEGER,
+  max_monthly_transactions INTEGER,
+  max_branches_included INTEGER NOT NULL DEFAULT 1,
+  max_employees_per_paid_branch INTEGER NOT NULL DEFAULT 0,
+  features_json TEXT NOT NULL DEFAULT '{}',
+  is_active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
+''');
+  }
+
+  Future<void> _createOrganizationSubscriptionsTable() async {
+    await customStatement('''
+CREATE TABLE IF NOT EXISTS organization_subscriptions (
+  organization_id TEXT PRIMARY KEY NOT NULL,
+  plan_code TEXT NOT NULL,
+  status TEXT NOT NULL,
+  billing_period TEXT,
+  current_period_start TEXT,
+  current_period_end TEXT,
+  provider TEXT NOT NULL DEFAULT 'manual',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+)
 ''');
   }
 }

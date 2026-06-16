@@ -24,6 +24,7 @@ sealed class AuthState with _$AuthState {
   const factory AuthState.authenticated({
     required AppUserRow user,
     required String branchId,
+    String? organizationId,
   }) = Authenticated;
 }
 
@@ -72,6 +73,7 @@ class Auth extends _$Auth {
             return AuthState.authenticated(
               user: value.user,
               branchId: value.branchId,
+              organizationId: value.organizationId,
             );
           }(),
         Err() => const AuthState.unauthenticated(),
@@ -88,6 +90,7 @@ class Auth extends _$Auth {
       state = AuthState.authenticated(
         user: restored.user,
         branchId: restored.branchId,
+        organizationId: restored.organizationId,
       );
       // TODO-BG-SYNC-ON-RESUME — fire-and-forget pull so cached data doesn't
       // go stale when the user reopens the app after edits on another device.
@@ -131,6 +134,7 @@ class Auth extends _$Auth {
           state = AuthState.authenticated(
             user: value.user,
             branchId: value.branchId,
+            organizationId: value.organizationId,
           );
           return Ok<Unit, AuthError>(Unit.instance);
         }(),

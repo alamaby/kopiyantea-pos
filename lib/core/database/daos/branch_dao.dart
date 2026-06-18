@@ -80,22 +80,29 @@ class BranchDao extends DatabaseAccessor<AppDatabase> with _$BranchDaoMixin {
           .get();
 
   /// FEAT-002 Phase 7 — branch access filtered to a single organization.
-  /// Joins user_branch_access with branches so only rows for branches
-  /// belonging to the given org are returned.
+  /// Uses raw SQL to avoid drift-codegen dependency on [branches.organizationId]
+  /// until build_runner is re-run (019ed651).
   Future<List<UserBranchAccessRow>> getAccessForUserInOrg(
     String userId,
     String orgId,
-  ) {
-    final query = select(userBranchAccesses).join([
-      innerJoin(
-        branches,
-        branches.id.equalsExp(userBranchAccesses.branchId),
-      ),
-    ])
-      ..where(userBranchAccesses.userId.equals(userId))
-      ..where(branches.organizationId.equals(orgId));
+  ) async {
+    final rows = await customSelect(
+      'SELECT uba.id, uba.user_id, uba.branch_id, uba.created_at, uba.updated_at '
+      'FROM user_branch_access uba '
+      'JOIN branches b ON b.id = uba.branch_id '
+      'WHERE uba.user_id = ? AND b.organization_id = ?',
+      variables: [Variable<String>(userId), Variable<String>(orgId)],
+    ).get();
 
-    return query.map((row) => row.readTable(userBranchAccesses)).get();
+    return rows.map((row) {
+      return UserBranchAccessRow(
+        id: row.read<String>('id'),
+        userId: row.read<String>('user_id'),
+        branchId: row.read<String>('branch_id'),
+        createdAt: row.read<DateTime>('created_at'),
+        updatedAt: row.read<DateTime>('updated_at'),
+      );
+    }).toList();
   }
 
   Future<int> deleteAccess({

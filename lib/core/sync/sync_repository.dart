@@ -1,15 +1,14 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../features/auth/auth_provider.dart';
 import '../database/app_database.dart';
 import '../database/daos/company_settings_dao.dart';
 import '../database/daos/dao_providers.dart';
 import '../database/database_provider.dart';
-import '../../features/auth/auth_provider.dart';
 import '../domain/enums.dart';
 import 'sync_dtos.dart';
 

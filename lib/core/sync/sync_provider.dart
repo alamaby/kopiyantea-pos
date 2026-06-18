@@ -2,8 +2,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:logger/logger.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../database/daos/dao_providers.dart';
 import '../../features/auth/auth_provider.dart';
+import '../database/daos/dao_providers.dart';
 import 'sync_repository.dart';
 
 part 'sync_provider.freezed.dart';

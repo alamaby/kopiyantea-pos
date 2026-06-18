@@ -147,8 +147,8 @@ class _UserFormScreenState extends ConsumerState<UserFormScreen> {
       final invitationId = const Uuid().v7();
       await dao.upsertPendingInvitation(PendingInvitationsCompanion.insert(
         id: invitationId,
-        email: email,
-        fullName: name,
+        email: Value(email),
+        fullName: Value(name),
         globalRole: _role,
         branchIdsCsv: Value(_selectedBranchIds.join(',')),
         invitedBy: Value(inviter),

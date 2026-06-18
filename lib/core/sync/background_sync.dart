@@ -93,11 +93,18 @@ Future<bool> runBackgroundSyncOnce() async {
     final branchIds = access.map((a) => a.branchId).toList(growable: false);
 
     // FEAT-002 Phase 7 — infer active org from first accessible branch so
+    // FEAT-002 Phase 7 — infer active org from first accessible branch so
     // background isolate (no Riverpod auth state) can still scope pulls.
     String? orgId;
     if (branchIds.isNotEmpty) {
-      final firstBranch = await branchDao.getBranchById(branchIds.first);
-      orgId = firstBranch?.organizationId;
+      final json = await Supabase.instance.client
+          .from('branches')
+          .select('organization_id')
+          .eq('id', branchIds.first)
+          .maybeSingle();
+      if (json != null) {
+        orgId = json['organization_id'] as String?;
+      }
     }
 
     final push = await repo.pushOutbox();

@@ -109,7 +109,9 @@ class _CreateInviteCodeScreenState
     await Clipboard.setData(ClipboardData(text: _generatedCode!));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.createInviteCodeCopied)),
+        SnackBar(
+          content: Text(AppL10n.of(context).createInviteCodeCopied),
+        ),
       );
     }
   }
@@ -279,7 +281,7 @@ class _CreateInviteCodeScreenState
             const SizedBox(height: AppSpacing.lg),
             Text(
               l10n.createInviteCodeSuccessTitle,
-              style: AppTypography.titleLg,
+              style: AppTypography.headlineLg,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.md),
@@ -292,13 +294,13 @@ class _CreateInviteCodeScreenState
             ),
             const SizedBox(height: AppSpacing.xl),
             AppCard(
-              variant: AppCardVariant.default_,
+              variant: AppCardVariant.raised,
               child: Row(
                 children: [
                   Expanded(
                     child: SelectableText(
                       _generatedCode!,
-                      style: AppTypography.titleXl.copyWith(
+                      style: AppTypography.displayLg.copyWith(
                         letterSpacing: 4,
                         fontWeight: FontWeight.bold,
                       ),

@@ -31,15 +31,18 @@ class _FakeSyncRepo extends SyncRepository {
   }
 
   @override
-  Future<({int errors, int upserted})> pullMasterData(
-      List<String> branchIds) async {
+  Future<({int errors, int upserted})> pullMasterData({
+    required List<String> branchIds,
+    String? organizationId,
+  }) async {
     masterCalls++;
     return (upserted: 3, errors: 0);
   }
 
   @override
-  Future<({int errors, int upserted})> pullTransactions(
-    List<String> branchIds, {
+  Future<({int errors, int upserted})> pullTransactions({
+    required List<String> branchIds,
+    String? organizationId,
     int limit = 100,
   }) async {
     txCalls++;

@@ -357,7 +357,7 @@ class AuthRepository {
     final now = DateTime.now();
     await branchDao.upsertUser(AppUsersCompanion.insert(
       id: uid,
-      fullName: invitation.fullName,
+      fullName: invitation.fullName ?? '',
       globalRole: invitation.globalRole,
       email: Value(invitation.email),
       isActive: const Value(true),

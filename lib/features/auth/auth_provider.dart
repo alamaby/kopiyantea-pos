@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import '../../core/database/app_database.dart';
+import '../../core/database/database_provider.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/daos/organization_dao.dart';
 import '../../core/sync/sync_provider.dart';

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/database/daos/organization_dao.dart';
+import '../../core/utils/result.dart';
 import '../../core/domain/enums.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/widgets/app_button.dart';
@@ -153,7 +154,7 @@ class _JoinOrgScreenState extends ConsumerState<JoinOrgScreen> {
           children: [
             if (_errorMessage != null) ...[
               AppCard(
-                variant: AppCardVariant.default_,
+                variant: AppCardVariant.raised,
                 child: Row(
                   children: [
                     const Icon(Icons.error_outline, color: Colors.red),
@@ -175,7 +176,7 @@ class _JoinOrgScreenState extends ConsumerState<JoinOrgScreen> {
               hint: l10n.onboardingJoinCodeHint,
               autofocus: true,
               textInputAction: TextInputAction.done,
-              textCapitalization: TextCapitalization.characters,
+              // textCapitalization not supported by AppTextField — enforced via inputFormatters instead.
               onSubmitted: (_) => _submit(),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {

@@ -132,6 +132,7 @@ class OrganizationCard extends ConsumerWidget {
                     ),
                     AppBadge(
                       label: l10n.settingsRoleOwner,
+                      icon: Icons.admin_panel_settings,
                       tone: AppBadgeTone.warning,
                     ),
                   ],
@@ -221,12 +222,14 @@ class _SubscriptionTierBadge extends ConsumerWidget {
       loading: () => const SizedBox.shrink(),
       error: (_, __) => AppBadge(
         label: l10n.settingsOrganizationTierFree,
+        icon: Icons.account_circle,
         tone: AppBadgeTone.neutral,
       ),
       data: (sub) {
         if (sub == null) {
           return AppBadge(
             label: l10n.settingsOrganizationTierFree,
+            icon: Icons.account_circle,
             tone: AppBadgeTone.neutral,
           );
         }
@@ -247,6 +250,10 @@ class _SubscriptionTierBadge extends ConsumerWidget {
 
         return AppBadge(
           label: label,
+          icon: switch (sub.planCode) {
+            'plus' => Icons.workspace_premium,
+            _ => Icons.account_circle,
+          },
           tone: tone,
         );
       },
@@ -297,7 +304,7 @@ class OrganizationSwitcherBottomSheet extends ConsumerWidget {
                   children: [
                     Text(
                       l10n.settingsSwitchOrganization,
-                      style: AppTypography.titleLg,
+                      style: AppTypography.headlineLg,
                     ),
                     const Spacer(),
                     IconButton(

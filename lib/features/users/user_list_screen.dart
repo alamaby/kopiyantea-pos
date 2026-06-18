@@ -223,7 +223,7 @@ class _DismissibleInvitation extends ConsumerWidget {
               size: 36, color: AppColors.warning),
           title: Text(AppL10n.of(ctx).usersCancelInviteTitle),
           content: Text(
-            AppL10n.of(ctx).usersCancelInviteMessage(invitation.email),
+            AppL10n.of(ctx).usersCancelInviteMessage(invitation.email ?? ''),
           ),
           actions: [
             TextButton(
@@ -257,7 +257,7 @@ class _DismissibleInvitation extends ConsumerWidget {
 
     messenger.hideCurrentSnackBar();
     messenger.showSnackBar(buildUndoSnackBar(
-      message: AppL10n.of(context).usersInviteCancelled(snapshot.email),
+      message: AppL10n.of(context).usersInviteCancelled(snapshot.email ?? ''),
       undoLabel: AppL10n.of(context).actionUndo,
       onUndo: () => _undoCancelInvitation(ref, snapshot, deleteOutboxId),
     ));
@@ -318,9 +318,9 @@ class _InvitationTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(invitation.fullName, style: AppTypography.titleMd),
+                Text(invitation.fullName ?? '', style: AppTypography.titleMd),
                 Text(
-                  invitation.email,
+                  invitation.email ?? '',
                   style: AppTypography.bodySm.copyWith(
                     color: context.colors.textSecondary,
                   ),

@@ -139,6 +139,13 @@ class _OwnerSection extends StatelessWidget {
             subtitle: l10n.settingsTelemetrySubtitle,
             route: '/more/settings/telemetry',
           ),
+          const Divider(height: 1),
+          _SettingsNavTile(
+            icon: Icons.key_outlined,
+            title: l10n.settingsInviteCodes,
+            subtitle: l10n.settingsInviteCodesSubtitle,
+            route: '/more/settings/create-invite-code',
+          ),
         ],
       ),
     );

@@ -73,7 +73,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 23;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -185,6 +185,20 @@ class AppDatabase extends _$AppDatabase {
             await _createOrganizationSubscriptionsTable();
             // Seed subscription plans (static catalog).
             await _seedSubscriptionPlans();
+          }
+          if (from < 22) {
+            // FEAT-002 Phase 6 — usage counters for SaaS entitlement.
+            await _createUsageCountersTable();
+          }
+          if (from < 23) {
+            // FEAT-002 Phase 7 — expand pending_invitations for code-based invites.
+            await m.addColumn(pendingInvitations, pendingInvitations.joinCode);
+            await m.addColumn(pendingInvitations, pendingInvitations.inviteType);
+            await m.addColumn(pendingInvitations, pendingInvitations.maxUses);
+            await m.addColumn(pendingInvitations, pendingInvitations.usedCount);
+            await m.addColumn(pendingInvitations, pendingInvitations.status);
+            await m.addColumn(pendingInvitations, pendingInvitations.expiresAt);
+            await m.addColumn(pendingInvitations, pendingInvitations.organizationId);
           }
         },
         beforeOpen: (_) async {
@@ -397,5 +411,59 @@ CREATE TABLE IF NOT EXISTS organization_subscriptions (
   updated_at TEXT NOT NULL
 )
 ''');
+  }
+
+  Future<void> _createUsageCountersTable() async {
+    await customStatement('''
+CREATE TABLE IF NOT EXISTS usage_counters (
+  organization_id TEXT NOT NULL,
+  period_start TEXT NOT NULL,
+  period_end TEXT NOT NULL,
+  transaction_count INTEGER NOT NULL DEFAULT 0,
+  product_count_snapshot INTEGER NOT NULL DEFAULT 0,
+  branch_count_snapshot INTEGER NOT NULL DEFAULT 0,
+  employee_count_snapshot INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (organization_id, period_start, period_end)
+)
+''');
+  }
+
+  /// FEAT-002 Phase 7 — purge all organization-scoped local data.
+  ///
+  /// Called during org switch so the user never sees stale products,
+  /// transactions, or branches from a previous organization.
+  ///
+  /// Tables are deleted in child→parent order to respect FK constraints.
+  /// Tables retained: app_users, subscription_plans, outbox_items,
+  /// company_settings (global single-row).
+  Future<void> clearOrganizationData() async {
+    // ── Drift tables (child → parent) ────────────────────────────────────────
+    await customStatement('DELETE FROM transaction_item_options');
+    await customStatement('DELETE FROM transaction_items');
+    await customStatement('DELETE FROM inventory_movements');
+    await customStatement('DELETE FROM product_recipes');
+    await customStatement('DELETE FROM branch_products');
+    await customStatement('DELETE FROM product_option_groups');
+    await customStatement('DELETE FROM options');
+    await customStatement('DELETE FROM option_groups');
+    await customStatement('DELETE FROM categories');
+    await customStatement('DELETE FROM products');
+    await customStatement('DELETE FROM inventory_items');
+    await customStatement('DELETE FROM receipt_settings');
+    await customStatement('DELETE FROM bank_accounts');
+    await customStatement('DELETE FROM customer_point_ledgers');
+    await customStatement('DELETE FROM customers');
+    await customStatement('DELETE FROM user_branch_access');
+    await customStatement('DELETE FROM branches');
+    await customStatement('DELETE FROM pending_invitations');
+    await customStatement('DELETE FROM held_orders');
+    await customStatement('DELETE FROM shift_closings');
+
+    // ── Raw-SQL tables (org-scoped) ────────────────────────────────────────
+    await customStatement('DELETE FROM organization_members');
+    await customStatement('DELETE FROM organization_subscriptions');
+    await customStatement('DELETE FROM usage_counters');
+    await customStatement('DELETE FROM organizations');
   }
 }

@@ -65,7 +65,15 @@ class Bootstrap extends _$Bootstrap {
       // idempotent and ensures the local user/access cache is fresh.
       await repo.pullMyAuthContext(user.id);
 
-      final branchIds = await _accessibleBranchIds(user.id);
+      final orgId = ref.read(currentOrganizationIdProvider);
+      if (orgId == null) {
+        state = const BootstrapState.failed(
+          error: bootstrapErrorNoBranchAccess,
+        );
+        return;
+      }
+
+      final branchIds = await _accessibleBranchIds(user.id, orgId);
       if (branchIds.isEmpty) {
         state = const BootstrapState.failed(
           error: bootstrapErrorNoBranchAccess,
@@ -74,7 +82,10 @@ class Bootstrap extends _$Bootstrap {
       }
 
       state = const BootstrapState.running(step: bootstrapStepMenuStock);
-      final master = await repo.pullMasterData(branchIds);
+      final master = await repo.pullMasterData(
+        branchIds: branchIds,
+        organizationId: orgId,
+      );
       if (master.errors > 0 && master.upserted == 0) {
         state = const BootstrapState.failed(
           error: bootstrapErrorMasterDataFailed,
@@ -84,7 +95,10 @@ class Bootstrap extends _$Bootstrap {
 
       state =
           const BootstrapState.running(step: bootstrapStepTransactionHistory);
-      await repo.pullTransactions(branchIds);
+      await repo.pullTransactions(
+        branchIds: branchIds,
+        organizationId: orgId,
+      );
 
       state = const BootstrapState.complete();
     } catch (e) {
@@ -94,9 +108,12 @@ class Bootstrap extends _$Bootstrap {
     }
   }
 
-  Future<List<String>> _accessibleBranchIds(String userId) async {
+  Future<List<String>> _accessibleBranchIds(
+    String userId,
+    String orgId,
+  ) async {
     final dao = ref.read(branchDaoProvider);
-    final rows = await dao.getAccessForUser(userId);
+    final rows = await dao.getAccessForUserInOrg(userId, orgId);
     return rows.map((r) => r.branchId).toList();
   }
 }

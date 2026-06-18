@@ -211,6 +211,32 @@ class Auth extends _$Auth {
     );
     _log.i('[Auth] onboarding complete → org=$organizationId');
   }
+
+  /// FEAT-002 Phase 7 — switch to a different organization.
+  ///
+  /// Atomically purges all local org-scoped data, updates auth state with
+  /// the new org, and triggers bootstrap so fresh data is pulled.
+  /// The caller (UI) is responsible for showing a blocking indicator.
+  Future<void> switchOrganization(String newOrgId) async {
+    final current = state;
+    if (current is! Authenticated) {
+      _log.w('[Auth] switchOrganization called in wrong state: $current');
+      return;
+    }
+    if (current.organizationId == newOrgId) return;
+
+    _log.i('[Auth] purging local data for org switch $current.organizationId → $newOrgId');
+    await ref.read(databaseProvider).clearOrganizationData();
+
+    state = AuthState.authenticated(
+      user: current.user,
+      branchId: current.branchId,
+      organizationId: newOrgId,
+    );
+    _log.i('[Auth] switched org → $newOrgId');
+
+    ref.read(bootstrapProvider.notifier).markPending();
+  }
 }
 
 // ── Convenience derived providers ─────────────────────────────────────────────

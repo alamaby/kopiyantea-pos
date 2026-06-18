@@ -40,12 +40,19 @@ class Sync extends _$Sync {
     try {
       final repo = ref.read(syncRepositoryProvider);
       final push = await repo.pushOutbox();
+      final orgId = ref.read(currentOrganizationIdProvider);
       final hasBranches = branchIds != null && branchIds.isNotEmpty;
-      final master = hasBranches
-          ? await repo.pullMasterData(branchIds)
+      final master = hasBranches && orgId != null
+          ? await repo.pullMasterData(
+              branchIds: branchIds,
+              organizationId: orgId,
+            )
           : (upserted: 0, errors: 0);
-      final txn = hasBranches
-          ? await repo.pullTransactions(branchIds)
+      final txn = hasBranches && orgId != null
+          ? await repo.pullTransactions(
+              branchIds: branchIds,
+              organizationId: orgId,
+            )
           : (upserted: 0, errors: 0);
       state = state.copyWith(
         isSyncing: false,

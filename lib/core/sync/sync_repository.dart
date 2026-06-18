@@ -9,6 +9,7 @@ import '../database/app_database.dart';
 import '../database/daos/company_settings_dao.dart';
 import '../database/daos/dao_providers.dart';
 import '../database/database_provider.dart';
+import '../../features/auth/auth_provider.dart';
 import '../domain/enums.dart';
 import 'sync_dtos.dart';
 
@@ -106,7 +107,7 @@ class SyncRepository {
       for (final row
           in (orgMemberRows as List).cast<Map<String, dynamic>>()) {
         await orgDao.upsertOrganizationMember(
-            organizationMemberFromJson(row) as OrganizationMembersCompanion);
+            organizationMemberFromJson(row));
       }
 
       // 6. Organizations the user belongs to.
@@ -119,7 +120,7 @@ class SyncRepository {
             await sb.from('organizations').select().inFilter('id', orgIds);
         for (final json in (orgsJson as List).cast<Map<String, dynamic>>()) {
           await orgDao.upsertOrganization(
-              organizationFromJson(json) as OrganizationsCompanion);
+              organizationFromJson(json));
         }
       }
 
@@ -143,9 +144,15 @@ class SyncRepository {
   /// Conflict resolution: master data uses LWW (server `updated_at` wins) via
   /// `insertOnConflictUpdate`. Inventory cached_stock comes from server
   /// (authoritative — reconciled by trigger 008).
-  Future<({int upserted, int errors})> pullMasterData(
-    List<String> branchIds,
-  ) async {
+  Future<({int upserted, int errors})> pullMasterData({
+    required List<String> branchIds,
+    String? organizationId,
+  }) async {
+    final orgId = organizationId ?? _ref.read(currentOrganizationIdProvider);
+    if (orgId == null) {
+      _log.w('[Sync] no organizationId — skip pullMasterData');
+      return (upserted: 0, errors: 0);
+    }
     final sb = _sb;
     if (sb == null) {
       _log.w('[Sync] no supabase — skip pullMasterData');
@@ -162,7 +169,7 @@ class SyncRepository {
     // the user already has access to are pulled here on every sync.
     try {
       final dao = _ref.read(branchDaoProvider);
-      final rows = await sb.from('branches').select().inFilter('id', branchIds);
+      final rows = await sb.from('branches').select().eq('organization_id', orgId).inFilter('id', branchIds);
       for (final json in (rows as List).cast<Map<String, dynamic>>()) {
         await dao.upsertBranch(branchFromJson(json));
         upserted++;
@@ -175,7 +182,7 @@ class SyncRepository {
     // ── categories (chain-wide) — pull SEBELUM products supaya picker punya
     // registry lengkap begitu produk masuk.
     try {
-      final rows = await sb.from('categories').select();
+      final rows = await sb.from('categories').select().eq('organization_id', orgId);
       final dao = _ref.read(categoryDaoProvider);
       for (final json in (rows as List).cast<Map<String, dynamic>>()) {
         try {
@@ -196,7 +203,7 @@ class SyncRepository {
 
     // ── products (chain-wide) ──
     try {
-      final rows = await sb.from('products').select();
+      final rows = await sb.from('products').select().eq('organization_id', orgId);
       final catalogDao = _ref.read(catalogDaoProvider);
       for (final json in (rows as List).cast<Map<String, dynamic>>()) {
         await catalogDao.upsertProduct(productFromJson(json));
@@ -228,19 +235,19 @@ class SyncRepository {
     try {
       final dao = _ref.read(optionDaoProvider);
 
-      final groupRows = await sb.from('option_groups').select();
+      final groupRows = await sb.from('option_groups').select().eq('organization_id', orgId);
       for (final json in (groupRows as List).cast<Map<String, dynamic>>()) {
         await dao.upsertGroup(optionGroupFromJson(json));
         upserted++;
       }
 
-      final optionRows = await sb.from('options').select();
+      final optionRows = await sb.from('options').select().eq('organization_id', orgId);
       for (final json in (optionRows as List).cast<Map<String, dynamic>>()) {
         await dao.upsertOption(optionFromJson(json));
         upserted++;
       }
 
-      final bindingRows = await sb.from('product_option_groups').select();
+      final bindingRows = await sb.from('product_option_groups').select().eq('organization_id', orgId);
       for (final json in (bindingRows as List).cast<Map<String, dynamic>>()) {
         await _db
             .into(_db.productOptionGroups)
@@ -303,7 +310,7 @@ class SyncRepository {
 
     // ── company_settings (chain-wide) ──
     try {
-      final rows = await sb.from('company_settings').select();
+      final rows = await sb.from('company_settings').select().eq('organization_id', orgId);
       final dao = _ref.read(companySettingsDaoProvider);
       for (final json in (rows as List).cast<Map<String, dynamic>>()) {
         await dao.upsert(companySettingsFromJson(json));
@@ -316,7 +323,7 @@ class SyncRepository {
 
     // ── customers (chain-wide) ──
     try {
-      final rows = await sb.from('customers').select();
+      final rows = await sb.from('customers').select().eq('organization_id', orgId);
       final custDao = _ref.read(customerDaoProvider);
       for (final json in (rows as List).cast<Map<String, dynamic>>()) {
         await custDao.upsertCustomer(customerFromJson(json));
@@ -329,7 +336,7 @@ class SyncRepository {
 
     // ── bank_accounts (FEAT-015, global) ──
     try {
-      final rows = await sb.from('bank_accounts').select();
+      final rows = await sb.from('bank_accounts').select().eq('organization_id', orgId);
       final dao = _ref.read(bankAccountDaoProvider);
       for (final json in (rows as List).cast<Map<String, dynamic>>()) {
         await dao.upsert(bankAccountFromJson(json));
@@ -337,6 +344,22 @@ class SyncRepository {
       }
     } catch (e) {
       _log.w('[Sync] pull bank_accounts failed', error: e);
+      errors++;
+    }
+
+    // ── usage_counters (FEAT-002 Phase 6, org-scoped) ──
+    try {
+      final rows = await sb
+          .from('usage_counters')
+          .select()
+          .eq('organization_id', orgId);
+      final dao = _ref.read(usageCounterDaoProvider);
+      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+        await dao.upsert(usageCounterFromJson(json));
+        upserted++;
+      }
+    } catch (e) {
+      _log.w('[Sync] pull usage_counters failed', error: e);
       errors++;
     }
 
@@ -352,12 +375,14 @@ class SyncRepository {
   /// incremental cursor yet. Inventory cached_stock is NOT recomputed from
   /// pulled movements — `pullMasterData` already grabs server's authoritative
   /// cached_stock via inventory_items.
-  Future<({int upserted, int errors})> pullTransactions(
-    List<String> branchIds, {
+  Future<({int upserted, int errors})> pullTransactions({
+    required List<String> branchIds,
+    String? organizationId,
     int limit = 100,
   }) async {
+    final orgId = organizationId ?? _ref.read(currentOrganizationIdProvider);
     final sb = _sb;
-    if (sb == null || branchIds.isEmpty) {
+    if (sb == null || branchIds.isEmpty || orgId == null) {
       return (upserted: 0, errors: 0);
     }
 
@@ -411,6 +436,7 @@ class SyncRepository {
         final pointRows = await sb
             .from('customer_point_ledger')
             .select()
+            .eq('organization_id', orgId)
             .inFilter('transaction_id', txIds);
         for (final json in (pointRows as List).cast<Map<String, dynamic>>()) {
           await _db
@@ -527,6 +553,14 @@ class SyncRepository {
             await _pushCustomerPointLedger(id!);
           case OutboxEntityType.companySetting:
             await _pushCompanySetting(id!);
+          case OutboxEntityType.usageCounter:
+            await _pushUsageCounter(payload);
+          case OutboxEntityType.heldOrder:
+            // Local-only; no server push needed.
+            break;
+          case OutboxEntityType.shiftClosing:
+            // Local-only; no server push needed.
+            break;
           case OutboxEntityType.transactionItem:
             // Children of a transaction; rides on parent push.
             break;
@@ -586,6 +620,12 @@ class SyncRepository {
       case OutboxEntityType.transactionItem:
       case OutboxEntityType.inventoryMovement:
         return 50;
+      case OutboxEntityType.heldOrder:
+        return 60;
+      case OutboxEntityType.shiftClosing:
+        return 60;
+      case OutboxEntityType.usageCounter:
+        return 70;
     }
   }
 
@@ -885,6 +925,26 @@ class SyncRepository {
       throw StateError('ProductRecipe $recipeId not found in local DB');
     }
     await sb.from('product_recipes').upsert(row.toSupabaseJson());
+  }
+
+  Future<void> _pushUsageCounter(Map<String, dynamic> payload) async {
+    final sb = _sb!;
+    final orgId = payload['organization_id'] as String;
+    final periodStart = payload['period_start'] as String;
+    final periodEnd = payload['period_end'] as String;
+    final row = await _ref
+        .read(usageCounterDaoProvider)
+        .getForPeriod(orgId, DateTime.parse(periodStart), DateTime.parse(periodEnd));
+    if (row == null) {
+      await sb
+          .from('usage_counters')
+          .delete()
+          .eq('organization_id', orgId)
+          .eq('period_start', periodStart)
+          .eq('period_end', periodEnd);
+      return;
+    }
+    await sb.from('usage_counters').upsert(row.toSupabaseJson());
   }
 
   /// Exponential backoff: 1s, 5s, 30s, 5m, 30m, then plateau (master prompt §9.4).

@@ -436,15 +436,38 @@ class _OrganizationList extends ConsumerWidget {
               trailing: isSelected
                   ? const Icon(Icons.check, color: AppColors.primary)
                   : null,
-              onTap: () {
-                // MVP: Show not-available snackbar
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content:
-                        Text(l10n.settingsOrganizationSwitchNotAvailable),
+              onTap: () async {
+                if (isSelected) {
+                  Navigator.pop(context);
+                  return;
+                }
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: Text('Beralih Organisasi'),
+                    content: Text(
+                      'Beralih ke "${org.name}"?\n\nData lokal organisasi sebelumnya akan dimuat ulang.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: Text(l10n.onboardingJoinSubmit),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Lanjutkan'),
+                      ),
+                    ],
                   ),
                 );
-                Navigator.pop(context);
+                if (confirmed == true) {
+                  Navigator.pop(context);
+                  // Trigger switch → purge → state update → bootstrap pending.
+                  // Router will auto-redirect to /bootstrap.
+                  await ref
+                      .read(authProvider.notifier)
+                      .switchOrganization(org.id);
+                }
               },
             );
           },

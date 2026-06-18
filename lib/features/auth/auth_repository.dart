@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,7 @@ import '../../core/database/daos/organization_dao.dart';
 import '../../core/database/daos/outbox_dao.dart';
 import '../../core/domain/enums.dart';
 import '../../core/network/supabase_providers.dart';
+import '../../core/domain/entitlement_snapshot.dart';
 import '../../core/storage/secure_storage.dart';
 import '../../core/sync/sync_repository.dart';
 import '../../core/utils/result.dart';
@@ -44,10 +46,12 @@ class AuthedSession {
     required this.user,
     required this.branchId,
     this.organizationId,
+    this.entitlement,
   });
   final AppUserRow user;
   final String branchId;
   final String? organizationId;
+  final EntitlementSnapshot? entitlement;
 }
 
 /// Wraps Supabase Auth + maps to the local `app_users` row.
@@ -130,6 +134,76 @@ class AuthRepository {
     } catch (e) {
       _log.e('[Auth] magic-link error', error: e);
       return const Err(AuthError.networkUnavailable);
+    }
+  }
+
+  /// FEAT-002 Phase 7 — claim an open invitation code to join an existing org.
+  /// Calls the `claim_invitation_code` PostgreSQL RPC with row locking.
+  /// Returns the organization info on success, or an error string on failure.
+  Future<Result<({String organizationId, String organizationName, String role}), String>> claimJoinCode({
+    required String code,
+    required String userId,
+  }) async {
+    final sb = _supabase;
+    if (sb == null) return const Err('network_unavailable');
+    try {
+      final result = await sb.rpc(
+        'claim_invitation_code',
+        params: {'p_code': code, 'p_user_id': userId},
+      );
+      final json = result as Map<String, dynamic>;
+      if (json['ok'] == true) {
+        return Ok((
+          organizationId: json['organization_id'] as String,
+          organizationName: json['organization_name'] as String? ?? '',
+          role: json['role'] as String,
+        ));
+      }
+      return Err(json['error'] as String? ?? 'unknown');
+    } catch (e) {
+      _log.e('[Auth] claimJoinCode error', error: e);
+      return const Err('unknown');
+    }
+  }
+
+  /// FEAT-002 Phase 7 — generate a code-based invitation for an existing org.
+  /// Creates a `pending_invitations` row on Supabase with `invite_type='code'`.
+  /// The generated code is an 8-char alphanumeric uppercase string.
+  Future<Result<String, String>> generateJoinCode({
+    required String organizationId,
+    required String role,
+    required String branchIdsCsv,
+    required int maxUses,
+    required DateTime? expiresAt,
+    required String invitedBy,
+  }) async {
+    final sb = _supabase;
+    if (sb == null) return const Err('network_unavailable');
+
+    // Generate random 8-char alphanumeric code
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rand = math.Random.secure();
+    final code = List.generate(8, (_) => chars[rand.nextInt(chars.length)]).join();
+
+    try {
+      await sb.from('pending_invitations').insert({
+        'id': const Uuid().v7(),
+        'organization_id': organizationId,
+        'join_code': code,
+        'invite_type': 'code',
+        'global_role': role,
+        'branch_ids_csv': branchIdsCsv,
+        'invited_by': invitedBy,
+        'max_uses': maxUses,
+        'used_count': 0,
+        'status': 'active',
+        'expires_at': expiresAt?.toIso8601String(),
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      return Ok(code);
+    } catch (e) {
+      _log.e('[Auth] generateJoinCode error', error: e);
+      return const Err('insert_failed');
     }
   }
 

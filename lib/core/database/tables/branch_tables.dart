@@ -58,12 +58,17 @@ class AppUsers extends Table {
 ///    creates the `app_users` row with auth.uid + role, fans out
 ///    `user_branch_access` rows, then deletes the invitation.
 ///
-/// RLS: select by own email OR owner; insert/delete by owner only.
+/// Code-based invite flow (FEAT-002 Phase 7):
+/// 1. Owner generates an 8-char code with role + branch access + max uses + expiry
+/// 2. Any signed-in user enters the code → claim RPC → becomes org member.
+///
+/// RLS: owner/admin manage; self-read by email match; claim bypasses RLS via RPC.
 @DataClassName('PendingInvitationRow')
 class PendingInvitations extends Table {
   TextColumn get id => text()();
-  TextColumn get email => text()();
-  TextColumn get fullName => text()();
+  /// For email-based invites (legacy FEAT-006). Nullable for code-based invites.
+  TextColumn get email => text().nullable()();
+  TextColumn get fullName => text().nullable()();
   TextColumn get globalRole => text().map(
         const EnumNameConverter<GlobalRole>(GlobalRole.values),
       )();
@@ -72,6 +77,21 @@ class PendingInvitations extends Table {
   /// branch access (e.g. an owner-only invite).
   TextColumn get branchIdsCsv => text().withDefault(const Constant(''))();
   TextColumn get invitedBy => text().nullable()();
+  /// FEAT-002 Phase 7 — 8-char alphanumeric invitation code for users who
+  /// already have an account. Null for legacy email-based invites.
+  TextColumn get joinCode => text().nullable()();
+  /// 'email' (legacy) or 'code'. Default 'email' for backward compatibility.
+  TextColumn get inviteType => text().withDefault(const Constant('email'))();
+  /// Max number of times a code invite can be claimed. Default 1.
+  IntColumn get maxUses => integer().withDefault(const Constant(1))();
+  /// How many times the code has been claimed so far. Default 0.
+  IntColumn get usedCount => integer().withDefault(const Constant(0))();
+  /// 'active', 'consumed', or 'canceled'.
+  TextColumn get status => text().withDefault(const Constant('active'))();
+  /// Optional expiry timestamp for code-based invites.
+  DateTimeColumn get expiresAt => dateTime().nullable()();
+  /// FEAT-002 — tenant boundary, nullable during migration then backfilled.
+  TextColumn get organizationId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
 
   @override

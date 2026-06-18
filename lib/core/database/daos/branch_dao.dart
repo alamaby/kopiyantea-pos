@@ -79,6 +79,25 @@ class BranchDao extends DatabaseAccessor<AppDatabase> with _$BranchDaoMixin {
       (select(userBranchAccesses)..where((a) => a.userId.equals(userId)))
           .get();
 
+  /// FEAT-002 Phase 7 — branch access filtered to a single organization.
+  /// Joins user_branch_access with branches so only rows for branches
+  /// belonging to the given org are returned.
+  Future<List<UserBranchAccessRow>> getAccessForUserInOrg(
+    String userId,
+    String orgId,
+  ) {
+    final query = select(userBranchAccesses).join([
+      innerJoin(
+        branches,
+        branches.id.equalsExp(userBranchAccesses.branchId),
+      ),
+    ])
+      ..where(userBranchAccesses.userId.equals(userId))
+      ..where(branches.organizationId.equals(orgId));
+
+    return query.map((row) => row.readTable(userBranchAccesses)).get();
+  }
+
   Future<int> deleteAccess({
     required String userId,
     required String branchId,

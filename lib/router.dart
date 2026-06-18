@@ -36,6 +36,7 @@ import 'features/settings/receipt_settings_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/settings/tax_settings_screen.dart';
 import 'features/settings/telemetry_screen.dart';
+import 'features/onboarding/create_invite_code_screen.dart';
 import 'features/shift/shift_closing_screen.dart';
 import 'features/transactions/transaction_detail_screen.dart';
 import 'features/transactions/transaction_list_screen.dart';
@@ -324,6 +325,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/more/settings/telemetry',
         name: 'telemetry',
         builder: (_, __) => const TelemetryScreen(),
+      ),
+      // FEAT-002 Phase 7 — invite code generation (owner-only).
+      GoRoute(
+        path: '/more/settings/create-invite-code',
+        name: 'create-invite-code',
+        builder: (_, __) => const CreateInviteCodeScreen(),
       ),
       // FEAT-006 — user management.
       GoRoute(

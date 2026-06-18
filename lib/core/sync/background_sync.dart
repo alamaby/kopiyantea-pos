@@ -91,13 +91,29 @@ Future<bool> runBackgroundSyncOnce() async {
     }
 
     final branchIds = access.map((a) => a.branchId).toList(growable: false);
+
+    // FEAT-002 Phase 7 — infer active org from first accessible branch so
+    // background isolate (no Riverpod auth state) can still scope pulls.
+    String? orgId;
+    if (branchIds.isNotEmpty) {
+      final firstBranch = await branchDao.getBranchById(branchIds.first);
+      orgId = firstBranch?.organizationId;
+    }
+
     final push = await repo.pushOutbox();
     var pulled = 0;
     var pullErrors = 0;
 
-    if (branchIds.isNotEmpty) {
-      final master = await repo.pullMasterData(branchIds);
-      final tx = await repo.pullTransactions(branchIds, limit: 50);
+    if (branchIds.isNotEmpty && orgId != null) {
+      final master = await repo.pullMasterData(
+        branchIds: branchIds,
+        organizationId: orgId,
+      );
+      final tx = await repo.pullTransactions(
+        branchIds: branchIds,
+        organizationId: orgId,
+        limit: 50,
+      );
       pulled = master.upserted + tx.upserted;
       pullErrors = master.errors + tx.errors;
     }

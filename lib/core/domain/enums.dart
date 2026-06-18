@@ -32,12 +32,14 @@ enum OutboxEntityType {
   bankAccount,
   pendingInvitation,
   optionGroup,
-  option,
+  optionItem,
   productOptionGroup,
   category,
   inventoryItem,
   productRecipe,
   shiftClosing,
+  customerPointLedger,
+  usageCounter,
 }
 
 // ── SaaS / Multi-tenant enums (FEAT-002) ────────────────────────────────────

@@ -15,6 +15,7 @@ import 'organization_dao.dart';
 import 'outbox_dao.dart';
 import 'shift_closing_dao.dart';
 import 'transaction_dao.dart';
+import 'usage_counter_dao.dart';
 
 /// DAO instances are exposed via Riverpod (not via getters on [AppDatabase])
 /// to avoid the circular import that would otherwise exist between the
@@ -74,4 +75,8 @@ final bankAccountDaoProvider = Provider<BankAccountDao>(
 
 final organizationDaoProvider = Provider<OrganizationDao>(
   (ref) => OrganizationDao(ref.watch(databaseProvider)),
+);
+
+final usageCounterDaoProvider = Provider<UsageCounterDao>(
+  (ref) => UsageCounterDao(ref.watch(databaseProvider)),
 );

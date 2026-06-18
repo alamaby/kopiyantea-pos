@@ -347,6 +347,9 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.customerPointLedger =>
           l10n.outboxEntityCustomerPointLedger,
         OutboxEntityType.companySetting => l10n.outboxEntityReceiptSetting,
+        OutboxEntityType.usageCounter => l10n.outboxEntityUsageCounter,
+        OutboxEntityType.heldOrder => l10n.outboxEntityHeldOrder,
+        OutboxEntityType.shiftClosing => l10n.outboxEntityShiftClosing,
       };
 
   static IconData _iconFor(OutboxEntityType t) => switch (t) {
@@ -370,6 +373,9 @@ class _OutboxTile extends ConsumerWidget {
         OutboxEntityType.category => Icons.category_outlined,
         OutboxEntityType.customerPointLedger => Icons.stars_outlined,
         OutboxEntityType.companySetting => Icons.business_outlined,
+        OutboxEntityType.usageCounter => Icons.data_usage_outlined,
+        OutboxEntityType.heldOrder => Icons.shopping_bag_outlined,
+        OutboxEntityType.shiftClosing => Icons.calendar_month_outlined,
       };
 
   static String _payloadPreview(OutboxItemRow row) {

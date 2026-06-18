@@ -278,8 +278,8 @@ class _DismissibleInvitation extends ConsumerWidget {
 
     await dao.upsertPendingInvitation(PendingInvitationsCompanion.insert(
       id: snap.id,
-      email: snap.email,
-      fullName: snap.fullName,
+      email: Value(snap.email),
+      fullName: Value(snap.fullName),
       globalRole: snap.globalRole,
       branchIdsCsv: Value(snap.branchIdsCsv),
       invitedBy: Value(snap.invitedBy),

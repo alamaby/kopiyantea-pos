@@ -142,7 +142,7 @@ class _CreateInviteCodeScreenState
         ),
       ),
       body: _generatedCode != null
-          ? _buildSuccessState(context)
+          ? _buildSuccessState(context, l10n)
           : _buildFormState(context, branchesAsync, l10n),
     );
   }
@@ -270,7 +270,7 @@ class _CreateInviteCodeScreenState
     );
   }
 
-  Widget _buildSuccessState(BuildContext context) {
+  Widget _buildSuccessState(BuildContext context, AppL10n l10n) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),

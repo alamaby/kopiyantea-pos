@@ -112,7 +112,6 @@ class Bootstrap extends _$Bootstrap {
     String orgId,
   ) async {
     final dao = ref.read(branchDaoProvider);
-    final rows = await dao.getAccessForUserInOrg(userId, orgId);
-    return rows.map((r) => r.branchId).toList();
+    return dao.getBranchIdsForUserInOrg(userId, orgId);
   }
 }

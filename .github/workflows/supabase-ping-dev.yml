@@ -1,0 +1,84 @@
+name: Supabase Keep-Alive (Dev)
+
+# Supabase free tier auto-pauses a project after 7 days of zero API
+# requests. A daily ping touches the auth service AND PostgREST so both
+# stay warm. The job is intentionally tiny — sub-second curl, almost no
+# CI minutes consumed.
+#
+# This workflow targets the DEVELOPMENT Supabase project (see `.env.dev`).
+# The production project is pinged separately by `supabase-ping.yml`.
+# Two distinct workflows (instead of a matrix) keeps each project
+# independently disable-able and isolates the secrets used by each.
+#
+# Required secrets (Settings → Secrets and variables → Actions):
+# - SUPABASE_DEV_URL              e.g. https://abcde.supabase.co
+# - SUPABASE_DEV_PUBLISHABLE_KEY  sb_publishable_... (or legacy anon JWT)
+#
+# Cron is UTC. 03:47 UTC ≈ 10:47 WIB. Offset 30 minutes from the
+# production workflow (`17 3 * * *`) so the two GitHub jobs don't fire
+# back-to-back and to spread the GitHub Actions scheduler load.
+#
+# GitHub also disables cron on repos with no commit activity for 60 days
+# — this workflow's own daily run does NOT count as activity, so push at
+# least one commit every couple months to keep it scheduled.
+
+on:
+  schedule:
+    - cron: '47 3 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    name: Ping Supabase Dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Validate secrets present
+        run: |
+          if [ -z "${{ secrets.SUPABASE_DEV_URL }}" ] || \
+             [ -z "${{ secrets.SUPABASE_DEV_PUBLISHABLE_KEY }}" ]; then
+            echo "::error::SUPABASE_DEV_URL or SUPABASE_DEV_PUBLISHABLE_KEY secret is missing."
+            exit 1
+          fi
+
+      - name: Ping auth service
+        env:
+          SB_URL: ${{ secrets.SUPABASE_DEV_URL }}
+          SB_KEY: ${{ secrets.SUPABASE_DEV_PUBLISHABLE_KEY }}
+        run: |
+          code=$(curl -sS -o /tmp/auth.json -w "%{http_code}" \
+            -H "apikey: $SB_KEY" \
+            "$SB_URL/auth/v1/health")
+          echo "auth/health → HTTP $code"
+          head -c 200 /tmp/auth.json || true
+          echo
+          # Any 2xx/3xx/4xx = service responded (project alive). Only 0,
+          # 5xx, or timeout signal a paused/dead project.
+          if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
+            echo "::error::Auth ping returned $code — dev project may be paused or unreachable."
+            exit 1
+          fi
+
+      - name: Ping PostgREST (warms the database)
+        env:
+          SB_URL: ${{ secrets.SUPABASE_DEV_URL }}
+          SB_KEY: ${{ secrets.SUPABASE_DEV_PUBLISHABLE_KEY }}
+        run: |
+          # NOTE: publishable keys (sb_publishable_...) are NOT JWTs. Sending
+          # them as `Authorization: Bearer` triggers PostgREST JWT parse
+          # failure → 401. Use only the `apikey` header.
+          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SB_KEY" \
+            "$SB_URL/rest/v1/")
+          echo "rest/v1 → HTTP $code"
+          # Same acceptance as auth: any HTTP response = alive. The intent
+          # is keep-alive, not auth correctness.
+          if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
+            echo "::error::PostgREST returned $code — dev DB unreachable or paused."
+            exit 1
+          fi
+
+      - name: Done
+        run: echo "Supabase dev project is alive — ping completed at $(date -u +'%Y-%m-%dT%H:%M:%SZ')."

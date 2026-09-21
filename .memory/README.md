@@ -1,27 +1,27 @@
 # Project Memory Index — KopiyanteaPOS
 
-**Last updated:** 2026-09-21 08:43:00 (local WIB)
+**Last updated:** 2026-09-21 09:15:00 (local WIB)
 **Format version:** v1
 **Active entries:** 1
 
 ## Current State
 
-Hardening Backlog Sprint sedang berjalan (M1–M6). M1–M2 selesai: working tree bersih, backup workflow dipulihkan, `.kimchi/` + `backup_supabase/` diarsipkan ke `C:\Works\archives\kopiyantea-pos-2026-09-21`, `.gitignore` diperketat. M3 mulai dikerjakan — inisialisasi `.memory/`.
+Hardening Backlog Sprint **SELESAI** (M1–M6). Semua milestone tereksekusi: working tree bersih, backup workflow dipulihkan, `.kimchi/` + `backup_supabase/` diarsipkan, `.gitignore` diperketat, org tables terdaftar di `@DriftDatabase` + DAO typed, 126 test hijau (0 gagal), RLS smoke checklist siap, QA device matrix dokumen siap. TD-001 belum benar-benar resolved (build_runner perlu clear cache), tapi workaround berfungsi.
 
 ## Active Decisions
 
 1. Client memakai publishable key (`sb_publishable_...`) — bukan anon key legacy.
-2. TD-001 resolved: drift 2.21+ sudah compatible dengan analyzer 6.x tanpa upgrade freezed/riverpod major.
+2. Org tables (`organizations`, `organization_members`, `subscription_plans`, `organization_subscriptions`) sekarang Drift typed + terdaftar di `@DriftDatabase`. DAO menggunakan typed queries.
 3. Backup dijadwalkan ulang via `supabase-backup.yml` (rclone/GDrive + pg_dump, retensi 30 hari).
-4. Org tables (`organizations`, `organization_members`, `subscription_plans`, `organization_subscriptions`) masih raw-SQL — M4 akan migrate ke Drift typed DAO.
-5. 5 test gagal pre-existing (sync_provider, formatters, widget_test) — target perbaiki di M5.
+4. Arsip `.kimchi/` + `backup_supabase/` di `C:\Works\archives\kopiyantea-pos-2026-09-21/`.
+5. CI diff DDL⇄Drift: follow-up plan terpisah (belum dieksekusi).
 
 ## Open Items / Blockers
 
-- M4: regenerate Drift codegen + tulis ulang `OrganizationDao` typed — perlu verifikasi 0 error `flutter analyze`.
-- M5: 5 test gagal perlu triase akar masalah sebelum fix.
-- QA device matrix (M6): dokumen saja, eksekusi oleh user di device fisik.
-- CI diff DDL⇄Drift: follow-up plan terpisah (lihat `plans/2026-09-21-hardening-backlog-sprint.md`).
+- QA device matrix (M6): dokumen siap, eksekusi oleh user di device fisik — status PENDING EKSEKUSI.
+- TD-001 workaround: build_runner butuh `Remove-Item -Recurse .dart_tool/build` sebelum setiap regen. True fix butuh freezed 3.x + riverpod 3.x upgrade.
+- Pre-existing bug: `clearOrganizationData()` referensi `user_branch_access` (salah nama, harusnya `user_branch_accesses`). Dilaporkan tapi tidak diperbaiki di sprint ini.
+- Secret rotation: `.env` lokal ter-commit secara tidak sengaja (perlu di-blacklist dari git tracking jika pernah ter-push).
 
 ## Legacy Archive
 
@@ -29,4 +29,4 @@ Hardening Backlog Sprint sedang berjalan (M1–M6). M1–M2 selesai: working tre
 
 ## Recent Entries
 
-- [2026-09-21 Hardening Sprint Kickoff](2026-09-21/2026-09-21-084300-hardening-sprint-kickoff.md)
+- [2026-09-21 Hardening Sprint M3–M6](2026-09-21/2026-09-21-084300-hardening-sprint-kickoff.md)

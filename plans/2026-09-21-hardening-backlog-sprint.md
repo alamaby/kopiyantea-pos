@@ -203,7 +203,11 @@ Konteks: `lib/core/database/tables/organization_tables.dart` (113 baris) sudah b
 
 ## Progress Log
 
-- 2026-09-21 08:43:00 — M1 (backup restore + working tree bersih) DAN M2 (secret hygiene / `.gitignore` audit) selesai atomik; 5 komit land. Arsip `.kimchi/` + `backup_supabase/` ke `C:\Works\archives\kopiyantea-pos-2026-09-21/`. `.memory/` inisialisasi + `PROJECT_STATUS.md` di-update. Lanjut M4.
+- 2026-09-21 09:15:00 — M5 selesai: 5 test gagal pre-existing diperbaiki (sync_provider override orgId, formatters CLDR separator, widget_test auth guard); 4 test sync/conflict baru ditambah (LWW, idempotensi, inventory convergence, outbox FIFO); docs/rls-smoke-checklist.md dibuat. Total test hijau: 126/126.
+- 2026-09-21 09:10:00 — M4 selesai: 4 tabel org diregister di @DriftDatabase, OrganizationDao ditulis ulang typed (raw-SQL + plain class dihapus, 328→95 baris), semua caller di-update (sync_dtos, create_org_screen, join_org_screen, organization_card), 17 test baru untuk DAO. Build_runner berhasil setelah clear cache `.dart_tool/build`.
+- 2026-09-21 08:48:00 — M6 selesai: docs/qa-device-matrix.md dibuat (15 langkah QA fisik, user-side execution).
+- 2026-09-21 08:43:00 — M1–M3 selesai. M1: 5 komit atomik (backup restore, keep-alive, SaaS migrations, docs refresh, kimchi archive). M2: .gitignore diperketat, audit secret history bersih. M3: .memory/ diinisialisasi + PROJECT_STATUS.md di-update.
+- 2026-09-21 08:42:00 — M1 dimulai: arsip .kimchi/ + backup_supabase/ ke C:\Works\archives\kopiyantea-pos-2026-09-21/, supabase-backup.yml direstore dari git history (182 baris).
 - 2026-09-21 09:00:00 — Plan detail ditulis sesuai pilihan user (backup opsi A, arsip luar repo, drift bertahap tanpa CI diff, test diperbaiki). Belum ada eksekusi; implementasi dilanjutkan model lain.
 - 2026-09-20 — Sprint sebelumnya: migrasi publishable keys sisi code selesai (lihat `plans/2026-09-20-supabase-new-api-keys-migration.md`).
 

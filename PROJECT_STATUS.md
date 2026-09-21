@@ -2,7 +2,7 @@
 
 > Workflow: `TODO → IN PROGRESS → DONE DEV → DONE QA`. Forward-only. Regressions create new `[BUG]` entries.
 
-**Last updated:** 2026-05-19
+**Last updated:** 2026-09-21
 
 ---
 
@@ -1027,3 +1027,10 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
   - `lib/core/widgets/app_numeric_keypad.dart`
   - `lib/features/settings/settings_screen.dart` (hardcoded textPrimary/textSecondary di section headers, about rows)
 - **Resolution timing:** Defer ke akhir Phase 4 (sebelum color-blind QA di 4.5) — saat itu kita audit semua warna sekalian.
+
+---
+
+## Maintenance Log
+
+- 2026-09-21 — Hardening Backlog Sprint dimulai. M1 (backup restore + working tree bersih) DAN M2 (secret hygiene / `.gitignore`) selesai atomik; 5 komit: `ci(supabase): restore scheduled backup`, `feat(supabase): keep-alive edge probe`, `feat(saas): multi-tenant expand + RLS rewrite`, `docs: refresh readme/setup/master-prompt`, `chore(repo): remove archived .kimchi`. Arsip `.kimchi/` + `backup_supabase/` ke `C:\Works\archives\kopiyantea-pos-2026-09-21/`. TD-001 resolved (drift 2.21). Publikasi keys sudah dilakukan di plan sebelumnya.
+- 2026-09-21 — Migrasi publishable keys sisi code selesai (lihat `plans/2026-09-20-supabase-new-api-keys-migration.md`).

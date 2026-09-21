@@ -46,6 +46,7 @@ lib/
   features/             Feature modules: POS, catalog, inventory, reports, etc.
   l10n/                 Localization source files
 supabase/
+  functions/            Supabase Edge Functions, including keep-alive probe
   migrations/           Forward-only Supabase SQL migrations
   seed.sql              Development seed data
 docs/
@@ -101,11 +102,15 @@ Required variables:
 | Variable | Description |
 |---|---|
 | `SUPABASE_URL` | Supabase project URL, must use `https://`. |
-| `SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key. Legacy anon JWT also works. |
+| `SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key (`sb_publishable_...`). |
+| `SUPABASE_PROJECT_REF` | GitHub Actions only: Supabase project ref for keep-alive auto-unpause. |
+| `SUPABASE_PAT` | GitHub Actions only: Supabase personal access token for keep-alive auto-unpause. |
 | `APP_ENV` | `development`, `staging`, or `production`. |
 | `SUPABASE_CERT_FINGERPRINTS` | Comma-separated SHA-256 cert fingerprints. Required for production. |
 
 Environment values are compiled by `envied` and validated at startup via `Env.validate()`.
+Keep GitHub Actions-only values in repository secrets; do not ship them in the mobile app.
+See [Supabase Keep-Alive](docs/supabase-keep-alive.md) for workflow deployment and verification.
 
 ### 3. Install Dependencies
 

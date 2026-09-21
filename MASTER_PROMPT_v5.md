@@ -40,12 +40,12 @@ Your objective is to **build from scratch** a production-ready, Offline-First mo
 
 ### 2.5 Strict Row Level Security
 - RLS enabled on every Supabase table. Deny-by-default.
-- Policies via JWT claims. Service role key never on clients.
+- Policies via JWT claims. Service role / secret key never on clients.
 
 ### 2.6 Environment Variable Validation
 - Fail fast on startup if any required env var missing or malformed.
 - `envied` for typed config from `.env`.
-- Required: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `APP_ENV`, `SUPABASE_CERT_FINGERPRINTS`.
+- Required: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `APP_ENV`, `SUPABASE_CERT_FINGERPRINTS`.
 
 ### 2.7 Documentation is Key
 - ADRs in `/docs/adr/NNNN-title.md`.
@@ -727,7 +727,7 @@ Future<void> main() async {
   // 3. Supabase with cert pinning
   await Supabase.initialize(
     url: Env.supabaseUrl,
-    anonKey: Env.supabaseAnonKey,
+    anonKey: Env.supabasePublishableKey,
     httpClient: buildPinnedHttpClient(Env.certFingerprints),
   );
 

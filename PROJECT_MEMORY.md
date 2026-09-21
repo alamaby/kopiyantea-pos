@@ -1,5 +1,57 @@
 # Project Memory
 
+## 2026-07-02 - Enhance Supabase Keep-Alive with Edge Function and Auto-Unpause
+
+- Fitur/bug: Menguatkan workflow Supabase free-tier keep-alive karena ping ringan ke auth health dan root PostgREST tetap memungkinkan project dipause. Workflow sekarang memanggil Edge Function yang menjalankan real database RPC probe dan dapat memicu auto-unpause lewat Supabase Management API.
+- File penting yang diubah:
+  - `.github/workflows/supabase-ping.yml`
+  - `.github/workflows/supabase-ping-dev.yml`
+  - `supabase/migrations/20260702000000_keep_alive_rpc.sql` (baru)
+  - `supabase/functions/keep-alive/index.ts` (baru)
+  - `supabase/config.toml` (baru)
+  - `docs/supabase-keep-alive.md` (baru)
+  - `.env.example`
+  - `.gitignore`
+  - `README.md`
+  - `PROJECT_MEMORY.md`
+- Keputusan teknis:
+  - Menambahkan RPC read-only `public.keep_alive_ping()` dengan `SECURITY DEFINER` dan grant execute untuk `anon` + `authenticated` agar workflow dapat memicu query Postgres nyata tanpa membuka data aplikasi.
+  - Menambahkan Edge Function `keep-alive` dengan `verify_jwt = false` khusus function ini, karena function hanya melakukan probe read-only dan workflow cukup memakai publishable key.
+  - Edge Function melakukan 4 probe: Auth health, PostgREST root, database RPC `keep_alive_ping`, dan Storage bucket endpoint. Database RPC wajib 2xx; probe gateway lain menerima respons non-5xx sebagai tanda service reachable.
+  - Workflow production dan development sekarang validate secret PAT/project ref, memanggil Edge Function, mengecek raw auth health, lalu otomatis memanggil Supabase Management API `/v1/projects/{ref}/restore` jika project terlihat paused/unreachable.
+  - Menjaga workflow prod dan dev tetap terpisah supaya masing-masing project bisa di-disable dan secret-nya tetap terisolasi.
+  - Menghapus ignore global `supabase/` dari `.gitignore` agar migrations dan Edge Functions tetap bisa versioned, sambil mempertahankan ignore local state `supabase/.temp`, `supabase/.branches`, dan `supabase/.env`.
+- Command verifikasi yang disarankan:
+  - Tambahkan GitHub Actions secrets baru: `SUPABASE_PAT`, `SUPABASE_PROJECT_REF`, `SUPABASE_DEV_PAT`, `SUPABASE_DEV_PROJECT_REF`.
+  - Terapkan migration `supabase/migrations/20260702000000_keep_alive_rpc.sql` ke project production dan development.
+  - Deploy Edge Function ke kedua project: `supabase functions deploy keep-alive --project-ref <project-ref>`.
+  - Test RPC manual: `curl -X POST "$SUPABASE_URL/rest/v1/rpc/keep_alive_ping" -H "apikey: $SUPABASE_PUBLISHABLE_KEY" -H "Content-Type: application/json" -d '{}'`.
+  - Test Edge Function manual: `curl -X POST "$SUPABASE_URL/functions/v1/keep-alive" -H "Authorization: Bearer $SUPABASE_PUBLISHABLE_KEY"`.
+  - Trigger manual workflow `Supabase Keep-Alive` dan `Supabase Keep-Alive (Dev)` via GitHub Actions tab.
+- Proposed commit message:
+  - `ci(supabase): add edge keep-alive and auto-unpause workflow`
+
+## 2026-06-22 - Add Supabase Development Keep-Alive Workflow
+
+- Fitur/bug: Menambahkan GitHub Actions workflow harian untuk ping project Supabase development (free tier) agar tidak auto-pause setelah 7 hari tanpa aktivitas, melengkapi workflow ping production yang sudah ada.
+- File penting yang diubah:
+  - `.github/workflows/supabase-ping-dev.yml` (baru)
+  - `.env.example`
+  - `PROJECT_MEMORY.md`
+- Keputusan teknis:
+  - Memilih file workflow terpisah (bukan matrix di `supabase-ping.yml` existing) supaya workflow production yang sudah stabil tidak ikut ter-refactor dan supaya workflow dev bisa di-disable independen saat tidak dibutuhkan.
+  - Penamaan secret menggunakan prefix `SUPABASE_DEV_*` (`SUPABASE_DEV_URL` + `SUPABASE_DEV_PUBLISHABLE_KEY`) untuk memisahkan namespace dari secret production dan menghindari risiko perubahan secret prod memengaruhi keduanya.
+  - Cron schedule di-offset 30 menit dari production (`'47 3 * * *'` UTC vs prod `'17 3 * * *'` UTC) untuk menghindari burst request bersamaan ke backend GitHub Actions dan tetap menjaga kedua project warm di window harian yang sama.
+  - Logika ping (auth + PostgREST) dan exit code (000 / 5xx = paused/dead) di-clone persis dari `supabase-ping.yml` agar pola diagnostik tetap konsisten.
+  - `.env.example` ditambah blok dokumentasi khusus development yang memuat `SUPABASE_DEV_URL` + `SUPABASE_DEV_PUBLISHABLE_KEY` agar kontributor baru tahu variabel mana yang dipakai workflow dev vs client app.
+- Command verifikasi yang disarankan:
+  - Tambahkan secrets baru di GitHub (Settings → Secrets and variables → Actions): `SUPABASE_DEV_URL` dan `SUPABASE_DEV_PUBLISHABLE_KEY` (nilainya diambil dari `.env.dev`).
+  - Trigger manual workflow `Supabase Keep-Alive (Dev)` via tab Actions → `workflow_dispatch` untuk memastikan kedua step ping mengembalikan HTTP response yang valid.
+  - Cek tab Actions setelah schedule harian berjalan dan pastikan tidak ada error.
+  - Verifikasi isi `.env.example` apakah blok production dan development tampil jelas dan tidak tertukar.
+- Proposed commit message:
+  - `ci: add daily supabase development keep-alive workflow`
+
 ## 2026-06-16 - FEAT-002 Stage 5: Organization Integration & Onboarding + TD-001 Resolution
 
 - Fitur/bug: Menyelesaikan integrasi organization scope ke seluruh aplikasi: onboarding flow, org card/settings, routing, dan drift codegen blocker (TD-001).

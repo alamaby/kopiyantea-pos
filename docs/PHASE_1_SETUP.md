@@ -37,7 +37,7 @@ For local dev fill at minimum:
 
 ```
 SUPABASE_URL=https://placeholder.supabase.co
-SUPABASE_ANON_KEY=placeholder-anon-key
+SUPABASE_PUBLISHABLE_KEY=placeholder-publishable-key
 APP_ENV=development
 SUPABASE_CERT_FINGERPRINTS=
 ```

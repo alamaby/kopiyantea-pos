@@ -287,13 +287,26 @@
 
 ## Tech Debt
 
-### [TD-001] Codegen ecosystem upgrade — analyzer 6.x → 13.x ✅ **RESOLVED** (2026-06-16)
+### [TD-001] Codegen ecosystem upgrade — analyzer 6.x → 13.x ✅ **RESOLVED** (2026-09-21) — **with workaround caveat**
 - **Discovered:** 2026-05-18 (FEAT-001 batch A)
 - **Symptom:** drift_dev 2.20.x crashes with `Null is not InterfaceElement` on Dart SDK 3.11.5 + analyzer 6.4.x
 - **Root cause:** drift_dev 2.20.x analyzer element lookup incompatible with newer Dart SDK language features (analyzer 6.4.1 reports language version 3.4.0, SDK is 3.11.0)
 - **Resolution:** Bumped `drift` and `drift_dev` from `>=2.20.0 <2.21.0` to `^2.21.0`. drift_dev 2.21.0 supports analyzer ^6.0.0 and still uses `build ^2.0.0` / `source_gen >=0.9.4 <2.0.0` — compatible with existing `freezed ^2.5.2` + `riverpod_generator ^2.4.0` WITHOUT requiring a coordinated major-version upgrade. No other codegen packages needed changes.
 - **Result:** `app_database.g.dart` regenerated successfully (770 KB, 28+ tables). Build_runner completes with 1522 outputs, zero errors.
+- **Workaround caveat (HIGH PRIORITY):** drift_dev 2.21.2 still intermittently crashes with `Null is not InterfaceElement` on cached analysis artifacts. **Must run `Remove-Item -Recurse -Force .dart_tool/build` before every `dart run build_runner build`** to avoid false-positive SEVERE errors. Without cache clear, build_runner fails on random files (main.dart, router.dart, held_order_service.dart, etc.) with identical cast error. True resolution requires upgrading freezed 2→3 + riverpod 2→3 ecosystem — not done yet.
 - **Lesson:** The `pinned to 2.20.x` workaround was overly conservative. The fix was already available in 2.21.0 without ecosystem churn.
+
+### [TD-002] Pre-existing bug: `clearOrganizationData()` references wrong table name — **HIGH PRIORITY**
+- **Location:** `lib/core/database/app_database.dart:456`
+- **Bug:** `await customStatement('DELETE FROM user_branch_access');` — table name salah. Nama tabel yang benar adalah `user_branch_accesses` (dengan 'es' di akhir).
+- **Impact:** Panggilan `db.clearOrganizationData()` akan crash dengan `SqliteException: no such table: user_branch_access` saat试图 clear organization data. Workaround di test (`organization_dao_test.dart`) menghindari pemanggilan method ini dan melakukan DELETE manual per tabel.
+- **Fix:** Ganti baris 456 dari `user_branch_access` → `user_branch_accesses`.
+- **Risk:** Perubahan minimal (satu kata), tapi perlu verifikasi bahwa tidak ada caller eksternal yang bergantung pada exception ini (seharusnya tidak — ini internal method).
+
+### [TD-003] CI diff DDL⇄Drift — belum dimulai (follow-up plan terpisah)
+- **Deskripsi:** Job CI yang membandingkan kolom tabel org Supabase (`information_schema` atau file migrasi `20260613110000_*`) vs schema Drift lokal, gagal bila divergen. Mulai sebagai warning sebelum jadi gate.
+- **Known gap:** Supabase `organization_subscriptions` punya `trial_ends_at` + `provider_subscription_id` yang tidak ada di Drift lokal; `subscription_plans.features` (jsonb) vs lokal `features_json` (teks).
+- **Status:** Belum dieksekusi. Lihat `plans/2026-09-21-hardening-backlog-sprint.md` section Notes.
 
 ## Backlog (deferred features)
 

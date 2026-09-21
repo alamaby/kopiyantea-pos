@@ -18,9 +18,9 @@ Hardening Backlog Sprint **SELESAI** (M1–M6). Semua milestone tereksekusi: wor
 
 ## Open Items / Blockers
 
+- **TD-002 (HIGH):** `clearOrganizationData()` di `lib/core/database/app_database.dart:456` referensi tabel salah (`user_branch_access` seharusnya `user_branch_accesses`). Crash saat dipanggil. Fix: satu kata di baris 456.
+- **TD-001 workaround (HIGH):** Build_runner build crash dengan `Null is not InterfaceElement` jika cache `.dart_tool/build` tidak dibersihkan. Setiap regen butuh `Remove-Item -Recurse .dart_tool/build` dulu. True fix = freezed 3.x + riverpod 3.x upgrade.
 - QA device matrix (M6): dokumen siap, eksekusi oleh user di device fisik — status PENDING EKSEKUSI.
-- TD-001 workaround: build_runner butuh `Remove-Item -Recurse .dart_tool/build` sebelum setiap regen. True fix butuh freezed 3.x + riverpod 3.x upgrade.
-- Pre-existing bug: `clearOrganizationData()` referensi `user_branch_access` (salah nama, harusnya `user_branch_accesses`). Dilaporkan tapi tidak diperbaiki di sprint ini.
 - Secret rotation: `.env` lokal ter-commit secara tidak sengaja (perlu di-blacklist dari git tracking jika pernah ter-push).
 
 ## Legacy Archive

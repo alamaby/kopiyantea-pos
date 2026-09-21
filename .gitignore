@@ -21,6 +21,12 @@ lib/l10n/generated/
 # Env / Secrets
 .env
 .env.local
+.env.*.local
+.env.dev
+.env.stg
+backup_supabase/
+.kimchi/
+.claude/
 *.keystore
 *.jks
 key.properties
@@ -29,7 +35,6 @@ key.properties
 supabase/.temp/
 supabase/.branches/
 supabase/.env
-supabase/
 
 # Platform
 .gradle/

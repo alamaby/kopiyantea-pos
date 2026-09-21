@@ -1,0 +1,206 @@
+name: Supabase Backup
+
+on:
+  schedule:
+    - cron: '17 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Backup database and storage to Google Drive
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      BACKUP_REMOTE_ROOT: gdrive:kopiyantea-pos/supabase-backups
+      STORAGE_BUCKETS: product-images qris-images receipt-logos
+
+    steps:
+      - name: Install rclone
+        run: |
+          curl https://rclone.org/install.sh | sudo bash
+
+      - name: Validate required secrets
+        env:
+          RCLONE_CONFIG_BASE64: ${{ secrets.RCLONE_CONFIG_BASE64 }}
+          SUPABASE_DB_HOST: ${{ secrets.SUPABASE_DB_HOST }}
+          SUPABASE_DB_PORT: ${{ secrets.SUPABASE_DB_PORT }}
+          SUPABASE_DB_NAME: ${{ secrets.SUPABASE_DB_NAME }}
+          SUPABASE_DB_USER: ${{ secrets.SUPABASE_DB_USER }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_S3_ENDPOINT: ${{ secrets.SUPABASE_S3_ENDPOINT }}
+          SUPABASE_S3_REGION: ${{ secrets.SUPABASE_S3_REGION }}
+          SUPABASE_S3_ACCESS_KEY_ID: ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+          SUPABASE_S3_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+        run: |
+          missing=()
+          for key in \
+            RCLONE_CONFIG_BASE64 \
+            SUPABASE_DB_HOST \
+            SUPABASE_DB_NAME \
+            SUPABASE_DB_USER \
+            SUPABASE_DB_PASSWORD \
+            SUPABASE_S3_ENDPOINT \
+            SUPABASE_S3_REGION \
+            SUPABASE_S3_ACCESS_KEY_ID \
+            SUPABASE_S3_SECRET_ACCESS_KEY; do
+            if [ -z "${!key}" ]; then
+              missing+=("$key")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing required secrets: ${missing[*]}. Add the Supabase database secrets, Supabase Storage S3 secrets, and RCLONE_CONFIG_BASE64 in GitHub Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Restore rclone config
+        env:
+          RCLONE_CONFIG_BASE64: ${{ secrets.RCLONE_CONFIG_BASE64 }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONFIG_BASE64" | base64 -d > ~/.config/rclone/rclone.conf
+          chmod 600 ~/.config/rclone/rclone.conf
+
+      - name: Configure Supabase Storage S3 client
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.SUPABASE_S3_REGION }}
+        run: |
+          aws configure set default.s3.addressing_style path
+
+      - name: Dump Supabase database
+        id: dump
+        env:
+          PGHOST: ${{ secrets.SUPABASE_DB_HOST }}
+          PGPORT: ${{ secrets.SUPABASE_DB_PORT || '5432' }}
+          PGDATABASE: ${{ secrets.SUPABASE_DB_NAME }}
+          PGUSER: ${{ secrets.SUPABASE_DB_USER }}
+          PGPASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PGSSLMODE: require
+        run: |
+          mkdir -p backups/database
+          timestamp="$(date -u +"%Y-%m-%dT%H-%M-%SZ")"
+          backup_file="backups/database/kopiyantea-pos-db-${timestamp}.sql"
+
+          docker run --rm \
+            -e PGHOST \
+            -e PGPORT \
+            -e PGDATABASE \
+            -e PGUSER \
+            -e PGPASSWORD \
+            -e PGSSLMODE \
+            -v "$PWD/backups/database:/backups" \
+            postgres:17-alpine \
+          pg_dump \
+            --format=plain \
+            --no-owner \
+            --no-privileges \
+            --file "/backups/$(basename "$backup_file")"
+
+          gzip "$backup_file"
+          sha256sum "${backup_file}.gz" > "${backup_file}.gz.sha256"
+          echo "timestamp=$timestamp" >> "$GITHUB_OUTPUT"
+          echo "backup_file=${backup_file}.gz" >> "$GITHUB_OUTPUT"
+          echo "checksum_file=${backup_file}.gz.sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Download Supabase Storage buckets
+        id: storage
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SUPABASE_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SUPABASE_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.SUPABASE_S3_REGION }}
+          SUPABASE_S3_ENDPOINT: ${{ secrets.SUPABASE_S3_ENDPOINT }}
+        run: |
+          set -euo pipefail
+
+          timestamp="${{ steps.dump.outputs.timestamp }}"
+          storage_root="backups/storage/kopiyantea-pos-storage-${timestamp}"
+          buckets_root="$storage_root/buckets"
+          manifest="$storage_root/manifest.txt"
+          manifest_copy="backups/storage/kopiyantea-pos-storage-${timestamp}-manifest.txt"
+
+          mkdir -p "$buckets_root"
+          {
+            echo "app=kopiyantea-pos"
+            echo "created_at_utc=$timestamp"
+            echo "type=supabase-storage"
+            echo "buckets=$STORAGE_BUCKETS"
+            echo
+          } > "$manifest"
+
+          for bucket in $STORAGE_BUCKETS; do
+            bucket_dir="$buckets_root/$bucket"
+            mkdir -p "$bucket_dir"
+
+            aws s3 sync "s3://$bucket" "$bucket_dir" \
+              --endpoint-url "$SUPABASE_S3_ENDPOINT" \
+              --region "$AWS_DEFAULT_REGION" \
+              --only-show-errors
+
+            file_count="$(find "$bucket_dir" -type f | wc -l | tr -d ' ')"
+            byte_count="$(du -sb "$bucket_dir" | cut -f1)"
+            echo "$bucket.files=$file_count" >> "$manifest"
+            echo "$bucket.bytes=$byte_count" >> "$manifest"
+          done
+
+          archive="backups/storage/kopiyantea-pos-storage-${timestamp}.tar.gz"
+          tar -czf "$archive" -C "backups/storage" "kopiyantea-pos-storage-${timestamp}"
+          cp "$manifest" "$manifest_copy"
+          sha256sum "$archive" > "${archive}.sha256"
+
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "checksum_file=${archive}.sha256" >> "$GITHUB_OUTPUT"
+          echo "manifest=$manifest_copy" >> "$GITHUB_OUTPUT"
+
+      - name: Upload database backup to Google Drive
+        run: |
+          rclone copy "${{ steps.dump.outputs.backup_file }}" "$BACKUP_REMOTE_ROOT/database" \
+            --drive-use-trash=false \
+            --transfers=1 \
+            --checkers=4
+          rclone copy "${{ steps.dump.outputs.checksum_file }}" "$BACKUP_REMOTE_ROOT/database" \
+            --drive-use-trash=false \
+            --transfers=1 \
+            --checkers=4
+
+      - name: Upload storage backup to Google Drive
+        run: |
+          rclone copy "${{ steps.storage.outputs.archive }}" "$BACKUP_REMOTE_ROOT/storage" \
+            --drive-use-trash=false \
+            --transfers=1 \
+            --checkers=4
+          rclone copy "${{ steps.storage.outputs.checksum_file }}" "$BACKUP_REMOTE_ROOT/storage" \
+            --drive-use-trash=false \
+            --transfers=1 \
+            --checkers=4
+          rclone copy "${{ steps.storage.outputs.manifest }}" "$BACKUP_REMOTE_ROOT/manifests" \
+            --drive-use-trash=false \
+            --transfers=1 \
+            --checkers=4
+
+      - name: Delete Google Drive backups older than 30 days
+        run: |
+          rclone delete "$BACKUP_REMOTE_ROOT/database" \
+            --min-age 30d \
+            --include "*.sql.gz" \
+            --include "*.sql.gz.sha256" \
+            --drive-use-trash=false
+          rclone delete "$BACKUP_REMOTE_ROOT/storage" \
+            --min-age 30d \
+            --include "*.tar.gz" \
+            --include "*.tar.gz.sha256" \
+            --drive-use-trash=false
+          rclone delete "$BACKUP_REMOTE_ROOT/manifests" \
+            --min-age 30d \
+            --include "*.txt" \
+            --drive-use-trash=false
+          rclone rmdirs "$BACKUP_REMOTE_ROOT" --leave-root

@@ -203,6 +203,7 @@ Konteks: `lib/core/database/tables/organization_tables.dart` (113 baris) sudah b
 
 ## Progress Log
 
+- 2026-09-21 08:43:00 — M1 (backup restore + working tree bersih) DAN M2 (secret hygiene / `.gitignore` audit) selesai atomik; 5 komit land. Arsip `.kimchi/` + `backup_supabase/` ke `C:\Works\archives\kopiyantea-pos-2026-09-21/`. `.memory/` inisialisasi + `PROJECT_STATUS.md` di-update. Lanjut M4.
 - 2026-09-21 09:00:00 — Plan detail ditulis sesuai pilihan user (backup opsi A, arsip luar repo, drift bertahap tanpa CI diff, test diperbaiki). Belum ada eksekusi; implementasi dilanjutkan model lain.
 - 2026-09-20 — Sprint sebelumnya: migrasi publishable keys sisi code selesai (lihat `plans/2026-09-20-supabase-new-api-keys-migration.md`).
 

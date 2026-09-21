@@ -40,7 +40,7 @@ void main() {
     final t = DateTime(2026, 5, 22, 14, 30);
 
     test('formatDateTime returns "d MMM yyyy, HH:mm" in id_ID', () {
-      expect(formatDateTime(t), '22 Mei 2026, 14.30');
+      expect(formatDateTime(t), '22 Mei 2026, 14:30');
     });
 
     test('formatDate returns date only', () {
@@ -48,7 +48,7 @@ void main() {
     });
 
     test('formatTime returns time only', () {
-      expect(formatTime(t), '14.30');
+      expect(formatTime(t), '14:30');
     });
   });
 

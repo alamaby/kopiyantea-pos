@@ -73,6 +73,7 @@ void main() {
         return fake;
       }),
       currentUserProvider.overrideWith((ref) => user),
+      currentOrganizationIdProvider.overrideWith((ref) => 'org-test'),
     ];
     final c = ProviderContainer(overrides: overrides);
     // Eagerly materialize syncRepositoryProvider so [fake] is assigned before

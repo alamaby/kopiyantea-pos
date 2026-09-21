@@ -32,17 +32,18 @@ URL="<SUPABASE_DEV_URL>"
 KEY="<SUPABASE_DEV_PUBLISHABLE_KEY>"
 JWT="<OWNER_A_JWT>"
 
-# Contoh: insert produk ke org owner A
-curl -X POST "$URL/rest/v1/products?select=id,name" \
+# Contoh: insert produk ke org owner A (products.organization_id wajib —
+# kolom ditambahkan migrasi multi-tenant; tanpa kolom ini WITH CHECK gagal)
+curl -X POST "$URL/rest/v1/products?select=id,name,organization_id" \
   -H "apikey: $KEY" \
   -H "Authorization: Bearer $JWT" \
   -H "Content-Type: application/json" \
   -H "Prefer: return=representation" \
-  -d '{"name":"Test Product RLS","base_price":15000,"sku":"RLS-001"}'
+  -d '{"name":"Test Product RLS","base_price":15000,"sku":"RLS-001","organization_id":"<ORG_A_UUID>"}'
 ```
 
-**Ekspektasi:** HTTP 201 + body berisi row baru dengan `id`.
-**Gagal jika:** HTTP 403 / 404 — berarti RLS menolak write owner.
+**Ekspektasi:** HTTP 201 + body berisi row baru dengan `id` dan `organization_id` = org A.
+**Gagal jika:** HTTP 403 / 404 — berarti RLS menolak write owner; atau HTTP 400 karena `organization_id` hilang — berarti payload belum sesuai skema multi-tenant.
 
 ---
 
@@ -90,8 +91,8 @@ curl -v "$URL/rest/v1/products?limit=1" \
   -H "apikey: $KEY"
 ```
 
-**Ekspektasi:** HTTP 401 atau 403.
-**Gagal jika:** HTTP 200 + daftar produk — RLS tidak aktif untuk anon.
+**Ekspektasi:** HTTP 401 (tanpa JWT) atau HTTP 200 dengan body `[]` kosong bila project mengizinkan anon read tapi policy select menolak semua baris. Keduanya valid — yang penting TIDAK ADA baris data yang bocor.
+**Gagal jika:** HTTP 200 + daftar produk berisi baris — RLS tidak aktif untuk anon.
 
 ---
 

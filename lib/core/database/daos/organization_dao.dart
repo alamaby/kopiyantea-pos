@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../domain/enums.dart';
 import '../app_database.dart';
 
 /// DAO for SaaS multi-tenant tables.
@@ -29,7 +30,8 @@ class OrganizationDao {
     ])
       ..where(
         _db.organizationMembers.userId.equals(userId) &
-            _db.organizationMembers.status.equals('active'),
+            _db.organizationMembers.status
+                .equalsValue(OrganizationMemberStatus.active),
       );
     return q.map((row) => row.readTable(_db.organizations)).get();
   }

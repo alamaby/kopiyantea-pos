@@ -5,6 +5,9 @@ import 'package:kopiyantea_pos/core/database/daos/catalog_dao.dart';
 import 'package:kopiyantea_pos/core/database/daos/inventory_dao.dart';
 import 'package:kopiyantea_pos/core/database/daos/outbox_dao.dart';
 import 'package:kopiyantea_pos/core/domain/enums.dart';
+import 'package:kopiyantea_pos/core/utils/result.dart';
+import 'package:kopiyantea_pos/features/pos/cart_state.dart';
+import 'package:kopiyantea_pos/features/pos/checkout_use_case.dart';
 import 'package:uuid/uuid.dart';
 
 /// Conflict-resolution and idempotency tests for the sync layer.
@@ -67,9 +70,45 @@ void main() {
       createdAt: now,
       updatedAt: now,
     ));
+    await db.into(db.productRecipes).insert(ProductRecipesCompanion.insert(
+      id: 'rec-conflict-1',
+      productId: productId,
+      branchId: branchId,
+      inventoryItemId: itemId,
+      quantityRequired: 50.0,
+    ));
   });
 
   tearDown(() => db.close());
+
+  /// Builds a single-Latte cart from the seeded fixture (mirrors the pattern
+  /// in `test/features/pos/checkout_use_case_test.dart`).
+  Future<CartState> _buildCheckoutCart(
+    AppDatabase db, {
+    required String productId,
+  }) async {
+    final branch = await (db.select(db.branches)
+          ..where((b) => b.id.equals(branchId)))
+        .getSingle();
+    final product = await (db.select(db.products)
+          ..where((p) => p.id.equals(productId)))
+        .getSingle();
+    final bp = await (db.select(db.branchProducts)
+          ..where((bp) =>
+              bp.productId.equals(productId) & bp.branchId.equals(branchId)))
+        .getSingle();
+    return CartState(
+      branch: branch,
+      items: [
+        CartItem(
+          product: product,
+          branchProduct: bp,
+          priceSnapshot: 18000,
+          quantity: 1,
+        ),
+      ],
+    );
+  }
 
   // ── 1. LWW master: server DTO wins over stale local ────────────────────────
 
@@ -136,49 +175,34 @@ void main() {
 
   // ── 3. Inventory movement convergence ─────────────────────────────────────
 
-  test('convergence: two sale movements both apply to cached_stock', () async {
-    final invDao = InventoryDao(db);
+  test('convergence: two sale checkouts both apply to cached_stock', () async {
+    final useCase = CheckoutUseCase(db: db, cashierId: userId);
 
-    // Initial cached_stock = 1000 ml (seeded above).
-    // Two sales: each deducts 200 ml.
-    // Note: insertMovement only appends rows; cached_stock reconciliation
-    // happens in CheckoutUseCase (not in the DAO), so we simulate it here.
-    final delta = -200.0;
+    // Initial cached_stock = 1000 ml (seeded above). One Latte consumes
+    // 50 ml via recipe. Two checkouts → cached_stock = 1000 − 50 − 50 = 900.
+    // The movements source-of-truth (ADR-0003) plus the same arithmetic in
+    // CheckoutUseCase keeps client and server converged deterministically.
+    final cart = await _buildCheckoutCart(db, productId: productId);
 
-    await invDao.insertMovement(InventoryMovementsCompanion.insert(
-      id: const Uuid().v7(),
-      inventoryItemId: itemId,
-      branchId: branchId,
-      movementType: MovementType.sale,
-      deltaSigned: delta,
-      referenceId: Value('tx-1'),
-      createdBy: Value(userId),
-      createdAt: now,
-    ));
-    await invDao.insertMovement(InventoryMovementsCompanion.insert(
-      id: const Uuid().v7(),
-      inventoryItemId: itemId,
-      branchId: branchId,
-      movementType: MovementType.sale,
-      deltaSigned: delta,
-      referenceId: Value('tx-2'),
-      createdBy: Value(userId),
-      createdAt: now,
-    ));
+    for (var i = 0; i < 2; i++) {
+      final result = await useCase.checkout(
+        cart: cart,
+        paymentMethod: PaymentMethod.cash,
+        paymentReceived: 50000,
+      );
+      expect(result, isA<Ok<CheckoutResult, CheckoutError>>());
+    }
 
-    // Verify both movements exist.
-    final movements = await invDao.getMovementsForItem(itemId);
-    expect(movements.length, 2);
+    // Both sale movements were appended (none lost).
+    final movements = await InventoryDao(db).getMovementsForItem(itemId);
+    expect(movements.where((m) => m.movementType == MovementType.sale),
+        hasLength(2));
 
-    // Simulate local reconciliation (same logic as CheckoutUseCase):
-    // new_cached_stock = old_cached_stock + sum(delta_signed for all movements)
+    // Real reconciled value (written by CheckoutUseCase, not simulated).
     final item = await (db.select(db.inventoryItems)
           ..where((i) => i.id.equals(itemId)))
         .getSingle();
-    final totalDelta = movements.fold<double>(
-        0.0, (sum, m) => sum + m.deltaSigned);
-    final convergedStock = item.cachedStock + totalDelta;
-    expect(convergedStock, 600.0);
+    expect(item.cachedStock, 900.0);
   });
 
   // ── 4. Outbox FIFO ────────────────────────────────────────────────────────

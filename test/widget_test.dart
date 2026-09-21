@@ -22,6 +22,10 @@ void main() {
 
     // The app must render something — at minimum a Scaffold with an AppBar.
     expect(find.byType(Scaffold), findsAtLeastNWidgets(1));
+    // Boot lands on the POS shell in the test environment (BottomNav with
+    // POS destination visible). 'Kasir' (old placeholder title) must not
+    // appear anywhere.
+    expect(find.text('POS'), findsWidgets);
     // The old POS placeholder ('Kasir') is gone; the app now routes through
     // auth guard to /login (or shows env-error if .env is missing).
     expect(find.text('Kasir'), findsNothing);

@@ -331,10 +331,16 @@ void main() {
     });
   });
 
-  // ── clearOrganizationData integration ───────────────────────────────────────
+  // ── org-table isolation (see TD-002) ────────────────────────────────────────
+  //
+  // NOTE (TD-002): this group does NOT exercise `clearOrganizationData()`:
+  // the production method crashes on the missnamed
+  // `DELETE FROM user_branch_access` (actual table: `user_branch_accesses`).
+  // It performs the org-table portion of that method manually and asserts the
+  // retain/drop contract the plan requires for M4.6.
 
-  group('clearOrganizationData', () {
-    test('clears org tables but preserves app_users and subscription_plans',
+  group('org-table isolation (clearOrganizationData contract, TD-002)', () {
+    test('org tables clearable while app_users + subscription_plans survive',
         () async {
       await seedOrg();
       await seedMember();
@@ -350,8 +356,7 @@ void main() {
         updatedAt: now,
       ));
 
-      // Manually delete org-scoped rows (clearOrganizationData has a
-      // pre-existing bug referencing user_branch_access vs user_branch_accesses)
+      // TD-002: manual org-table deletes stand in for clearOrganizationData().
       await db.customStatement('DELETE FROM organization_members');
       await db.customStatement('DELETE FROM organization_subscriptions');
       await db.customStatement('DELETE FROM organizations');

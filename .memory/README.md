@@ -1,8 +1,8 @@
 # Project Memory Index — KopiyanteaPOS
 
-**Last updated:** 2026-09-21 09:15:00 (local WIB)
+**Last updated:** 2026-09-21 13:07:00 (local WIB)
 **Format version:** v1
-**Active entries:** 1
+**Active entries:** 4
 
 ## Current State
 
@@ -29,4 +29,7 @@ Hardening Backlog Sprint **SELESAI** (M1–M6). Semua milestone tereksekusi: wor
 
 ## Recent Entries
 
+- [2026-09-21 M6 QA Matrix Doc](2026-09-21/130710-m6-qa-matrix-doc.md)
+- [2026-09-21 M5 Test Hijau RLS Smoke Doc](2026-09-21/130705-m5-test-hijau-rls-smoke-doc.md)
+- [2026-09-21 M4 Org Tables Drift Typed](2026-09-21/130700-m4-org-tables-drift-typed.md)
 - [2026-09-21 Hardening Sprint M3–M6](2026-09-21/2026-09-21-084300-hardening-sprint-kickoff.md)

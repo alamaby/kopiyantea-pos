@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
-import '../../core/database/daos/organization_dao.dart';
 import '../../core/utils/result.dart';
 import '../../core/domain/enums.dart';
 import '../../core/theme/spacing.dart';
@@ -98,8 +98,8 @@ class _JoinOrgScreenState extends ConsumerState<JoinOrgScreen> {
     final member = OrganizationMemberRow(
       organizationId: value.organizationId,
       userId: userId,
-      role: value.role,
-      status: OrganizationMemberStatus.active.name,
+      role: _parseRole(value.role),
+      status: OrganizationMemberStatus.active,
       createdAt: now,
       updatedAt: now,
     );
@@ -133,6 +133,14 @@ class _JoinOrgScreenState extends ConsumerState<JoinOrgScreen> {
       'network_unavailable' => l10n.onboardingJoinErrorNetwork,
       _ => l10n.onboardingJoinErrorUnknown,
     };
+  }
+
+  OrganizationMemberRole _parseRole(String raw) {
+    try {
+      return OrganizationMemberRole.values.byName(raw);
+    } catch (_) {
+      return OrganizationMemberRole.cashier;
+    }
   }
 
   @override

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
-import '../../core/database/daos/organization_dao.dart';
+import '../../core/domain/enums.dart';
 import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
@@ -165,11 +166,10 @@ class OrganizationCard extends ConsumerWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        if (org.businessType.isNotEmpty &&
-                            org.businessType != 'generic') ...[
+                        if (org.businessType != BusinessType.generic) ...[
                           const SizedBox(height: AppSpacing.xs),
                           Text(
-                            org.businessType.toUpperCase(),
+                            org.businessType.name.toUpperCase(),
                             style: AppTypography.labelSm.copyWith(
                               color: context.colors.textSecondary,
                             ),
@@ -241,8 +241,8 @@ class _SubscriptionTierBadge extends ConsumerWidget {
         };
 
         final label = switch (sub.status) {
-          'trialing' => l10n.settingsOrganizationTierTrial,
-          'active' => sub.planCode == 'plus'
+          SubscriptionStatus.trialing => l10n.settingsOrganizationTierTrial,
+          SubscriptionStatus.active => sub.planCode == 'plus'
               ? l10n.settingsOrganizationTierPlus
               : l10n.settingsOrganizationTierFree,
           _ => l10n.settingsOrganizationTierFree,
@@ -431,10 +431,9 @@ class _OrganizationList extends ConsumerWidget {
                   color: isSelected ? AppColors.primary : null,
                 ),
               ),
-              subtitle: org.businessType.isNotEmpty &&
-                      org.businessType != 'generic'
+              subtitle: org.businessType != BusinessType.generic
                   ? Text(
-                      org.businessType,
+                      org.businessType.name,
                       style: AppTypography.bodySm.copyWith(
                         color: context.colors.textSecondary,
                       ),

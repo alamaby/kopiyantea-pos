@@ -15,7 +15,7 @@ import 'tables/customer_tables.dart';
 import 'tables/customer_point_ledger_table.dart';
 import 'tables/held_order_table.dart';
 import 'tables/inventory_tables.dart';
-// import 'tables/organization_tables.dart'; -- codegen blocked (TD-001), tables via raw SQL
+import 'tables/organization_tables.dart'; // TD-001 resolved 2026-09-21
 import 'tables/option_tables.dart';
 import 'tables/outbox_table.dart';
 import 'tables/settings_tables.dart';
@@ -56,12 +56,11 @@ part 'app_database.g.dart';
     // ENH-001 — daily cash reconciliation log (added at schemaVersion 5)
     ShiftClosings,
     // FEAT-002 — SaaS multi-tenant tables (schemaVersion 21)
-    // Drift codegen blocked by analyzer version (TD-001).
-    // Tables created via raw SQL in migration v21.
-    // Organizations,
-    // OrganizationMembers,
-    // SubscriptionPlans,
-    // OrganizationSubscriptions,
+    // TD-001 resolved 2026-09-21 — Drift 2.21+ codegen works.
+    Organizations,
+    OrganizationMembers,
+    SubscriptionPlans,
+    OrganizationSubscriptions,
     // FEAT-015 — global bank accounts for transfer payment (schemaVersion 9)
     BankAccounts,
     // Tier 1 — kategori produk registry (schemaVersion 12)

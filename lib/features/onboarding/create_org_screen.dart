@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
-import '../../core/database/daos/organization_dao.dart';
 import '../../core/domain/enums.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/widgets/app_button.dart';
@@ -67,7 +67,7 @@ class _CreateOrgScreenState extends ConsumerState<CreateOrgScreen> {
       final org = OrganizationRow(
         id: orgId,
         name: _nameController.text.trim(),
-        businessType: _selectedBusinessType.name,
+        businessType: _selectedBusinessType,
         phone: _phoneController.text.trim().isEmpty
             ? null
             : _phoneController.text.trim(),
@@ -76,7 +76,7 @@ class _CreateOrgScreenState extends ConsumerState<CreateOrgScreen> {
             : _addressController.text.trim(),
         ownerUserId: currentUser.id,
         defaultTimezone: 'Asia/Jakarta',
-        status: 'active',
+        status: OrganizationStatus.active,
         trialEndsAt: now.add(const Duration(days: 30)),
         createdAt: now,
         updatedAt: now,
@@ -86,8 +86,8 @@ class _CreateOrgScreenState extends ConsumerState<CreateOrgScreen> {
       final member = OrganizationMemberRow(
         organizationId: orgId,
         userId: currentUser.id,
-        role: OrganizationMemberRole.owner.name,
-        status: OrganizationMemberStatus.active.name,
+        role: OrganizationMemberRole.owner,
+        status: OrganizationMemberStatus.active,
         createdAt: now,
         updatedAt: now,
       );

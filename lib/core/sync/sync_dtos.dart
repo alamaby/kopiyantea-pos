@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 
 import '../database/app_database.dart';
-import '../database/daos/organization_dao.dart';
 import '../database/daos/usage_counter_dao.dart';
 import '../domain/enums.dart';
 
@@ -332,6 +331,14 @@ BankAccountsCompanion bankAccountFromJson(Map<String, dynamic> json) =>
 T _enumByName<T extends Enum>(List<T> values, String name) =>
     values.firstWhere((v) => v.name == name);
 
+T _byNameOr<T extends Enum>(List<T> values, String? raw, T fallback) {
+  if (raw == null) return fallback;
+  for (final v in values) {
+    if (v.name == raw) return v;
+  }
+  return fallback;
+}
+
 String _toSupabaseTimestamp(DateTime value) => value.toUtc().toIso8601String();
 
 DateTime _fromSupabaseTimestamp(Object? raw) {
@@ -599,12 +606,12 @@ extension OrganizationSyncDto on OrganizationRow {
   Map<String, dynamic> toSupabaseJson() => {
         'id': id,
         'name': name,
-        'business_type': businessType,
+        'business_type': businessType.name,
         'address': address,
         'phone': phone,
         'owner_user_id': ownerUserId,
         'default_timezone': defaultTimezone,
-        'status': status,
+        'status': status.name,
         'trial_ends_at':
             trialEndsAt != null ? _toSupabaseTimestamp(trialEndsAt!) : null,
         'created_at': _toSupabaseTimestamp(createdAt),
@@ -616,8 +623,8 @@ extension OrganizationMemberSyncDto on OrganizationMemberRow {
   Map<String, dynamic> toSupabaseJson() => {
         'organization_id': organizationId,
         'user_id': userId,
-        'role': role,
-        'status': status,
+        'role': role.name,
+        'status': status.name,
         'created_at': _toSupabaseTimestamp(createdAt),
         'updated_at': _toSupabaseTimestamp(updatedAt),
       };
@@ -629,12 +636,20 @@ OrganizationRow organizationFromJson(Map<String, dynamic> json) =>
     OrganizationRow(
       id: json['id'] as String,
       name: json['name'] as String,
-      businessType: json['business_type'] as String? ?? 'generic',
+      businessType: _byNameOr(
+        BusinessType.values,
+        json['business_type'] as String?,
+        BusinessType.generic,
+      ),
       address: json['address'] as String?,
       phone: json['phone'] as String?,
       ownerUserId: json['owner_user_id'] as String?,
       defaultTimezone: json['default_timezone'] as String? ?? 'Asia/Jakarta',
-      status: json['status'] as String? ?? 'active',
+      status: _byNameOr(
+        OrganizationStatus.values,
+        json['status'] as String?,
+        OrganizationStatus.active,
+      ),
       trialEndsAt: _maybeDate(json['trial_ends_at']),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
@@ -644,15 +659,27 @@ OrganizationMemberRow organizationMemberFromJson(Map<String, dynamic> json) =>
     OrganizationMemberRow(
       organizationId: json['organization_id'] as String,
       userId: json['user_id'] as String,
-      role: json['role'] as String,
-      status: json['status'] as String? ?? 'active',
+      role: _byNameOr(
+        OrganizationMemberRole.values,
+        json['role'] as String?,
+        OrganizationMemberRole.cashier,
+      ),
+      status: _byNameOr(
+        OrganizationMemberStatus.values,
+        json['status'] as String?,
+        OrganizationMemberStatus.active,
+      ),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
 
 SubscriptionPlanRow subscriptionPlanFromJson(Map<String, dynamic> json) =>
     SubscriptionPlanRow(
-      code: json['code'] as String,
+      code: _byNameOr(
+        SubscriptionPlanCode.values,
+        json['code'] as String?,
+        SubscriptionPlanCode.free,
+      ),
       name: json['name'] as String,
       monthlyPrice: (json['monthly_price'] as num?)?.toDouble() ?? 0,
       yearlyPrice: (json['yearly_price'] as num?)?.toDouble() ?? 0,
@@ -674,7 +701,11 @@ OrganizationSubscriptionRow organizationSubscriptionFromJson(
     OrganizationSubscriptionRow(
       organizationId: json['organization_id'] as String,
       planCode: json['plan_code'] as String,
-      status: json['status'] as String,
+      status: _byNameOr(
+        SubscriptionStatus.values,
+        json['status'] as String?,
+        SubscriptionStatus.active,
+      ),
       billingPeriod: json['billing_period'] as String?,
       currentPeriodStart: _maybeDate(json['current_period_start']),
       currentPeriodEnd: _maybeDate(json['current_period_end']),

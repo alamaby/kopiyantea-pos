@@ -5,12 +5,10 @@ import '../../domain/enums.dart';
 /// SaaS tenant boundary. Each business (e.g. "Kopiyantea", "Cafe XYZ")
 /// is one organization. Data is scoped per org via [organization_id].
 ///
-/// Note: Drift codegen is currently blocked by analyzer version mismatch
-/// (TD-001). This table is created via raw SQL in migration v21 and
-/// accessed through plain SQL in [OrganizationDao]. It is NOT registered
-/// in [@DriftDatabase] to avoid breaking the drift generator.
+/// TD-001 resolved 2026-09-21:Drift 2.21+ codegen works; table registered
+/// in [@DriftDatabase] since M4 hardening sprint.
 @DataClassName('OrganizationRow')
-class _Organizations extends Table {
+class Organizations extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get businessType => text()
@@ -35,9 +33,9 @@ class _Organizations extends Table {
 /// Membership + role scoped per organization. Replaces [GlobalRole] as the
 /// SaaS authorization source.
 ///
-/// Not registered in [@DriftDatabase] — accessed via raw SQL.
+/// TD-001 resolved 2026-09-21 — registered in [@DriftDatabase].
 @DataClassName('OrganizationMemberRow')
-class _OrganizationMembers extends Table {
+class OrganizationMembers extends Table {
   TextColumn get organizationId => text()();
   TextColumn get userId => text()();
   TextColumn get role => text().map(
@@ -59,9 +57,9 @@ class _OrganizationMembers extends Table {
 
 /// Static plan catalog. Seeded once (free, plus). Never deleted.
 ///
-/// Not registered in [@DriftDatabase] — accessed via raw SQL.
+/// TD-001 resolved 2026-09-21 — registered in [@DriftDatabase].
 @DataClassName('SubscriptionPlanRow')
-class _SubscriptionPlans extends Table {
+class SubscriptionPlans extends Table {
   TextColumn get code => text()
       .map(const EnumNameConverter<SubscriptionPlanCode>(
         SubscriptionPlanCode.values,
@@ -90,9 +88,9 @@ class _SubscriptionPlans extends Table {
 
 /// Active subscription row per organization (one-to-one).
 ///
-/// Not registered in [@DriftDatabase] — accessed via raw SQL.
+/// TD-001 resolved 2026-09-21 — registered in [@DriftDatabase].
 @DataClassName('OrganizationSubscriptionRow')
-class _OrganizationSubscriptions extends Table {
+class OrganizationSubscriptions extends Table {
   TextColumn get organizationId => text()();
   TextColumn get planCode => text()();
   TextColumn get status => text().map(

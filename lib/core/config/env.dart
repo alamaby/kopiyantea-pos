@@ -20,8 +20,8 @@ abstract class Env {
   @EnviedField(varName: 'SUPABASE_URL')
   static const String supabaseUrl = _Env.supabaseUrl;
 
-  /// Supabase publishable key (`sb_publishable_...`). The legacy JWT anon key
-  /// also works in this slot — the SDK forwards the string as-is.
+  /// Supabase publishable key (`sb_publishable_...`). Forwarded as-is to the
+  /// SDK `anonKey:` parameter (historical name).
   @EnviedField(varName: 'SUPABASE_PUBLISHABLE_KEY')
   static const String supabasePublishableKey = _Env.supabasePublishableKey;
 

@@ -1,0 +1,4 @@
+project_id = "kopiyantea-pos"
+
+[functions.keep-alive]
+verify_jwt = false

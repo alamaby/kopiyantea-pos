@@ -1,20 +1,18 @@
 name: Supabase Keep-Alive
 
-# Supabase free tier auto-pauses a project after 7 days of zero API
-# requests. A daily ping touches the auth service AND PostgREST so both
-# stay warm. The job is intentionally tiny — sub-second curl, almost no
-# CI minutes consumed.
+# Supabase free tier can pause a project after 7 days without real database
+# activity. This workflow calls the `keep-alive` Edge Function, which performs
+# auth, PostgREST, Storage, and a real Postgres RPC probe. If the project is
+# already paused/unreachable, it triggers Supabase Management API restore.
 #
-# Required secrets (Settings → Secrets and variables → Actions):
+# Required secrets (Settings -> Secrets and variables -> Actions):
 # - SUPABASE_URL              e.g. https://abcde.supabase.co
-# - SUPABASE_PUBLISHABLE_KEY  sb_publishable_... (or legacy anon JWT)
+# - SUPABASE_PUBLISHABLE_KEY  sb_publishable_...
+# - SUPABASE_PAT              Supabase personal access token for auto-restore
+# - SUPABASE_PROJECT_REF      project ref from dashboard URL
 #
-# Cron is UTC. 03:17 UTC ≈ 10:17 WIB. The odd-minute offset avoids the
+# Cron is UTC. 03:17 UTC ~= 10:17 WIB. The odd-minute offset avoids the
 # top-of-hour rush where GitHub delays scheduled jobs the most.
-#
-# GitHub also disables cron on repos with no commit activity for 60 days
-# — this workflow's own daily run does NOT count as activity, so push at
-# least one commit every couple months to keep it scheduled.
 
 on:
   schedule:
@@ -27,52 +25,152 @@ jobs:
   ping:
     name: Ping Supabase
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 5
     steps:
       - name: Validate secrets present
+        env:
+          SB_URL: ${{ secrets.SUPABASE_URL }}
+          SB_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+          SB_PAT: ${{ secrets.SUPABASE_PAT }}
+          SB_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: |
-          if [ -z "${{ secrets.SUPABASE_URL }}" ] || \
-             [ -z "${{ secrets.SUPABASE_PUBLISHABLE_KEY }}" ]; then
-            echo "::error::SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY secret is missing."
+          missing=0
+          for name in SB_URL SB_KEY SB_PAT SB_PROJECT_REF; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is missing."
+              missing=1
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
             exit 1
           fi
 
-      - name: Ping auth service
+      - name: Call keep-alive Edge Function
+        id: keep_alive
         env:
           SB_URL: ${{ secrets.SUPABASE_URL }}
           SB_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          code=$(curl -sS -o /tmp/auth.json -w "%{http_code}" \
-            -H "apikey: $SB_KEY" \
-            "$SB_URL/auth/v1/health")
-          echo "auth/health → HTTP $code"
-          head -c 200 /tmp/auth.json || true
+          code=$(curl -sS -o /tmp/keep-alive.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $SB_KEY" \
+            "$SB_URL/functions/v1/keep-alive" || true)
+          code=${code:-000}
+
+          echo "functions/v1/keep-alive -> HTTP $code"
+          cat /tmp/keep-alive.json || true
           echo
-          # Any 2xx/3xx/4xx = service responded (project alive). Only 0,
-          # 5xx, or timeout signal a paused/dead project.
-          if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
-            echo "::error::Auth ping returned $code — project may be paused or unreachable."
-            exit 1
+
+          ok=$(jq -r '.ok // false' /tmp/keep-alive.json 2>/dev/null || echo false)
+          has_checks=$(jq -r 'has("checks") // false' /tmp/keep-alive.json 2>/dev/null || echo false)
+          auth_status=$(jq -r '.checks.auth.status // 0' /tmp/keep-alive.json 2>/dev/null || echo 0)
+          rest_status=$(jq -r '.checks.rest.status // 0' /tmp/keep-alive.json 2>/dev/null || echo 0)
+          database_status=$(jq -r '.checks.database.status // 0' /tmp/keep-alive.json 2>/dev/null || echo 0)
+
+          if [ "$code" = "200" ] && [ "$ok" = "true" ]; then
+            echo "alive=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "alive=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Ping PostgREST (warms the database)
+          if [ "$code" = "000" ] || \
+             { [ "$code" -ge 500 ] && [ "$has_checks" != "true" ]; } || \
+             [ "$auth_status" -ge 500 ] || \
+             [ "$rest_status" -ge 500 ] || \
+             [ "$database_status" -ge 500 ]; then
+            echo "maybe_paused=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "maybe_paused=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check raw auth health
+        id: raw_health
         env:
           SB_URL: ${{ secrets.SUPABASE_URL }}
           SB_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
-          # NOTE: publishable keys (sb_publishable_...) are NOT JWTs. Sending
-          # them as `Authorization: Bearer` triggers PostgREST JWT parse
-          # failure → 401. Use only the `apikey` header.
-          code=$(curl -sS -o /dev/null -w "%{http_code}" \
+          code=$(curl -sS -o /tmp/auth-health.json -w "%{http_code}" \
             -H "apikey: $SB_KEY" \
-            "$SB_URL/rest/v1/")
-          echo "rest/v1 → HTTP $code"
-          # Same acceptance as auth: any HTTP response = alive. The intent
-          # is keep-alive, not auth correctness.
+            "$SB_URL/auth/v1/health" || true)
+          code=${code:-000}
+
+          echo "auth/v1/health -> HTTP $code"
+          head -c 500 /tmp/auth-health.json || true
+          echo
+
           if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
-            echo "::error::PostgREST returned $code — DB unreachable or paused."
+            echo "paused=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "paused=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Auto-unpause project
+        id: restore
+        if: steps.raw_health.outputs.paused == 'true' || steps.keep_alive.outputs.maybe_paused == 'true'
+        env:
+          SB_PAT: ${{ secrets.SUPABASE_PAT }}
+          SB_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          echo "Project appears paused or unreachable. Triggering Supabase restore..."
+          code=$(curl -sS -o /tmp/restore.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $SB_PAT" \
+            "https://api.supabase.com/v1/projects/$SB_PROJECT_REF/restore")
+          code=${code:-000}
+
+          echo "restore -> HTTP $code"
+          cat /tmp/restore.json || true
+          echo
+
+          if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+            echo "::error::Restore request failed with HTTP $code."
             exit 1
           fi
+
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep 15
+            status=$(curl -sS \
+              -H "Authorization: Bearer $SB_PAT" \
+              "https://api.supabase.com/v1/projects/$SB_PROJECT_REF" | jq -r '.status // empty')
+            echo "poll $i -> status=$status"
+
+            if [ "$status" = "ACTIVE_HEALTHY" ]; then
+              echo "restored=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          echo "::error::Project did not become ACTIVE_HEALTHY within the polling window."
+          exit 1
+
+      - name: Retry keep-alive after restore
+        if: steps.restore.outputs.restored == 'true'
+        env:
+          SB_URL: ${{ secrets.SUPABASE_URL }}
+          SB_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          code=$(curl -sS -o /tmp/keep-alive-retry.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $SB_KEY" \
+            "$SB_URL/functions/v1/keep-alive")
+          code=${code:-000}
+
+          echo "retry functions/v1/keep-alive -> HTTP $code"
+          cat /tmp/keep-alive-retry.json || true
+          echo
+
+          ok=$(jq -r '.ok // false' /tmp/keep-alive-retry.json 2>/dev/null || echo false)
+          if [ "$code" != "200" ] || [ "$ok" != "true" ]; then
+            echo "::error::Keep-alive still unhealthy after restore."
+            exit 1
+          fi
+
+      - name: Fail on keep-alive misconfiguration
+        if: steps.keep_alive.outputs.alive != 'true' && steps.raw_health.outputs.paused != 'true' && steps.keep_alive.outputs.maybe_paused != 'true'
+        run: |
+          echo "::error::Keep-alive Edge Function failed, but the project does not look paused. Check function deployment, RPC migration, or secrets."
+          exit 1
 
       - name: Done
-        run: echo "Supabase project is alive — ping completed at $(date -u +'%Y-%m-%dT%H:%M:%SZ')."
+        run: echo "Supabase project is alive — keep-alive completed at $(date -u +'%Y-%m-%dT%H:%M:%SZ')."

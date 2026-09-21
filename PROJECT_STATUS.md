@@ -1032,5 +1032,6 @@ Empat fitur dari backlog dikerjakan dalam satu sprint (2026-05-19). Semua butuh 
 
 ## Maintenance Log
 
+- 2026-09-21 — Hardening Backlog Sprint **SELESAI** (M1–M6). M1: working tree bersih + backup restore (5 komit). M2: secret hygiene (.gitignore diperketat). M3: .memory/ inisialisasi. M4: org tables Drift typed + DAO rewrite (328→95 baris). M5: 5 test gagal pre-existing diperbaiki + 4 test sync/conflict baru + RLS smoke doc. M6: QA device matrix doc (15 langkah). Total 126 test hijau, 0 error flutter analyze. 10 komit land di branch main.
 - 2026-09-21 — Hardening Backlog Sprint dimulai. M1 (backup restore + working tree bersih) DAN M2 (secret hygiene / `.gitignore`) selesai atomik; 5 komit: `ci(supabase): restore scheduled backup`, `feat(supabase): keep-alive edge probe`, `feat(saas): multi-tenant expand + RLS rewrite`, `docs: refresh readme/setup/master-prompt`, `chore(repo): remove archived .kimchi`. Arsip `.kimchi/` + `backup_supabase/` ke `C:\Works\archives\kopiyantea-pos-2026-09-21/`. TD-001 resolved (drift 2.21). Publikasi keys sudah dilakukan di plan sebelumnya.
 - 2026-09-21 — Migrasi publishable keys sisi code selesai (lihat `plans/2026-09-20-supabase-new-api-keys-migration.md`).

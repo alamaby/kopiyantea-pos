@@ -1,8 +1,8 @@
 # Project Memory Index — KopiyanteaPOS
 
-**Last updated:** 2026-09-21 13:07:00 (local WIB)
+**Last updated:** 2026-09-25 13:05:00 (local WIB)
 **Format version:** v1
-**Active entries:** 4
+**Active entries:** 5
 
 ## Current State
 
@@ -29,6 +29,7 @@ Hardening Backlog Sprint **SELESAI** (M1–M6). Semua milestone tereksekusi: wor
 
 ## Recent Entries
 
+- [2026-09-25 Supabase CLI Token Helper](2026-09-25/130519-supabase-cli-token-helper.md)
 - [2026-09-21 M6 QA Matrix Doc](2026-09-21/130710-m6-qa-matrix-doc.md)
 - [2026-09-21 M5 Test Hijau RLS Smoke Doc](2026-09-21/130705-m5-test-hijau-rls-smoke-doc.md)
 - [2026-09-21 M4 Org Tables Drift Typed](2026-09-21/130700-m4-org-tables-drift-typed.md)

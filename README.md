@@ -208,6 +208,15 @@ Important references:
 
 Supabase schema changes live in [supabase/migrations](supabase/migrations). Migrations are timestamped, forward-only, and should be non-destructive whenever possible.
 
+CLI via access token (tanpa `supabase login`):
+
+```powershell
+& "scripts/supabase-with-token.ps1" db push
+& "scripts/supabase-with-token.ps1" functions deploy keep-alive
+```
+
+Token `SUPABASE_ACCESS_TOKEN` (prefix `sbp_`) HANYA dari `.env.local`. Verifikasi aman: `& "scripts/supabase-with-token.ps1" --DryRun functions deploy keep-alive`.
+
 Local database definitions live under [lib/core/database](lib/core/database). Keep Drift schema changes aligned with Supabase migrations and ADR decisions.
 
 ## Design System

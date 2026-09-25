@@ -29,12 +29,22 @@ update public.pending_invitations
    and status = 'active';
 
 -- Unique constraint: a code must be unique within its organization.
--- Multiple NULL join_codes (email invites) are allowed per org, so we
--- use NULLS NOT DISTINCT so each (org, null) set is treated as distinct.
--- This requires PostgreSQL ≥ 15 (Supabase default since early 2024).
-alter table public.pending_invitations
-  add constraint if not exists pending_invitations_org_code_uq
-    unique nulls not distinct (organization_id, join_code);
+-- Multiple NULL join_codes (email invites) are allowed per org, hence a
+-- PARTIAL unique index (not NULLS NOT DISTINCT, which would wrongly
+-- conflict legacy NULL rows — observed 23505 on prod 2026-09-25).
+-- NOTE (2026-09-25): replaces invalid ADD CONSTRAINT IF NOT EXISTS;
+-- guarded DO block keeps this migration idempotent per ADR-0008.
+do $$ begin
+  if not exists (
+    select 1 from pg_indexes
+     where schemaname = 'public'
+       and indexname = 'pending_invitations_org_code_uq'
+  ) then
+    create unique index pending_invitations_org_code_uq
+      on public.pending_invitations (organization_id, join_code)
+      where join_code is not null;
+  end if;
+end $$;
 
 -- Fast lookup when a user submits an 8-char code.
 create index if not exists pending_invitations_code_idx

@@ -78,6 +78,7 @@ extension CustomerSyncDto on CustomerRow {
         'phone': phone,
         'email': email,
         'loyalty_points': loyaltyPoints,
+        'organization_id': organizationId,
         'created_at': _toSupabaseTimestamp(createdAt),
         'updated_at': _toSupabaseTimestamp(updatedAt),
       };
@@ -90,6 +91,7 @@ extension CustomerPointLedgerSyncDto on CustomerPointLedgerRow {
         'transaction_id': transactionId,
         'points_delta': pointsDelta,
         'reason': reason,
+        'organization_id': organizationId,
         'created_at': _toSupabaseTimestamp(createdAt),
       };
 }
@@ -109,6 +111,7 @@ extension BranchSyncDto on BranchRow {
         'tax_inclusive': taxInclusive,
         'failed_login_lockout_threshold': failedLoginLockoutThreshold,
         'qris_image_url': qrisImageUrl,
+        'organization_id': organizationId,
         'created_at': _toSupabaseTimestamp(createdAt),
         'updated_at': _toSupabaseTimestamp(updatedAt),
       };
@@ -178,6 +181,7 @@ extension OptionGroupSyncDto on OptionGroupRow {
         'is_required': isRequired,
         'is_multi_select': isMultiSelect,
         'sort_order': sortOrder,
+        'organization_id': organizationId,
         'created_at': _toSupabaseTimestamp(createdAt),
         'updated_at': _toSupabaseTimestamp(updatedAt),
       };
@@ -191,6 +195,7 @@ extension OptionSyncDto on OptionRow {
         'price_delta': priceDelta,
         'sort_order': sortOrder,
         'is_default': isDefault,
+        'organization_id': organizationId,
         'created_at': _toSupabaseTimestamp(createdAt),
         'updated_at': _toSupabaseTimestamp(updatedAt),
       };
@@ -237,6 +242,7 @@ extension ProductSyncDto on ProductRow {
         'sku': sku,
         'image_url': imageUrl,
         'is_active': isActive,
+        'organization_id': organizationId,
         'created_at': _toSupabaseTimestamp(createdAt),
         'updated_at': _toSupabaseTimestamp(updatedAt),
       };
@@ -273,6 +279,7 @@ extension CategorySyncDto on CategoryRow {
         'sort_order': sortOrder,
         'color': color == null ? null : color! & 0x00FFFFFF,
         'is_active': isActive,
+        'organization_id': organizationId,
         'created_at': _toSupabaseTimestamp(createdAt),
         'updated_at': _toSupabaseTimestamp(updatedAt),
       };
@@ -308,6 +315,7 @@ CategoriesCompanion categoryFromJson(Map<String, dynamic> json) =>
       sortOrder: Value(json['sort_order'] as int? ?? 0),
       color: Value(_categoryRgb24(json['color'])),
       isActive: Value(json['is_active'] as bool? ?? true),
+      organizationId: Value(json['organization_id'] as String?),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
@@ -320,6 +328,7 @@ extension BankAccountSyncDto on BankAccountRow {
         'account_holder': accountHolder,
         'display_order': displayOrder,
         'is_active': isActive,
+        'organization_id': organizationId,
         'created_at': _toSupabaseTimestamp(createdAt),
         'updated_at': _toSupabaseTimestamp(updatedAt),
       };
@@ -333,6 +342,7 @@ BankAccountsCompanion bankAccountFromJson(Map<String, dynamic> json) =>
       accountHolder: json['account_holder'] as String,
       displayOrder: Value(json['display_order'] as int? ?? 0),
       isActive: Value(json['is_active'] as bool? ?? true),
+      organizationId: Value(json['organization_id'] as String?),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
@@ -426,6 +436,7 @@ BranchesCompanion branchFromJson(Map<String, dynamic> json) =>
       failedLoginLockoutThreshold:
           Value(json['failed_login_lockout_threshold'] as int? ?? 5),
       qrisImageUrl: Value(json['qris_image_url'] as String?),
+      organizationId: Value(json['organization_id'] as String?),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
@@ -441,6 +452,7 @@ ProductsCompanion productFromJson(Map<String, dynamic> json) =>
       sku: Value(json['sku'] as String?),
       imageUrl: Value(json['image_url'] as String?),
       isActive: Value(json['is_active'] as bool? ?? true),
+      organizationId: Value(json['organization_id'] as String?),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
@@ -486,6 +498,7 @@ OptionGroupsCompanion optionGroupFromJson(Map<String, dynamic> json) =>
       isRequired: Value(json['is_required'] as bool? ?? false),
       isMultiSelect: Value(json['is_multi_select'] as bool? ?? false),
       sortOrder: Value(json['sort_order'] as int? ?? 0),
+      organizationId: Value(json['organization_id'] as String?),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
@@ -498,6 +511,7 @@ MenuOptionsCompanion optionFromJson(Map<String, dynamic> json) =>
       priceDelta: Value((json['price_delta'] as num?)?.toDouble() ?? 0),
       sortOrder: Value(json['sort_order'] as int? ?? 0),
       isDefault: Value(json['is_default'] as bool? ?? false),
+      organizationId: Value(json['organization_id'] as String?),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
@@ -517,6 +531,7 @@ CustomersCompanion customerFromJson(Map<String, dynamic> json) =>
       phone: Value(json['phone'] as String?),
       email: Value(json['email'] as String?),
       loyaltyPoints: Value(json['loyalty_points'] as int? ?? 0),
+      organizationId: Value(json['organization_id'] as String?),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
       updatedAt: _fromSupabaseTimestamp(json['updated_at']),
     );
@@ -530,6 +545,7 @@ CustomerPointLedgersCompanion customerPointLedgerFromJson(
       transactionId: Value(json['transaction_id'] as String?),
       pointsDelta: (json['points_delta'] as num).toInt(),
       reason: json['reason'] as String,
+      organizationId: Value(json['organization_id'] as String?),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
     );
 

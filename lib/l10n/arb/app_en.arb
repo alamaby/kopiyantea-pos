@@ -1056,6 +1056,7 @@
   "createOrgSubmit": "Create Organization",
   "createOrgSuccess": "Organization created successfully",
   "createOrgFailed": "Failed to create organization",
+  "orgRequiredForSave": "No active organization. Open Settings to select one.",
   "createInviteCodeTitle": "Create Invitation Code",
   "createInviteCodeRoleLabel": "Role",
   "createInviteCodeBranchLabel": "Branch Access",

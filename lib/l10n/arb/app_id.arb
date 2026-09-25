@@ -1056,6 +1056,7 @@
   "createOrgSubmit": "Buat Organisasi",
   "createOrgSuccess": "Organisasi berhasil dibuat",
   "createOrgFailed": "Gagal membuat organisasi",
+  "orgRequiredForSave": "Organisasi belum aktif. Buka Pengaturan untuk memilih organisasi.",
   "createInviteCodeTitle": "Buat Kode Undangan",
   "createInviteCodeRoleLabel": "Peran",
   "createInviteCodeBranchLabel": "Akses Cabang",

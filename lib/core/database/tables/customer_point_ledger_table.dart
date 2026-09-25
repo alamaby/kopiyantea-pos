@@ -11,6 +11,8 @@ class CustomerPointLedgers extends Table {
       text().nullable().references(Transactions, #id)();
   IntColumn get pointsDelta => integer()();
   TextColumn get reason => text()();
+  /// FEAT-002 — tenant boundary, nullable during migration then backfilled.
+  TextColumn get organizationId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
 
   @override

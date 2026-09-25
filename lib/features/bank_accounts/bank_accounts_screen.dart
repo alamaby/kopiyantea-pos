@@ -12,11 +12,13 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/org_resolver.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../auth/auth_provider.dart';
 import 'bank_account_providers.dart';
 
 /// FEAT-015 — owner-only CRUD for global bank transfer accounts.
@@ -326,6 +328,9 @@ class _BankAccountFormState extends ConsumerState<_BankAccountForm> {
       accountHolder: holder,
       displayOrder: Value(_displayOrder),
       isActive: Value(widget.existing?.isActive ?? true),
+      organizationId: Value(
+        resolveOrgForInsert(ref.read(currentOrganizationIdProvider)),
+      ),
       createdAt: widget.existing?.createdAt ?? now,
       updatedAt: now,
     ));

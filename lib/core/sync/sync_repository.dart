@@ -1019,9 +1019,15 @@ class SyncRepository {
           .eq('option_group_id', groupId);
       return;
     }
+    // organization_id is derived from the local product row (the junction
+    // carries no org column locally; server requires it for RLS).
+    final product = await (_db.select(_db.products)
+          ..where((p) => p.id.equals(productId)))
+        .getSingleOrNull();
     await sb.from('product_option_groups').upsert({
       'product_id': productId,
       'option_group_id': groupId,
+      'organization_id': product?.organizationId,
     });
   }
 

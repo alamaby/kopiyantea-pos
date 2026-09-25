@@ -60,22 +60,22 @@ Out-of-scope (dilarang dalam plan ini): billing/limit tahap 6–7, rewrite RLS s
 
 ## Tasks
 
-- [ ] S-01 Snapshot pg_policies + helper (rollback baseline)
-- [ ] S-02 Verifikasi kual `app_users_insert` lama (read-only)
-- [ ] S-03 Cek versi Postgres (syarat NULLS NOT DISTINCT)
-- [ ] S-04 Apply 000002 → verifikasi → repair
-- [ ] S-05 Perbaiki + apply 17 → verifikasi → repair
-- [ ] S-06 Apply 18 → verifikasi → repair
-- [ ] S-07 Apply 000003 → verifikasi → repair
-- [ ] S-08 Repair 000001 sebagai digantikan (tanpa menjalankan isi)
-- [ ] S-09 Apply 000004 → verifikasi → repair
-- [ ] S-10 Patch file 16 (tanpa efek DB)
-- [ ] S-11 Schema Drift 24: kolom org lokal + backfill
-- [ ] S-12 Stamp organization_id di DTO push
-- [ ] S-13 RPC signup atomik + onboarding pakai RPC
-- [ ] S-14 Stamp org pada pembuatan data baru
-- [ ] S-15 Apply 16 (GATED: hanya bila S-11 s.d. S-14 hijau)
-- [ ] S-16 Regresi akhir + handoff
+- [x] S-01 Snapshot pg_policies + helper (rollback baseline)
+- [x] S-02 Verifikasi kual `app_users_insert` lama (read-only)
+- [x] S-03 Cek versi Postgres (syarat NULLS NOT DISTINCT)
+- [x] S-04 Apply 000002 → verifikasi → repair
+- [x] S-05 Perbaiki + apply 17 → verifikasi → repair
+- [x] S-06 Apply 18 → verifikasi → repair
+- [x] S-07 Apply 000003 → verifikasi → repair
+- [x] S-08 Repair 000001 sebagai digantikan (tanpa menjalankan isi)
+- [x] S-09 Apply 000004 → verifikasi → repair
+- [x] S-10 Patch file 16 (tanpa efek DB)
+- [x] S-11 Schema Drift 24: kolom org lokal + backfill
+- [x] S-12 Stamp organization_id di DTO push
+- [x] S-13 RPC signup atomik + onboarding pakai RPC
+- [x] S-14 Stamp org pada pembuatan data baru
+- [ ] S-15 Apply 16 — **BLOCKED** (lihat Progress Log 17:15): butuh APK baru terpasang dulu
+- [x] S-16 Regresi akhir (gate dijalankan; handoff ada di Progress Log)
 
 ---
 
@@ -261,7 +261,7 @@ Out-of-scope (dilarang dalam plan ini): billing/limit tahap 6–7, rewrite RLS s
 - File yang harus diubah: file 16 itu sendiri (diizinkan: belum pernah di-apply) — JANGAN buat file patch terpisah agar riwayat satu-versi-satu-file.
 - Simbol: policy `app_users_insert`, `uba_write`, `pending_invitations_delete`, helper `auth.jwt()`.
 - Kondisi saat ini: (1) `app_users_insert` referensi `auth.users` → 42501; (2) `uba_write`/`pending_invitations_delete` baru manage-only mematikan self-claim via semantik AND; (3) policy terbuka 000001 tidak dibahas file ini (000001 tak pernah jalan — catat di header file bahwa tidak ada yang perlu dicabut).
-- Perubahan konkret (urutan di file, tepat 3 edit + 1 header): (1) di `app_users_insert` ganti `(select email from auth.users where id = auth.uid())` menjadi `(auth.jwt() ->> 'email')`, dan bungkus WITH CHECK menjadi `(id = auth.uid() AND LOWER(COALESCE(email,'')) = LOWER(COALESCE(auth.jwt() ->> 'email','')) ) OR public.current_user_can_manage_org(...)` — memakai argumen org yang sama dengan versi file; (2) di `uba_write` tambah OR cabang self-claim identik dengan `uba_self_claim_insert` lama (`user_id = auth.uid() AND EXISTS (... pending_invitations ... branch_ids_csv LIKE ...)`) pada USING maupun WITH CHECK; (3) di `pending_invitations_delete` tambah `OR (LOWER(email) = LOWER(COALESCE(auth.jwt() ->> 'email','')))` pada USING; (4) tambah header comment `-- PATCH 2026-09-25: <ringkasan 1-3> — belum di-apply`.
+- Perubahan konkret (urutan di file, tepat 1 edit wajib + 1 header): (1) WAJIB di `app_users_insert`: ganti `(select email from auth.users where id = auth.uid())` menjadi `(auth.jwt() ->> 'email')` — referensi `auth.users` melempar 42501 (bukan false) dan membunuh SEMUA insert `app_users`; (2) EDIT uba_write/pending_delete DIBATALKAN — terbukti tidak perlu: policy PERMISSIVE digabung OR, dan policy self-claim lama (`uba_self_claim_insert`, `pending_invitations_self_claim`/`self_read`) survive karena Section 1 file 16 tidak me-drop mereka (terverifikasi baca baris 54-71); invitee lolos via cabang OR lama; (3) tambah header comment `-- PATCH 2026-09-25: jwt-fix app_users_insert; uba/invite self-claim dipertahankan via policy lama (OR) — belum di-apply`.
 - Behavior yang dipertahankan: deny-by-default tenant; owner manage penuh; selebihnya identik dengan file asli.
 - Error handling: setelah edit, JANGAN apply (itu S-15); verifikasi sintaks hanya dengan membaca ulang diff (`git diff` file tersebut) — tidak ada-II lint SQL lokal yang tersedia.
 - Test: tidak ada di langkah ini (smoke klaim di S-15/S-16).
@@ -392,6 +392,21 @@ Out-of-scope (dilarang dalam plan ini): billing/limit tahap 6–7, rewrite RLS s
 ## Progress Log
 
 - 2026-09-25 15:00:00 — Plan dibuat; belum ada implementasi; S-01..S-16 pending.
+- 2026-09-25 15:10:00 — S-01 done: snapshot `docs/saas-rls-snapshot-2026-09-25.sql` (81 policy public+storage + 8 definisi helper, tanpa secret). S-02 done: `app_users_insert` lama = owner-only `(user_global_role()='owner')`; self-claim jalan via OR dengan `app_users_self_claim_insert` — ini sekaligus mengoreksi klaim AND-semantics pada analisa kemarin: policy PERMISSIVE digabung OR, sehingga uba/invite self-claim SURVIVE item 16; yang tetap fatal hanya error 42501 `auth.users` (error ≠ false) + invisibilitas baris NULL-org + write master NULL-org ditolak. S-03 done: Postgres 17.6.1 → NULLS NOT DISTINCT didukung, S-05 lanjut.
+- 2026-09-25 15:25:00 — S-04 done: insiden `.env`/`.env.local` (header tanpa `=` di L4 kedua file, ditambahkan sesi lain) membuat CLI gagal parse; diperbaiki dengan comment `#` tanpa menyentuh secret. Kolom `organization_id`+`updated_at` + index terverifikasi; repair 20260925000002 (riwayat 27).
+- 2026-09-25 15:40:00 — S-05 done: `ADD CONSTRAINT IF NOT EXISTS` (sintaks invalid) diganti DO-guard; percobaan pertama gagal 23505 karena 2+ undangan email legacy NULL-join_code se-org (membuktikan NULLS NOT DISTINCT bertentangan dengan maksud file) → fallback partial unique index WHERE join_code IS NOT NULL; `db query` transaksional rollback bersih lalu sukses. Terverifikasi: 6 kolom, 3 index, `claim_invitation_code` SECURITY DEFINER + grant authenticated; repair 20260617 (riwayat 28).
+- 2026-09-25 15:50:00 — S-06 done: file 18 hanya probe read-only + grant (dibaca penuh); `keep_alive_ping` + grant anon/authenticated terverifikasi; repair sempat gagal transien pooler EAUTHQUERY, retry sukses (riwayat 29).
+- 2026-09-25 16:00:00 — S-07 done: grep konfirmasi satu-satunya `sb.rpc` adalah claim (authenticated). Terverifikasi: search_path pin di kedua trigger, anon hilang dari EXECUTE helper (tinggal authenticated), 6 policy owner ber-role `{authenticated}`; repair 20260925000003 (riwayat 30).
+- 2026-09-25 16:05:00 — S-08 done: 000001 di-repair TANPA menjalankan isi (superseded by no.15); verifikasi 0 policy `*_read_auth` tercipta (riwayat 31).
+- 2026-09-25 16:10:00 — S-09 done: 10/10 index terverifikasi via pg_indexes; repair 20260925000004 (riwayat 32).
+- 2026-09-25 16:15:00 — S-10 done: 1 edit wajib (jwt) + header PATCH; grep `auth.users` tinggal 2 hit di komentar header sendiri (0 di SQL), `auth.jwt` di SQL; file BELUM tercatat di riwayat. M1+M2 selesai (S-01..S-10). Lanjut M3 app phase (S-11..S-14) sebelum S-15.
+- 2026-09-25 16:45:00 — S-11 done: kolom org di 8 tabel Drift + company_settings raw + schemaVersion 24 + backfill sole-org; build_runner sukses (cache-clear TD-001); `org_backfill_test` 3/3 (solo/zero/multi). Deviasi: BranchProducts/Inventory*/Recipes/ReceiptSettings dilewati (server tak punya kolom; RLS branch-scoped); POG org diderivasi saat push.
+- 2026-09-25 17:00:00 — S-12 done: push+pull org di Branch/Product/Category/Customer/CPL/OptionGroup/Option/BankAccount/CompanySetting; tx payload tetap org-free; POG push sertakan org dari produk lokal; `sync_org_stamp_test` 5/5; analyze 0 error.
+- 2026-09-25 17:10:00 — S-13 done: migrasi baru `20260925000005_org_signup_rpc.sql` (`create_organization_with_owner`, SECURITY DEFINER, grant authenticated + REVOKE anon/PUBLIC) di-apply + repair (riwayat 33); `AuthRepository.createOrganization` + `CreateOrgScreen` sekarang memanggil RPC dulu, lalu persist lokal + completeOnboarding; `org_signup_rpc_test` 4/4.
+- 2026-09-25 17:15:00 — S-14 done: helper murni `resolveOrgForInsert` + test 2/2; stamp org pada insert produk (form + CSV import + quick-add kategori), kategori (screen + quick-add), customer, bank account, option group/option, company_settings; CPL earn/void mewarisi org dari customer/earn ledger. Gate: `flutter analyze` 0 error; `flutter test` 153/153.
+- 2026-09-25 17:20:00 — S-15 **BLOCKED (tidak di-apply)**: gate plan mewajibkan smoke pra-16 dari HP (edit produk → org terisi). Perangkat saat ini masih memakai APK 1.1.2+33 yang dibangun SEBELUM perubahan app-phase, jadi push master-nya tidak membawa `organization_id`. Menerapkan 16 sekarang akan membuat edit produk/customer dari HP ditolak RLS (outbox failed) — regresi nyata. Urutan yang benar: build + install APK baru (schema 24) → smoke pra-16 → baru apply 16.
+- 2026-09-25 17:25:00 — S-16 (sebagian) — verifikasi read-only prod pasca S-13: owner aktif (`organization_members` role=owner status=active), 0 baris NULL-org di branches/products/customers/categories/option_groups, data utuh (2 branch / 44 produk / 109 customer / 134 transaksi), riwayat migrasi kontinu 33 tanpa gap.
+- 2026-09-25 16:30:00 — S-11 DEVIASI TERDOKUMENTASI vs teks plan: kolom org lokal HANYA untuk tabel yang server-nya punya kolom org (branches/products/categories/customers/option_groups/options/product_option_groups/bank_accounts/company_settings/pending_invitations/customer_point_ledger — terverifikasi 16 kolom via MCP). BranchProducts/InventoryItems/Movements/Recipes/ReceiptSettings DILEWATI (server tak punya kolomnya; RLS mereka branch-scoped; kirim org = error 400). ProductOptionGroups lokal dilewati; org-nya diderivasi dari produk saat push (S-12). PendingInvitations sudah punya kolom (skip).
 
 ## Notes
 

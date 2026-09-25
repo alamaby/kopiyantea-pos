@@ -17,6 +17,7 @@ import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/org_resolver.dart';
 import '../../core/utils/result.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
@@ -156,6 +157,9 @@ class _GlobalReceiptLogoCardState
       receiptLogoUrl: _logoUrl,
       showReceiptLogo: _showLogo,
       receiptLogoPosition: _logoPosition,
+      organizationId: resolveOrgForInsert(
+        ref.read(currentOrganizationIdProvider),
+      ),
       updatedAt: now,
     );
     await ref.read(companySettingsDaoProvider).upsert(row);

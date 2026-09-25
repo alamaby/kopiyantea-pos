@@ -15,11 +15,14 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/formatters.dart';
+import '../../core/utils/org_resolver.dart';
 import '../../core/utils/result.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../auth/auth_provider.dart';
 import 'category_providers.dart';
 
 /// Add/edit screen for a master `Product` row.
@@ -143,6 +146,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final now = DateTime.now();
     final catalogDao = ref.read(catalogDaoProvider);
     final outboxDao = ref.read(outboxDaoProvider);
+    final orgId = resolveOrgForInsert(ref.read(currentOrganizationIdProvider));
+    if (orgId == null) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.orgRequiredForSave)),
+      );
+      return;
+    }
     String savedProductId;
     if (_existing == null) {
       // Create master + propagate to all active branches.
@@ -155,6 +166,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         sku: Value(sku),
         imageUrl: Value(_imageUrl),
         isActive: Value(_isActive),
+        organizationId: Value(orgId),
         createdAt: now,
         updatedAt: now,
       ));
@@ -647,6 +659,9 @@ class _CategoryPickerField extends ConsumerWidget {
       name: created,
       sortOrder: Value(nextOrder),
       isActive: const Value(true),
+      organizationId: Value(
+        resolveOrgForInsert(ref.read(currentOrganizationIdProvider)),
+      ),
       createdAt: now,
       updatedAt: now,
     ));

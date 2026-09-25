@@ -1,6 +1,12 @@
 -- Multi-tenant RLS rewrite (Stage 3).
 -- Replaces all single-tenant policies with organization-aware ones.
 -- Must run AFTER 20260613110000_multi_tenant_saas_expand.sql.
+--
+-- PATCH 2026-09-25 (pre-apply, never executed before): app_users_insert
+-- uses auth.jwt()->>'email' instead of auth.users (authenticated has no
+-- SELECT on auth.users → 42501). uba/invite self-claim policies need no
+-- change: permissive policies combine with OR and the old self-claim
+-- policies survive (Section 1 does not drop them).
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- SECTION 1 — Drop legacy single-tenant policies
@@ -144,7 +150,7 @@ create policy app_users_select on public.app_users
 create policy app_users_insert on public.app_users
   for insert to authenticated
   with check (public.current_user_can_manage_org(
-    (select organization_id from public.pending_invitations where email = (select email from auth.users where id = auth.uid()) limit 1)
+    (select organization_id from public.pending_invitations where email = (auth.jwt() ->> 'email') limit 1)
   ));
 
 create policy app_users_update on public.app_users

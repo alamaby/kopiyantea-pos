@@ -11,11 +11,13 @@ import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/org_resolver.dart';
 import '../../core/utils/transaction_numbers.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../auth/auth_provider.dart';
 import 'customer_providers.dart';
 
 class CustomerFormScreen extends ConsumerStatefulWidget {
@@ -125,6 +127,9 @@ class _CustomerFormScreenState extends ConsumerState<CustomerFormScreen> {
         name: name,
         phone: Value(phone),
         email: Value(email),
+        organizationId: Value(
+          resolveOrgForInsert(ref.read(currentOrganizationIdProvider)),
+        ),
         createdAt: now,
         updatedAt: now,
       ));

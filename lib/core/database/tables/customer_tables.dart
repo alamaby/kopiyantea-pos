@@ -8,6 +8,8 @@ class Customers extends Table {
   TextColumn get email => text().nullable()();
   IntColumn get loyaltyPoints =>
       integer().withDefault(const Constant(0))();
+  /// FEAT-002 — tenant boundary, nullable during migration then backfilled.
+  TextColumn get organizationId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 

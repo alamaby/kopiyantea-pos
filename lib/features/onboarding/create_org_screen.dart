@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../core/database/app_database.dart';
 import '../../core/database/daos/dao_providers.dart';
 import '../../core/domain/enums.dart';
 import '../../core/theme/spacing.dart';
+import '../../core/utils/result.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../auth/auth_provider.dart';
+import '../auth/auth_repository.dart';
 import '../auth/bootstrap_provider.dart';
 
 /// FEAT-002 Stage 5 - Create organization form screen.
@@ -60,20 +61,44 @@ class _CreateOrgScreenState extends ConsumerState<CreateOrgScreen> {
         return;
       }
 
-      final now = DateTime.now();
-      final orgId = const Uuid().v7();
+      final name = _nameController.text.trim();
+      final phone = _phoneController.text.trim();
+      final address = _addressController.text.trim();
 
-      // 1. Create organization row
+      // 1. Create the organization atomically on the server (ADR-0014).
+      //    Clients have no INSERT policy on org tables, so this RPC is the
+      //    only valid path for the 2nd+ organization.
+      final repo = ref.read(authRepositoryProvider);
+      final result = await repo.createOrganization(
+        name: name,
+        businessType: _selectedBusinessType.name,
+        phone: phone.isEmpty ? null : phone,
+        address: address.isEmpty ? null : address,
+      );
+
+      final created = switch (result) {
+        Ok(value: final v) => v,
+        Err() => null,
+      };
+
+      if (created == null) {
+        if (mounted) {
+          final l10n = AppL10n.of(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.createOrgFailed)),
+          );
+        }
+        return;
+      }
+
+      // 2. Persist the server-created org + owner membership locally.
+      final now = DateTime.now();
       final org = OrganizationRow(
-        id: orgId,
-        name: _nameController.text.trim(),
+        id: created.organizationId,
+        name: created.organizationName,
         businessType: _selectedBusinessType,
-        phone: _phoneController.text.trim().isEmpty
-            ? null
-            : _phoneController.text.trim(),
-        address: _addressController.text.trim().isEmpty
-            ? null
-            : _addressController.text.trim(),
+        phone: phone.isEmpty ? null : phone,
+        address: address.isEmpty ? null : address,
         ownerUserId: currentUser.id,
         defaultTimezone: 'Asia/Jakarta',
         status: OrganizationStatus.active,
@@ -82,9 +107,8 @@ class _CreateOrgScreenState extends ConsumerState<CreateOrgScreen> {
         updatedAt: now,
       );
 
-      // 2. Create owner membership row
       final member = OrganizationMemberRow(
-        organizationId: orgId,
+        organizationId: created.organizationId,
         userId: currentUser.id,
         role: OrganizationMemberRole.owner,
         status: OrganizationMemberStatus.active,
@@ -92,19 +116,18 @@ class _CreateOrgScreenState extends ConsumerState<CreateOrgScreen> {
         updatedAt: now,
       );
 
-      // 3. Persist locally
       final orgDao = ref.read(organizationDaoProvider);
       await orgDao.upsertOrganization(org);
       await orgDao.upsertOrganizationMember(member);
 
-      // 4. Transition auth state to authenticated with the new orgId
+      // 3. Transition auth state to authenticated with the new orgId
       //    (data will be synced when bootstrap runs + periodic bg sync)
       await ref.read(authProvider.notifier).completeOnboarding(
-            organizationId: orgId,
+            organizationId: org.id,
             organizationName: org.name,
           );
 
-      // 5. Trigger bootstrap to pull org-scoped data
+      // 4. Trigger bootstrap to pull org-scoped data
       ref.read(bootstrapProvider.notifier).markPending();
 
       if (mounted) {

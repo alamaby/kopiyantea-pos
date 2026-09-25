@@ -41,7 +41,16 @@ String exportProductsToCsv(List<ProductRow> rows) {
 /// Parses CSV produced by [exportProductsToCsv] (or hand-edited variant).
 /// Empty `id` cells get a fresh UUID v7. Unknown extra columns are
 /// ignored. Required: `name`, `base_price`.
-CsvParseResult parseProductsCsv(String raw, {Uuid? uuid}) {
+///
+/// [organizationId] is stamped onto every row so imported products satisfy
+/// org-aware RLS. Callers must pass the active org id (see
+/// `resolveOrgForInsert`); a null/blank value leaves rows org-less and the
+/// caller is responsible for blocking the import.
+CsvParseResult parseProductsCsv(
+  String raw, {
+  Uuid? uuid,
+  String? organizationId,
+}) {
   final ids = uuid ?? const Uuid();
   final out = <ProductsCompanion>[];
   final errors = <String>[];
@@ -103,6 +112,7 @@ CsvParseResult parseProductsCsv(String raw, {Uuid? uuid}) {
       basePrice: price,
       sku: Value(sku),
       isActive: Value(isActive),
+      organizationId: Value(organizationId),
       createdAt: now,
       updatedAt: now,
     ));

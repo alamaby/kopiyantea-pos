@@ -71,7 +71,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 23;
+  int get schemaVersion => 24;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -198,6 +198,20 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(pendingInvitations, pendingInvitations.expiresAt);
             await m.addColumn(pendingInvitations, pendingInvitations.organizationId);
           }
+          if (from < 24) {
+            // FEAT-002 Phase 8 — tenant boundary on business tables +
+            // backfill to the sole organization (skipped when 0 or >1 orgs).
+            await m.addColumn(branches, branches.organizationId);
+            await m.addColumn(products, products.organizationId);
+            await m.addColumn(categories, categories.organizationId);
+            await m.addColumn(customers, customers.organizationId);
+            await m.addColumn(customerPointLedgers, customerPointLedgers.organizationId);
+            await m.addColumn(optionGroups, optionGroups.organizationId);
+            await m.addColumn(menuOptions, menuOptions.organizationId);
+            await m.addColumn(bankAccounts, bankAccounts.organizationId);
+            await _addCompanySettingsOrgColumn();
+            await backfillLocalOrgIds();
+          }
         },
         beforeOpen: (_) async {
           await customStatement('PRAGMA foreign_keys = ON');
@@ -310,9 +324,11 @@ CREATE TABLE IF NOT EXISTS company_settings (
   receipt_logo_url TEXT,
   show_receipt_logo INTEGER NOT NULL DEFAULT 0,
   receipt_logo_position TEXT NOT NULL DEFAULT 'top' CHECK (receipt_logo_position IN ('top', 'bottom')),
+  organization_id TEXT,
   updated_at DATETIME NOT NULL
 )
 ''');
+    await _addCompanySettingsOrgColumn();
     await customStatement('''
 INSERT OR IGNORE INTO company_settings
   (id, receipt_logo_url, show_receipt_logo, receipt_logo_position, updated_at)
@@ -327,6 +343,46 @@ WHERE logo_url IS NOT NULL AND TRIM(logo_url) <> ''
 ORDER BY updated_at DESC
 LIMIT 1
 ''');
+  }
+
+  Future<void> _addCompanySettingsOrgColumn() async {
+    // Idempotent: duplicate ADD COLUMN is ignored for existing installs.
+    try {
+      await customStatement(
+        'ALTER TABLE company_settings ADD COLUMN organization_id TEXT',
+      );
+    } catch (_) {
+      // Column already exists — safe to ignore.
+    }
+  }
+
+  /// FEAT-002 Phase 8 — backfill `organization_id` on business tables when
+  /// the device holds exactly one organization. Skips (leaves NULL) when
+  /// there are zero or multiple orgs — never guesses.
+  ///
+  /// Public for migration testing (see `org_backfill_test.dart`); app code
+  /// must not call this outside `onUpgrade`.
+  Future<void> backfillLocalOrgIds() async {
+    final orgs = await customSelect('SELECT id FROM organizations').get();
+    if (orgs.length != 1) return;
+    final orgId = orgs.first.read<String>('id');
+    const tables = [
+      'branches',
+      'products',
+      'categories',
+      'customers',
+      'customer_point_ledgers',
+      'option_groups',
+      'options',
+      'bank_accounts',
+      'company_settings',
+    ];
+    for (final table in tables) {
+      await customStatement(
+        'UPDATE $table SET organization_id = ? WHERE organization_id IS NULL',
+        [orgId],
+      );
+    }
   }
 
   Future<void> _seedSubscriptionPlans() async {

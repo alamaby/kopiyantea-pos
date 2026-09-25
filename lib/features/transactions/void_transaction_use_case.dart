@@ -80,6 +80,9 @@ class VoidTransactionUseCase {
     final pointsToReverse =
         existingPointReversal == null ? earnedPointLedger?.pointsDelta ?? 0 : 0;
     final pointReversalId = pointsToReverse > 0 ? uuid.v7() : null;
+    // Org is inherited from the earn ledger row so the reversal stays in the
+    // same tenant (server requires organization_id once RLS is org-aware).
+    final reversalOrgId = earnedPointLedger?.organizationId;
 
     // Reverse inventory movements: positive deltas (opposite sign of the
     // original sale movements). We re-query original movements by
@@ -179,6 +182,7 @@ class VoidTransactionUseCase {
                   transactionId: Value(originalId),
                   pointsDelta: -pointsToReverse,
                   reason: _kPointReasonVoidReversal,
+                  organizationId: Value(reversalOrgId),
                   createdAt: now,
                 ),
               );

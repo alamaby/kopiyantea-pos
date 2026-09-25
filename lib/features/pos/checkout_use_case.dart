@@ -171,6 +171,7 @@ class CheckoutUseCase {
                   transactionId: Value(txId),
                   pointsDelta: earnedPoints,
                   reason: _kPointReasonEarn,
+                  organizationId: Value(customer.organizationId),
                   createdAt: now,
                 ),
               );

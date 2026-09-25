@@ -21,6 +21,9 @@ class Branches extends Table {
   /// Storage (`qris-images` bucket). Shown at checkout when payment method
   /// is QRIS, and via a quick-access button on the POS AppBar.
   TextColumn get qrisImageUrl => text().nullable()();
+  /// FEAT-002 — tenant boundary (nullable during migration, backfilled to the
+  /// sole organization). Required by org-aware RLS for chain-wide reads.
+  TextColumn get organizationId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 

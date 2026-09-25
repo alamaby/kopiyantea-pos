@@ -17,6 +17,7 @@ import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/org_resolver.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
@@ -228,7 +229,14 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       );
       return;
     }
-    final result = parseProductsCsv(raw);
+    final orgId = resolveOrgForInsert(ref.read(currentOrganizationIdProvider));
+    if (orgId == null) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.orgRequiredForSave)),
+      );
+      return;
+    }
+    final result = parseProductsCsv(raw, organizationId: orgId);
 
     if (!context.mounted) return;
     final ok = await showDialog<bool>(
@@ -306,6 +314,9 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
           name: name,
           sortOrder: Value(nextOrder),
           isActive: const Value(true),
+          organizationId: Value(
+            resolveOrgForInsert(ref.read(currentOrganizationIdProvider)),
+          ),
           createdAt: now,
           updatedAt: now,
         ));

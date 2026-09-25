@@ -13,12 +13,14 @@ import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
 import '../../core/utils/formatters.dart';
+import '../../core/utils/org_resolver.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../auth/auth_provider.dart';
 import 'modifier_providers.dart';
 
 /// FEAT-001 — create or edit a modifier group + its options.
@@ -97,6 +99,9 @@ class _OptionGroupFormScreenState extends ConsumerState<OptionGroupFormScreen> {
       isRequired: Value(_isRequired),
       isMultiSelect: Value(_isMultiSelect),
       sortOrder: Value(_existing?.sortOrder ?? 0),
+      organizationId: Value(
+        resolveOrgForInsert(ref.read(currentOrganizationIdProvider)),
+      ),
       createdAt: _existing?.createdAt ?? now,
       updatedAt: now,
     ));
@@ -415,6 +420,9 @@ class _OptionEditorSheetState extends ConsumerState<_OptionEditorSheet> {
       priceDelta: Value(delta),
       sortOrder: Value(widget.existing?.sortOrder ?? 0),
       isDefault: Value(_isDefault),
+      organizationId: Value(
+        resolveOrgForInsert(ref.read(currentOrganizationIdProvider)),
+      ),
       createdAt: widget.existing?.createdAt ?? now,
       updatedAt: now,
     ));

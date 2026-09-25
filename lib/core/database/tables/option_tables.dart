@@ -21,6 +21,8 @@ class OptionGroups extends Table {
   BoolColumn get isMultiSelect =>
       boolean().withDefault(const Constant(false))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  /// FEAT-002 — tenant boundary, nullable during migration then backfilled.
+  TextColumn get organizationId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -45,6 +47,8 @@ class MenuOptions extends Table {
       real().withDefault(const Constant(0.0))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get isDefault => boolean().withDefault(const Constant(false))();
+  /// FEAT-002 — tenant boundary, nullable during migration then backfilled.
+  TextColumn get organizationId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 

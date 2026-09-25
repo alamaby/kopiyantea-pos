@@ -12,11 +12,13 @@ import '../../core/theme/colors.dart';
 import '../../core/theme/radius.dart';
 import '../../core/theme/spacing.dart';
 import '../../core/theme/typography.dart';
+import '../../core/utils/org_resolver.dart';
 import '../../core/widgets/app_badge.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_empty_state.dart';
 import '../../core/widgets/app_loading_indicator.dart';
 import '../../l10n/generated/app_localizations.dart';
+import '../auth/auth_provider.dart';
 import 'category_providers.dart';
 
 /// Owner-only CRUD untuk registry kategori produk (Tier 1).
@@ -372,6 +374,9 @@ class _CategoryFormState extends ConsumerState<_CategoryForm> {
         sortOrder: Value(nextOrder),
         color: Value(_color),
         isActive: const Value(true),
+        organizationId: Value(
+          resolveOrgForInsert(ref.read(currentOrganizationIdProvider)),
+        ),
         createdAt: now,
         updatedAt: now,
       ));

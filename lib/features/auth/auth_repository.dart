@@ -147,7 +147,7 @@ class AuthRepository {
     final sb = _supabase;
     if (sb == null) return const Err('network_unavailable');
     try {
-      final result = await sb.rpc(
+      final result = await sb.rpc<dynamic>(
         'claim_invitation_code',
         params: {'p_code': code, 'p_user_id': userId},
       );
@@ -162,6 +162,44 @@ class AuthRepository {
       return Err(json['error'] as String? ?? 'unknown');
     } catch (e) {
       _log.e('[Auth] claimJoinCode error', error: e);
+      return const Err('unknown');
+    }
+  }
+
+  /// FEAT-002 Phase 8 — atomic organization signup (ADR-0014).
+  ///
+  /// Clients hold no INSERT policy on `organizations`, so the SECOND and
+  /// later organizations must be created through the
+  /// `create_organization_with_owner` RPC. Returns the new org id + name.
+  Future<Result<({String organizationId, String organizationName}), String>>
+      createOrganization({
+    required String name,
+    required String businessType,
+    String? phone,
+    String? address,
+  }) async {
+    final sb = _supabase;
+    if (sb == null) return const Err('network_unavailable');
+    try {
+      final result = await sb.rpc<dynamic>(
+        'create_organization_with_owner',
+        params: {
+          'p_name': name,
+          'p_business_type': businessType,
+          'p_phone': phone,
+          'p_address': address,
+        },
+      );
+      final json = result as Map<String, dynamic>;
+      if (json['ok'] == true) {
+        return Ok((
+          organizationId: json['organization_id'] as String,
+          organizationName: json['organization_name'] as String? ?? name,
+        ));
+      }
+      return Err(json['error'] as String? ?? 'unknown');
+    } catch (e) {
+      _log.e('[Auth] createOrganization error', error: e);
       return const Err('unknown');
     }
   }

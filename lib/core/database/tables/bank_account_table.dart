@@ -18,6 +18,8 @@ class BankAccounts extends Table {
   IntColumn get displayOrder =>
       integer().withDefault(const Constant(0))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  /// FEAT-002 — tenant boundary, nullable during migration then backfilled.
+  TextColumn get organizationId => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 

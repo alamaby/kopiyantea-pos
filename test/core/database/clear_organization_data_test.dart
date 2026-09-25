@@ -98,4 +98,16 @@ void main() {
     expect(await count('branches'), 0);
     expect(await count('organizations'), 0);
   });
+
+  test('clearOrganizationData survives legacy db missing usage_counters',
+      () async {
+    await seedMinimal(db);
+    await db.customStatement('DROP TABLE IF EXISTS usage_counters');
+
+    await db.clearOrganizationData();
+
+    expect(await count('user_branch_accesses'), 0);
+    expect(await count('branches'), 0);
+    expect(await count('usage_counters'), 0);
+  });
 }

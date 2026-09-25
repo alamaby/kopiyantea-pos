@@ -436,6 +436,10 @@ CREATE TABLE IF NOT EXISTS usage_counters (
   /// Tables retained: app_users, subscription_plans, outbox_items,
   /// company_settings (global single-row).
   Future<void> clearOrganizationData() async {
+    // Raw-SQL tables may be missing on DBs created fresh at schemaVersion 23
+    // before usage_counters was added to onCreate — ensure it exists first.
+    // Idempotent (CREATE TABLE IF NOT EXISTS), no version bump needed.
+    await _createUsageCountersTable();
     // ── Drift tables (child → parent) ────────────────────────────────────────
     await customStatement('DELETE FROM transaction_item_options');
     await customStatement('DELETE FROM transaction_items');

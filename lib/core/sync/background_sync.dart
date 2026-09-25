@@ -93,17 +93,25 @@ Future<bool> runBackgroundSyncOnce() async {
     final branchIds = access.map((a) => a.branchId).toList(growable: false);
 
     // FEAT-002 Phase 7 — infer active org from first accessible branch so
-    // FEAT-002 Phase 7 — infer active org from first accessible branch so
     // background isolate (no Riverpod auth state) can still scope pulls.
+    // Guarded: single-tenant prod has no branches.organization_id yet —
+    // fall back to null (SyncRepository handles null via unfiltered pulls).
     String? orgId;
     if (branchIds.isNotEmpty) {
-      final json = await Supabase.instance.client
-          .from('branches')
-          .select('organization_id')
-          .eq('id', branchIds.first)
-          .maybeSingle();
-      if (json != null) {
-        orgId = json['organization_id'] as String?;
+      try {
+        final json = await Supabase.instance.client
+            .from('branches')
+            .select('organization_id')
+            .eq('id', branchIds.first)
+            .maybeSingle();
+        if (json != null) {
+          orgId = json['organization_id'] as String?;
+        }
+      } catch (e) {
+        log.w(
+          '[Sync] background org inference skipped (single-tenant prod)',
+          error: e,
+        );
       }
     }
 
@@ -111,7 +119,7 @@ Future<bool> runBackgroundSyncOnce() async {
     var pulled = 0;
     var pullErrors = 0;
 
-    if (branchIds.isNotEmpty && orgId != null) {
+    if (branchIds.isNotEmpty) {
       final master = await repo.pullMasterData(
         branchIds: branchIds,
         organizationId: orgId,

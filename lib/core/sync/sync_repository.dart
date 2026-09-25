@@ -196,11 +196,12 @@ class SyncRepository {
       List<Map<String, dynamic>> branchList;
       try {
         final rows = orgId == null
-            ? await sb.from('branches').select()
+            ? await sb.from('branches').select().inFilter('id', branchIds)
             : await sb
                 .from('branches')
                 .select()
-                .eq('organization_id', orgId);
+                .eq('organization_id', orgId)
+                .inFilter('id', branchIds);
         branchList = (rows as List).cast<Map<String, dynamic>>();
       } catch (e) {
         if (!shouldFallbackToUnfiltered(e)) rethrow;

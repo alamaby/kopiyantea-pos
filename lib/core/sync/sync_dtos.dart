@@ -149,6 +149,9 @@ extension UserBranchAccessSyncDto on UserBranchAccessRow {
 }
 
 extension PendingInvitationSyncDto on PendingInvitationRow {
+  // Requires server columns from 20260925000002 (join_code, invite_type,
+  // max_uses, used_count, status, expires_at, organization_id). If the
+  // server is not migrated yet, push fails into outbox backoff (no crash).
   Map<String, dynamic> toSupabaseJson() => {
         'id': id,
         'email': email,
@@ -156,6 +159,14 @@ extension PendingInvitationSyncDto on PendingInvitationRow {
         'global_role': globalRole.name,
         'branch_ids_csv': branchIdsCsv,
         'invited_by': invitedBy,
+        'join_code': joinCode,
+        'invite_type': inviteType,
+        'max_uses': maxUses,
+        'used_count': usedCount,
+        'status': status,
+        'expires_at':
+            expiresAt == null ? null : _toSupabaseTimestamp(expiresAt!),
+        'organization_id': organizationId,
         'created_at': _toSupabaseTimestamp(createdAt),
       };
 }
@@ -349,8 +360,11 @@ DateTime _fromSupabaseTimestamp(Object? raw) {
   return value.toLocal();
 }
 
-DateTime? _maybeDate(Object? raw) =>
-    raw == null ? null : _fromSupabaseTimestamp(raw);
+DateTime? _maybeDate(Object? raw) {
+  if (raw == null) return null;
+  if (raw is String && raw.trim().isEmpty) return null;
+  return _fromSupabaseTimestamp(raw);
+}
 
 AppUsersCompanion appUserFromJson(Map<String, dynamic> json) =>
     AppUsersCompanion.insert(
@@ -375,6 +389,13 @@ PendingInvitationsCompanion pendingInvitationFromJson(
       globalRole: _enumByName(GlobalRole.values, json['global_role'] as String),
       branchIdsCsv: Value(json['branch_ids_csv'] as String? ?? ''),
       invitedBy: Value(json['invited_by'] as String?),
+      joinCode: Value(json['join_code'] as String?),
+      inviteType: Value(json['invite_type'] as String? ?? 'email'),
+      maxUses: Value((json['max_uses'] as num?)?.toInt() ?? 1),
+      usedCount: Value((json['used_count'] as num?)?.toInt() ?? 0),
+      status: Value(json['status'] as String? ?? 'active'),
+      expiresAt: Value(_maybeDate(json['expires_at'])),
+      organizationId: Value(json['organization_id'] as String?),
       createdAt: _fromSupabaseTimestamp(json['created_at']),
     );
 

@@ -80,18 +80,27 @@ class BranchDao extends DatabaseAccessor<AppDatabase> with _$BranchDaoMixin {
           .get();
 
   /// FEAT-002 Phase 7 — returns branch IDs the user can access in the given org.
-  /// Uses raw SQL to avoid drift-codegen dependency on [branches.organizationId]
-  /// until build_runner is re-run (019ed651).
+  /// Local Branches has no organization_id (single-tenant Drift schema).
+  /// Scope check: user must be active member of orgId, then return all
+  /// branchIds the user can access. Preserves single-tenant behavior.
   Future<List<String>> getBranchIdsForUserInOrg(
     String userId,
     String orgId,
   ) async {
+    if (userId.isEmpty || orgId.isEmpty) return <String>[];
+    final member = await customSelect(
+      'SELECT 1 AS ok FROM organization_members '
+      'WHERE organization_id = ? AND user_id = ? AND status = ?',
+      variables: [
+        Variable<String>(orgId),
+        Variable<String>(userId),
+        Variable<String>('active'),
+      ],
+    ).getSingleOrNull();
+    if (member == null) return <String>[];
     final rows = await customSelect(
-      'SELECT uba.branch_id '
-      'FROM user_branch_access uba '
-      'JOIN branches b ON b.id = uba.branch_id '
-      'WHERE uba.user_id = ? AND b.organization_id = ?',
-      variables: [Variable<String>(userId), Variable<String>(orgId)],
+      'SELECT branch_id FROM user_branch_accesses WHERE user_id = ?',
+      variables: [Variable<String>(userId)],
     ).get();
 
     return rows.map((row) => row.read<String>('branch_id')).toList();

@@ -55,8 +55,7 @@ part 'app_database.g.dart';
     HeldOrders,
     // ENH-001 — daily cash reconciliation log (added at schemaVersion 5)
     ShiftClosings,
-    // FEAT-002 — SaaS multi-tenant tables (schemaVersion 21)
-    // TD-001 resolved 2026-09-21 — Drift 2.21+ codegen works.
+    // FEAT-002 — SaaS multi-tenant tables (schemaVersion 21, TD-001 resolved 2026-09-21).
     Organizations,
     OrganizationMembers,
     SubscriptionPlans,
@@ -80,6 +79,7 @@ class AppDatabase extends _$AppDatabase {
           await m.createAll();
           await _createMenuImageSettingsTable();
           await _createCompanySettingsTable();
+          await _createUsageCountersTable();
         },
         onUpgrade: (m, from, to) async {
           // ADR-0008 — non-destructive migrations only.
@@ -176,8 +176,7 @@ class AppDatabase extends _$AppDatabase {
             await _createCompanySettingsTable();
           }
           if (from < 21) {
-            // FEAT-002 — multi-tenant SaaS tables (raw SQL because drift
-            // codegen is blocked by analyzer version mismatch — TD-001).
+            // FEAT-002 — multi-tenant SaaS tables.
             await _createOrganizationsTable();
             await _createOrganizationMembersTable();
             await _createSubscriptionPlansTable();
@@ -453,7 +452,7 @@ CREATE TABLE IF NOT EXISTS usage_counters (
     await customStatement('DELETE FROM bank_accounts');
     await customStatement('DELETE FROM customer_point_ledgers');
     await customStatement('DELETE FROM customers');
-    await customStatement('DELETE FROM user_branch_access');
+    await customStatement('DELETE FROM user_branch_accesses');
     await customStatement('DELETE FROM branches');
     await customStatement('DELETE FROM pending_invitations');
     await customStatement('DELETE FROM held_orders');

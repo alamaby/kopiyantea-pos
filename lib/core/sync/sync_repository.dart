@@ -10,7 +10,18 @@ import '../database/daos/company_settings_dao.dart';
 import '../database/daos/dao_providers.dart';
 import '../database/database_provider.dart';
 import '../domain/enums.dart';
+import '../logging/app_logger.dart';
 import 'sync_dtos.dart';
+
+/// True when a Supabase error indicates the server lacks the
+/// `organization_id` column/table (single-tenant prod) and the caller
+/// should retry without the org filter instead of failing.
+bool shouldFallbackToUnfiltered(Object e) {
+  final s = e.toString();
+  return s.contains('organization_id') ||
+      s.contains('42703') ||
+      s.contains('PGRST');
+}
 
 /// Result counters from a sync push pass.
 class PushSummary {
@@ -35,7 +46,7 @@ class SyncRepository {
   SyncRepository(this._ref);
 
   final Ref _ref;
-  final Logger _log = Logger();
+  final Logger _log = AppLogger.instance;
 
   AppDatabase get _db => _ref.read(databaseProvider);
 
@@ -97,29 +108,46 @@ class SyncRepository {
       }
 
       // 5. Organization memberships for this user (FEAT-002).
-      final orgMemberRows = await sb
-          .from('organization_members')
-          .select()
-          .eq('user_id', userId)
-          .eq('status', 'active');
-      final orgDao = _ref.read(organizationDaoProvider);
-      for (final row
-          in (orgMemberRows as List).cast<Map<String, dynamic>>()) {
-        await orgDao.upsertOrganizationMember(
-            organizationMemberFromJson(row));
+      // Guarded: single-tenant prod has no org tables yet — skip without
+      // failing steps 1-4.
+      var orgMemberList = <Map<String, dynamic>>[];
+      try {
+        final orgMemberRows = await sb
+            .from('organization_members')
+            .select()
+            .eq('user_id', userId)
+            .eq('status', 'active');
+        final orgDao = _ref.read(organizationDaoProvider);
+        for (final row
+            in (orgMemberRows as List).cast<Map<String, dynamic>>()) {
+          await orgDao.upsertOrganizationMember(
+              organizationMemberFromJson(row));
+        }
+        orgMemberList =
+            (orgMemberRows as List).cast<Map<String, dynamic>>().toList();
+      } catch (e) {
+        _log.w(
+            '[Sync] org context pull skipped (single-tenant prod)',
+            error: e);
       }
 
       // 6. Organizations the user belongs to.
-      final orgIds = (orgMemberRows as List)
-          .cast<Map<String, dynamic>>()
+      final orgIds = orgMemberList
           .map((r) => r['organization_id'] as String)
           .toList();
       if (orgIds.isNotEmpty) {
-        final orgsJson =
-            await sb.from('organizations').select().inFilter('id', orgIds);
-        for (final json in (orgsJson as List).cast<Map<String, dynamic>>()) {
-          await orgDao.upsertOrganization(
-              organizationFromJson(json));
+        try {
+          final orgsJson =
+              await sb.from('organizations').select().inFilter('id', orgIds);
+          final orgDao = _ref.read(organizationDaoProvider);
+          for (final json in (orgsJson as List).cast<Map<String, dynamic>>()) {
+            await orgDao.upsertOrganization(
+                organizationFromJson(json));
+          }
+        } catch (e) {
+          _log.w(
+              '[Sync] organizations pull skipped (single-tenant prod)',
+              error: e);
         }
       }
 
@@ -147,11 +175,8 @@ class SyncRepository {
     required List<String> branchIds,
     String? organizationId,
   }) async {
+    // orgId nullable: single-tenant prod has no organization_id column.
     final orgId = organizationId ?? _ref.read(currentOrganizationIdProvider);
-    if (orgId == null) {
-      _log.w('[Sync] no organizationId — skip pullMasterData');
-      return (upserted: 0, errors: 0);
-    }
     final sb = _sb;
     if (sb == null) {
       _log.w('[Sync] no supabase — skip pullMasterData');
@@ -168,8 +193,24 @@ class SyncRepository {
     // the user already has access to are pulled here on every sync.
     try {
       final dao = _ref.read(branchDaoProvider);
-      final rows = await sb.from('branches').select().eq('organization_id', orgId).inFilter('id', branchIds);
-      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+      List<Map<String, dynamic>> branchList;
+      try {
+        final rows = orgId == null
+            ? await sb.from('branches').select()
+            : await sb
+                .from('branches')
+                .select()
+                .eq('organization_id', orgId);
+        branchList = (rows as List).cast<Map<String, dynamic>>();
+      } catch (e) {
+        if (!shouldFallbackToUnfiltered(e)) rethrow;
+        _log.w('[Sync] pull branches without org filter (fallback)',
+            error: e);
+        final rows =
+            await sb.from('branches').select().inFilter('id', branchIds);
+        branchList = (rows as List).cast<Map<String, dynamic>>();
+      }
+      for (final json in branchList) {
         await dao.upsertBranch(branchFromJson(json));
         upserted++;
       }
@@ -181,9 +222,21 @@ class SyncRepository {
     // ── categories (chain-wide) — pull SEBELUM products supaya picker punya
     // registry lengkap begitu produk masuk.
     try {
-      final rows = await sb.from('categories').select().eq('organization_id', orgId);
+      List<Map<String, dynamic>> catList;
+      try {
+        final rows = orgId == null
+            ? await sb.from('categories').select()
+            : await sb.from('categories').select().eq('organization_id', orgId);
+        catList = (rows as List).cast<Map<String, dynamic>>();
+      } catch (e) {
+        if (!shouldFallbackToUnfiltered(e)) rethrow;
+        _log.w('[Sync] pull categories without org filter (fallback)',
+            error: e);
+        final rows = await sb.from('categories').select();
+        catList = (rows as List).cast<Map<String, dynamic>>();
+      }
       final dao = _ref.read(categoryDaoProvider);
-      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+      for (final json in catList) {
         try {
           await dao.upsert(categoryFromJson(json));
           upserted++;
@@ -202,9 +255,21 @@ class SyncRepository {
 
     // ── products (chain-wide) ──
     try {
-      final rows = await sb.from('products').select().eq('organization_id', orgId);
+      List<Map<String, dynamic>> prodList;
+      try {
+        final rows = orgId == null
+            ? await sb.from('products').select()
+            : await sb.from('products').select().eq('organization_id', orgId);
+        prodList = (rows as List).cast<Map<String, dynamic>>();
+      } catch (e) {
+        if (!shouldFallbackToUnfiltered(e)) rethrow;
+        _log.w('[Sync] pull products without org filter (fallback)',
+            error: e);
+        final rows = await sb.from('products').select();
+        prodList = (rows as List).cast<Map<String, dynamic>>();
+      }
       final catalogDao = _ref.read(catalogDaoProvider);
-      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+      for (final json in prodList) {
         await catalogDao.upsertProduct(productFromJson(json));
         upserted++;
       }
@@ -234,20 +299,62 @@ class SyncRepository {
     try {
       final dao = _ref.read(optionDaoProvider);
 
-      final groupRows = await sb.from('option_groups').select().eq('organization_id', orgId);
-      for (final json in (groupRows as List).cast<Map<String, dynamic>>()) {
+      List<Map<String, dynamic>> groupList;
+      try {
+        final groupRows = orgId == null
+            ? await sb.from('option_groups').select()
+            : await sb
+                .from('option_groups')
+                .select()
+                .eq('organization_id', orgId);
+        groupList = (groupRows as List).cast<Map<String, dynamic>>();
+      } catch (e) {
+        if (!shouldFallbackToUnfiltered(e)) rethrow;
+        _log.w('[Sync] pull option_groups without org filter (fallback)',
+            error: e);
+        final groupRows = await sb.from('option_groups').select();
+        groupList = (groupRows as List).cast<Map<String, dynamic>>();
+      }
+      for (final json in groupList) {
         await dao.upsertGroup(optionGroupFromJson(json));
         upserted++;
       }
 
-      final optionRows = await sb.from('options').select().eq('organization_id', orgId);
-      for (final json in (optionRows as List).cast<Map<String, dynamic>>()) {
+      List<Map<String, dynamic>> optList;
+      try {
+        final optionRows = orgId == null
+            ? await sb.from('options').select()
+            : await sb.from('options').select().eq('organization_id', orgId);
+        optList = (optionRows as List).cast<Map<String, dynamic>>();
+      } catch (e) {
+        if (!shouldFallbackToUnfiltered(e)) rethrow;
+        _log.w('[Sync] pull options without org filter (fallback)', error: e);
+        final optionRows = await sb.from('options').select();
+        optList = (optionRows as List).cast<Map<String, dynamic>>();
+      }
+      for (final json in optList) {
         await dao.upsertOption(optionFromJson(json));
         upserted++;
       }
 
-      final bindingRows = await sb.from('product_option_groups').select().eq('organization_id', orgId);
-      for (final json in (bindingRows as List).cast<Map<String, dynamic>>()) {
+      List<Map<String, dynamic>> bindList;
+      try {
+        final bindingRows = orgId == null
+            ? await sb.from('product_option_groups').select()
+            : await sb
+                .from('product_option_groups')
+                .select()
+                .eq('organization_id', orgId);
+        bindList = (bindingRows as List).cast<Map<String, dynamic>>();
+      } catch (e) {
+        if (!shouldFallbackToUnfiltered(e)) rethrow;
+        _log.w(
+            '[Sync] pull product_option_groups without org filter (fallback)',
+            error: e);
+        final bindingRows = await sb.from('product_option_groups').select();
+        bindList = (bindingRows as List).cast<Map<String, dynamic>>();
+      }
+      for (final json in bindList) {
         await _db
             .into(_db.productOptionGroups)
             .insertOnConflictUpdate(productOptionGroupFromJson(json));
@@ -309,9 +416,31 @@ class SyncRepository {
 
     // ── company_settings (chain-wide) ──
     try {
-      final rows = await sb.from('company_settings').select().eq('organization_id', orgId);
+      List<Map<String, dynamic>> csList;
+      try {
+        final rows = orgId == null
+            ? await sb.from('company_settings').select()
+            : await sb
+                .from('company_settings')
+                .select()
+                .eq('organization_id', orgId);
+        csList = (rows as List).cast<Map<String, dynamic>>();
+      } catch (e) {
+        if (!shouldFallbackToUnfiltered(e)) rethrow;
+        _log.w(
+            '[Sync] pull company_settings without org filter (fallback)',
+            error: e);
+        try {
+          final rows = await sb.from('company_settings').select();
+          csList = (rows as List).cast<Map<String, dynamic>>();
+        } catch (e2) {
+          // Table may not exist on single-tenant prod yet — skip quietly.
+          _log.w('[Sync] pull company_settings skipped', error: e2);
+          csList = <Map<String, dynamic>>[];
+        }
+      }
       final dao = _ref.read(companySettingsDaoProvider);
-      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+      for (final json in csList) {
         await dao.upsert(companySettingsFromJson(json));
         upserted++;
       }
@@ -322,9 +451,21 @@ class SyncRepository {
 
     // ── customers (chain-wide) ──
     try {
-      final rows = await sb.from('customers').select().eq('organization_id', orgId);
+      List<Map<String, dynamic>> custList;
+      try {
+        final rows = orgId == null
+            ? await sb.from('customers').select()
+            : await sb.from('customers').select().eq('organization_id', orgId);
+        custList = (rows as List).cast<Map<String, dynamic>>();
+      } catch (e) {
+        if (!shouldFallbackToUnfiltered(e)) rethrow;
+        _log.w('[Sync] pull customers without org filter (fallback)',
+            error: e);
+        final rows = await sb.from('customers').select();
+        custList = (rows as List).cast<Map<String, dynamic>>();
+      }
       final custDao = _ref.read(customerDaoProvider);
-      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+      for (final json in custList) {
         await custDao.upsertCustomer(customerFromJson(json));
         upserted++;
       }
@@ -335,9 +476,25 @@ class SyncRepository {
 
     // ── bank_accounts (FEAT-015, global) ──
     try {
-      final rows = await sb.from('bank_accounts').select().eq('organization_id', orgId);
+      List<Map<String, dynamic>> bankList;
+      try {
+        final rows = orgId == null
+            ? await sb.from('bank_accounts').select()
+            : await sb
+                .from('bank_accounts')
+                .select()
+                .eq('organization_id', orgId);
+        bankList = (rows as List).cast<Map<String, dynamic>>();
+      } catch (e) {
+        if (!shouldFallbackToUnfiltered(e)) rethrow;
+        _log.w(
+            '[Sync] pull bank_accounts without org filter (fallback)',
+            error: e);
+        final rows = await sb.from('bank_accounts').select();
+        bankList = (rows as List).cast<Map<String, dynamic>>();
+      }
       final dao = _ref.read(bankAccountDaoProvider);
-      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
+      for (final json in bankList) {
         await dao.upsert(bankAccountFromJson(json));
         upserted++;
       }
@@ -348,14 +505,27 @@ class SyncRepository {
 
     // ── usage_counters (FEAT-002 Phase 6, org-scoped) ──
     try {
-      final rows = await sb
-          .from('usage_counters')
-          .select()
-          .eq('organization_id', orgId);
-      final dao = _ref.read(usageCounterDaoProvider);
-      for (final json in (rows as List).cast<Map<String, dynamic>>()) {
-        await dao.upsert(usageCounterFromJson(json));
-        upserted++;
+      if (orgId == null) {
+        _log.w('[Sync] pull usage_counters skipped (no organizationId)');
+      } else {
+        List<Map<String, dynamic>> ucList;
+        try {
+          final rows = await sb
+              .from('usage_counters')
+              .select()
+              .eq('organization_id', orgId);
+          ucList = (rows as List).cast<Map<String, dynamic>>();
+        } catch (e) {
+          if (!shouldFallbackToUnfiltered(e)) rethrow;
+          _log.w('[Sync] pull usage_counters skipped (single-tenant prod)',
+              error: e);
+          ucList = <Map<String, dynamic>>[];
+        }
+        final dao = _ref.read(usageCounterDaoProvider);
+        for (final json in ucList) {
+          await dao.upsert(usageCounterFromJson(json));
+          upserted++;
+        }
       }
     } catch (e) {
       _log.w('[Sync] pull usage_counters failed', error: e);
@@ -381,7 +551,7 @@ class SyncRepository {
   }) async {
     final orgId = organizationId ?? _ref.read(currentOrganizationIdProvider);
     final sb = _sb;
-    if (sb == null || branchIds.isEmpty || orgId == null) {
+    if (sb == null || branchIds.isEmpty) {
       return (upserted: 0, errors: 0);
     }
 
@@ -432,12 +602,31 @@ class SyncRepository {
         }
 
         // ── customer_point_ledger (transaction-linked loyalty audit) ──
-        final pointRows = await sb
-            .from('customer_point_ledger')
-            .select()
-            .eq('organization_id', orgId)
-            .inFilter('transaction_id', txIds);
-        for (final json in (pointRows as List).cast<Map<String, dynamic>>()) {
+        List<Map<String, dynamic>> pointList;
+        try {
+          final pointRows = orgId == null
+              ? await sb
+                  .from('customer_point_ledger')
+                  .select()
+                  .inFilter('transaction_id', txIds)
+              : await sb
+                  .from('customer_point_ledger')
+                  .select()
+                  .eq('organization_id', orgId)
+                  .inFilter('transaction_id', txIds);
+          pointList = (pointRows as List).cast<Map<String, dynamic>>();
+        } catch (e) {
+          if (!shouldFallbackToUnfiltered(e)) rethrow;
+          _log.w(
+              '[Sync] pull customer_point_ledger without org filter (fallback)',
+              error: e);
+          final pointRows = await sb
+              .from('customer_point_ledger')
+              .select()
+              .inFilter('transaction_id', txIds);
+          pointList = (pointRows as List).cast<Map<String, dynamic>>();
+        }
+        for (final json in pointList) {
           await _db
               .into(_db.customerPointLedgers)
               .insertOnConflictUpdate(customerPointLedgerFromJson(json));
